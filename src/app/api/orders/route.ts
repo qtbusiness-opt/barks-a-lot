@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       where: { id: { in: productIds } },
     });
 
-    const productMap = new Map(products.map((p) => [p.id, p]));
+    const productMap = new Map(products.map((p) => [p.id, p] as const));
 
     let total = 0;
     const orderItems = items.map(
