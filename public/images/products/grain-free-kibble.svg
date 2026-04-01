@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F5F0E8" rx="8"/>
+  <!-- Dog food bag -->
+  <g transform="translate(200,190)">
+    <!-- Bag body -->
+    <path d="M-50,-55 L-55,55 Q-55,65 -45,65 L45,65 Q55,65 55,55 L50,-55 Z" fill="#4A7C8A"/>
+    <!-- Bag top fold -->
+    <path d="M-50,-55 Q-45,-70 0,-72 Q45,-70 50,-55 Z" fill="#3A6C7A"/>
+    <!-- Crimped top -->
+    <path d="M-40,-65 Q-20,-80 0,-78 Q20,-80 40,-65" fill="none" stroke="#3A6C7A" stroke-width="3" stroke-linecap="round"/>
+    <!-- Label area -->
+    <rect x="-35" y="-25" width="70" height="50" rx="5" fill="#F5F0E8" opacity="0.9"/>
+    <!-- Paw icon on label -->
+    <g fill="#C8722A">
+      <circle cx="0" cy="-10" r="8"/>
+      <circle cx="-12" cy="-20" r="5"/>
+      <circle cx="0" cy="-24" r="5"/>
+      <circle cx="12" cy="-20" r="5"/>
+    </g>
+    <!-- Text lines on label -->
+    <line x1="-20" y1="8" x2="20" y2="8" stroke="#C8722A" stroke-width="2" stroke-linecap="round"/>
+    <line x1="-15" y1="16" x2="15" y2="16" stroke="#C8722A" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+  </g>
+  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Grain-Free Kibble</text>
+</svg>

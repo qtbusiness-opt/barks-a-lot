@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F5F0E8" rx="8"/>
+  <!-- Squeaky bone toy -->
+  <g transform="translate(200,190)">
+    <!-- Center bar -->
+    <rect x="-55" y="-16" width="110" height="32" rx="10" fill="#4A7C8A"/>
+    <!-- Left knobs -->
+    <circle cx="-55" cy="-14" r="24" fill="#4A7C8A"/>
+    <circle cx="-55" cy="14" r="24" fill="#4A7C8A"/>
+    <!-- Right knobs -->
+    <circle cx="55" cy="-14" r="24" fill="#4A7C8A"/>
+    <circle cx="55" cy="14" r="24" fill="#4A7C8A"/>
+    <!-- Shine/highlight -->
+    <ellipse cx="-30" cy="-8" rx="20" ry="6" fill="#5A8C9A" opacity="0.5"/>
+    <!-- Squeaky indicator lines -->
+    <line x1="30" y1="-45" x2="30" y2="-55" stroke="#C8722A" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="20" y1="-42" x2="15" y2="-52" stroke="#C8722A" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="40" y1="-42" x2="45" y2="-52" stroke="#C8722A" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Squeaky Bone</text>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F5F0E8" rx="8"/>
+  <!-- Sweet potato slices -->
+  <g transform="translate(200,190)">
+    <!-- Slice 1 -->
+    <ellipse cx="-40" cy="-20" rx="45" ry="28" fill="#C8722A" transform="rotate(-10)"/>
+    <ellipse cx="-40" cy="-20" rx="35" ry="20" fill="#D4923A" transform="rotate(-10)" opacity="0.7"/>
+    <!-- Slice 2 -->
+    <ellipse cx="20" cy="10" rx="45" ry="28" fill="#C8722A" transform="rotate(5)"/>
+    <ellipse cx="20" cy="10" rx="35" ry="20" fill="#D4923A" transform="rotate(5)" opacity="0.7"/>
+    <!-- Slice 3 -->
+    <ellipse cx="-10" cy="50" rx="45" ry="28" fill="#C8722A" transform="rotate(-5)"/>
+    <ellipse cx="-10" cy="50" rx="35" ry="20" fill="#D4923A" transform="rotate(-5)" opacity="0.7"/>
+  </g>
+  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Sweet Potato Chews</text>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F5F0E8" rx="8"/>
+  <!-- Food can -->
+  <g transform="translate(200,190)">
+    <!-- Can body -->
+    <rect x="-45" y="-40" width="90" height="80" rx="4" fill="#4A7C8A"/>
+    <!-- Can top rim -->
+    <ellipse cx="0" cy="-40" rx="45" ry="12" fill="#5A8C9A"/>
+    <!-- Can top surface -->
+    <ellipse cx="0" cy="-40" rx="40" ry="10" fill="#3A6C7A"/>
+    <!-- Pull tab -->
+    <ellipse cx="0" cy="-42" rx="12" ry="5" fill="none" stroke="#F5F0E8" stroke-width="2"/>
+    <!-- Can bottom rim -->
+    <ellipse cx="0" cy="40" rx="45" ry="12" fill="#3A6C7A"/>
+    <!-- Label band -->
+    <rect x="-46" y="-15" width="92" height="40" fill="#C8722A"/>
+    <!-- Label details -->
+    <g fill="#F5F0E8">
+      <!-- Small bone icon -->
+      <rect x="-12" y="-4" width="24" height="6" rx="3" fill="#F5F0E8"/>
+      <circle cx="-12" cy="-2" r="5" fill="#F5F0E8"/>
+      <circle cx="12" cy="-2" r="5" fill="#F5F0E8"/>
+      <circle cx="-12" cy="4" r="5" fill="#F5F0E8"/>
+      <circle cx="12" cy="4" r="5" fill="#F5F0E8"/>
+    </g>
+    <!-- Label text lines -->
+    <line x1="-25" y1="15" x2="25" y2="15" stroke="#F5F0E8" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+    <!-- Can ridge lines -->
+    <line x1="-44" y1="-28" x2="44" y2="-28" stroke="#5A8C9A" stroke-width="0.5" opacity="0.5"/>
+    <line x1="-44" y1="30" x2="44" y2="30" stroke="#5A8C9A" stroke-width="0.5" opacity="0.5"/>
+  </g>
+  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Wet Food Pack</text>
+</svg>
