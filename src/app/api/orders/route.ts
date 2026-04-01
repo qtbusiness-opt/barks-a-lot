@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import type { Product } from "@prisma/client";
 
 export async function GET() {
   const auth = await getAuthUser();
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       where: { id: { in: productIds } },
     });
 
-    const productMap = new Map(products.map((p) => [p.id, p]));
+    const productMap = new Map<string, Product>(products.map((p) => [p.id, p]));
 
     let total = 0;
     const orderItems = items.map(
