@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F5F0E8" rx="8"/>
+  <!-- Fish shape -->
+  <g transform="translate(200,195)">
+    <!-- Body -->
+    <ellipse cx="0" cy="0" rx="75" ry="40" fill="#4A7C8A"/>
+    <!-- Tail -->
+    <polygon points="65,-5 95,-35 95,35 65,5" fill="#4A7C8A"/>
+    <!-- Eye -->
+    <circle cx="-35" cy="-10" r="8" fill="#F5F0E8"/>
+    <circle cx="-33" cy="-10" r="4" fill="#2A4C5A"/>
+    <!-- Fin -->
+    <path d="M-10,-38 Q0,-55 15,-38" fill="#3A6C7A"/>
+    <!-- Gill line -->
+    <path d="M-20,-25 Q-25,0 -20,25" fill="none" stroke="#3A6C7A" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Scale hints -->
+    <path d="M5,-15 Q15,-20 20,-10" fill="none" stroke="#3A6C7A" stroke-width="1.5" opacity="0.5"/>
+    <path d="M5,5 Q15,0 20,10" fill="none" stroke="#3A6C7A" stroke-width="1.5" opacity="0.5"/>
+    <path d="M25,-10 Q35,-15 40,-5" fill="none" stroke="#3A6C7A" stroke-width="1.5" opacity="0.5"/>
+  </g>
+  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Salmon Treats</text>
+</svg>

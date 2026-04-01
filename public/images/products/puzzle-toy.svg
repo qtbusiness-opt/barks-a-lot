@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F5F0E8" rx="8"/>
+  <!-- Puzzle piece -->
+  <g transform="translate(200,185)">
+    <path d="
+      M-45,-45 L-10,-45
+      Q-10,-65 0,-65 Q10,-65 10,-45
+      L45,-45 L45,-10
+      Q65,-10 65,0 Q65,10 45,10
+      L45,45 L10,45
+      Q10,65 0,65 Q-10,65 -10,45
+      L-45,45 L-45,10
+      Q-65,10 -65,0 Q-65,-10 -45,-10
+      Z
+    " fill="#4A7C8A"/>
+    <!-- Inner highlight -->
+    <path d="
+      M-35,-35 L-10,-35
+      Q-10,-50 0,-50 Q10,-50 10,-35
+      L35,-35 L35,-10
+      Q50,-10 50,0 Q50,10 35,10
+      L35,35 L10,35
+      Q10,50 0,50 Q-10,50 -10,35
+      L-35,35 L-35,10
+      Q-50,10 -50,0 Q-50,-10 -35,-10
+      Z
+    " fill="#5A8C9A" opacity="0.4"/>
+    <!-- Center circle (treat hole) -->
+    <circle cx="0" cy="0" r="12" fill="#C8722A"/>
+    <circle cx="0" cy="0" r="7" fill="#D4923A" opacity="0.6"/>
+  </g>
+  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Puzzle Toy</text>
+</svg>

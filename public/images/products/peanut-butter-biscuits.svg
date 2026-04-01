@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F5F0E8" rx="8"/>
+  <!-- Dog bone biscuit -->
+  <g transform="translate(200,200) rotate(-30)">
+    <!-- Center bar -->
+    <rect x="-60" y="-18" width="120" height="36" rx="8" fill="#C8722A"/>
+    <!-- Left knobs -->
+    <circle cx="-60" cy="-14" r="22" fill="#C8722A"/>
+    <circle cx="-60" cy="14" r="22" fill="#C8722A"/>
+    <!-- Right knobs -->
+    <circle cx="60" cy="-14" r="22" fill="#C8722A"/>
+    <circle cx="60" cy="14" r="22" fill="#C8722A"/>
+    <!-- Texture dots -->
+    <circle cx="-10" cy="-4" r="3" fill="#B8621A" opacity="0.5"/>
+    <circle cx="10" cy="4" r="3" fill="#B8621A" opacity="0.5"/>
+    <circle cx="0" cy="0" r="3" fill="#B8621A" opacity="0.5"/>
+  </g>
+  <!-- Label -->
+  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Peanut Butter Biscuits</text>
+</svg>

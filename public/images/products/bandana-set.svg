@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F5F0E8" rx="8"/>
+  <!-- Bandana -->
+  <g transform="translate(200,185)">
+    <!-- Main triangle -->
+    <polygon points="0,-50 -70,20 70,20" fill="#4A7C8A"/>
+    <!-- Folded top band -->
+    <path d="M-75,15 Q-40,-10 0,-15 Q40,-10 75,15" fill="#3A6C7A"/>
+    <!-- Tied ends -->
+    <path d="M-75,15 Q-85,5 -90,18 Q-85,28 -75,22" fill="#3A6C7A"/>
+    <path d="M75,15 Q85,5 90,18 Q85,28 75,22" fill="#3A6C7A"/>
+    <!-- Decorative pattern - paw prints -->
+    <g fill="#C8722A" opacity="0.6">
+      <!-- Paw 1 -->
+      <circle cx="-15" cy="-15" r="4"/>
+      <circle cx="-22" cy="-22" r="2.5"/>
+      <circle cx="-15" cy="-25" r="2.5"/>
+      <circle cx="-8" cy="-22" r="2.5"/>
+      <!-- Paw 2 -->
+      <circle cx="15" cy="-5" r="4"/>
+      <circle cx="8" cy="-12" r="2.5"/>
+      <circle cx="15" cy="-15" r="2.5"/>
+      <circle cx="22" cy="-12" r="2.5"/>
+    </g>
+    <!-- Bottom point of triangle -->
+    <polygon points="-5,18 5,18 0,55" fill="#4A7C8A"/>
+  </g>
+  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Bandana Set</text>
+</svg>
