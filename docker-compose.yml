@@ -4,11 +4,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=file:./prisma/dev.db
+      - DATABASE_URL=file:/app/data/dev.db
       - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
       - NODE_ENV=production
     volumes:
-      - sqlite-data:/app/prisma
+      - sqlite-data:/app/data
     restart: unless-stopped
 
 volumes:
