@@ -38,12 +38,15 @@ export async function POST(req: NextRequest) {
       where: { id: { in: productIds } },
     });
 
-    const productMap = new Map(products.map((p) => [p.id, p] as [string, typeof p]));
+    const productMap: Record<string, { price: number }> = {};
+    for (const p of products) {
+      productMap[p.id] = p;
+    }
 
     let total = 0;
     const orderItems = items.map(
       (item: { productId: string; quantity: number }) => {
-        const product = productMap.get(item.productId);
+        const product = productMap[item.productId];
         if (!product) throw new Error(`Product ${item.productId} not found`);
         const itemTotal = product.price * item.quantity;
         total += itemTotal;
