@@ -12,14 +12,22 @@
     "db:studio": "npx prisma studio"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^5.22.0",
+=======
+    "@prisma/client": "~6.19.2",
+>>>>>>> 79953a4 (Add dev, qual, and prod environments for Docker and database)
     "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
     "cookie": "^1.1.1",
     "jsonwebtoken": "^9.0.3",
     "next": "16.2.2",
+<<<<<<< HEAD
     "prisma": "^5.22.0",
+=======
+    "prisma": "~6.19.2",
+>>>>>>> 79953a4 (Add dev, qual, and prod environments for Docker and database)
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
