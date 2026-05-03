@@ -101,6 +101,10 @@ const products = [
 ];
 
 async function main() {
+  const env = process.env.NODE_ENV || "development";
+  console.log(`Starting Barks-A-Lot [${env}]...`);
+  console.log(`Database: ${process.env.DATABASE_URL}`);
+
   console.log("Running migrations...");
   execSync("node node_modules/prisma/build/index.js migrate deploy", {
     stdio: "inherit",
