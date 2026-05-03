@@ -127,7 +127,7 @@ async function main() {
   }
 
   console.log("Starting server...");
-  require("./server.js");
+  require("../server.js");
 }
 
 main().catch((err) => {
