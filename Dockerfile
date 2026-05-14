@@ -42,5 +42,7 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV DATABASE_URL="file:/app/data/app.db"
+ENV JWT_SECRET="change-this-in-production"
 
 CMD ["node", "scripts/start.js"]

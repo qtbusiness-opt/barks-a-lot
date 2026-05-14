@@ -102,15 +102,22 @@ const products = [
 
 async function main() {
   const env = process.env.NODE_ENV || "development";
+  const dbUrl = process.env.DATABASE_URL;
   console.log(`Starting Barks-A-Lot [${env}]...`);
-  console.log(`Database: ${process.env.DATABASE_URL}`);
+  console.log(`Database: ${dbUrl}`);
+
+  if (!dbUrl) {
+    console.error("ERROR: DATABASE_URL is not set!");
+    process.exit(1);
+  }
 
   console.log("Running migrations...");
   execSync("node node_modules/prisma/build/index.js migrate deploy", {
     stdio: "inherit",
+    env: { ...process.env },
   });
 
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({ datasourceUrl: dbUrl });
   try {
     const count = await prisma.product.count();
     if (count === 0) {
