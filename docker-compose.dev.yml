@@ -5,6 +5,14 @@ services:
       args:
         NODE_ENV: development
         DATABASE_URL: "file:/app/data/dev.db"
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore:
+            - node_modules
+            - .next
     ports:
       - "3000:3000"
     environment:
