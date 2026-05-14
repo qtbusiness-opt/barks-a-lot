@@ -1,24 +1,17 @@
-const { execSync } = require("child_process");
+const { execSync, spawn } = require("child_process");
 const { PrismaClient } = require("@prisma/client");
 
 const products = require("./seed-data");
 
 async function main() {
-  const env = process.env.NODE_ENV || "development";
   const dbUrl = process.env.DATABASE_URL;
-  console.log(`Starting Barks-A-Lot [${env}]...`);
+  console.log("Starting Barks-A-Lot [development]...");
   console.log(`Database: ${dbUrl}`);
 
   if (!dbUrl) {
     console.error("ERROR: DATABASE_URL is not set!");
     process.exit(1);
   }
-
-  console.log("Running migrations...");
-  execSync("node node_modules/prisma/build/index.js migrate deploy", {
-    stdio: "inherit",
-    env: { ...process.env },
-  });
 
   const prisma = new PrismaClient({ datasourceUrl: dbUrl });
   try {
@@ -36,8 +29,13 @@ async function main() {
     await prisma.$disconnect();
   }
 
-  console.log("Starting server...");
-  require("../server.js");
+  console.log("Starting Next.js dev server...");
+  const child = spawn("npx", ["next", "dev"], {
+    stdio: "inherit",
+    env: { ...process.env },
+  });
+
+  child.on("exit", (code) => process.exit(code || 0));
 }
 
 main().catch((err) => {

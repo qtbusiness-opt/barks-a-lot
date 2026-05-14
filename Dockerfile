@@ -7,7 +7,18 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Build the application
+# --- Dev target: runs next dev with hot reload ---
+FROM base AS dev
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npx prisma generate
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node scripts/start-dev.js"]
+
+# --- Production build ---
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -17,7 +28,7 @@ ENV DATABASE_URL=${DATABASE_URL}
 RUN npx prisma generate
 RUN npm run build
 
-# Production image
+# --- Production target ---
 FROM base AS runner
 WORKDIR /app
 
