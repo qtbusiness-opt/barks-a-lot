@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { items, address, city, state, zip } = await req.json();
+    const { items, confirmationNumber, address, city, state, zip } = await req.json();
 
-    if (!items?.length || !address || !city || !state || !zip) {
+    if (!items?.length || !confirmationNumber || !address || !city || !state || !zip) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
     const order = await prisma.order.create({
       data: {
         userId: auth.userId,
+        confirmationNumber,
         total,
         address,
         city,

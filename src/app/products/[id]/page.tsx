@@ -10,6 +10,7 @@ interface Product {
   id: string;
   name: string;
   description: string;
+  quantity: number;
   price: number;
   image: string;
   category: string;
@@ -20,7 +21,7 @@ export default function ProductDetailPage() {
   const { id } = useParams();
   const { addItem } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [qty, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export default function ProductDetailPage() {
   const handleAdd = () => {
     addItem(
       { id: product.id, name: product.name, price: product.price, image: product.image },
-      quantity
+      qty
     );
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -68,13 +69,16 @@ export default function ProductDetailPage() {
           <h1 className="text-3xl font-bold text-[#2A4A52] mt-2">{product.name}</h1>
           <p className="text-2xl font-bold text-[#C8722A] mt-4">
             ${product.price.toFixed(2)}
+            <span className="text-2xl text-green-600 mt-4 ml-2">
+              {product.inStock ? `${product.quantity} In Stock` : "Out of Stock"}
+            </span>
           </p>
           <p className="text-gray-600 mt-4 leading-relaxed">{product.description}</p>
 
           <div className="mt-6 flex items-center gap-4">
             <label className="text-sm font-medium text-gray-700">Qty:</label>
             <select
-              value={quantity}
+              value={qty}
               onChange={(e) => setQuantity(Number(e.target.value))}
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
             >

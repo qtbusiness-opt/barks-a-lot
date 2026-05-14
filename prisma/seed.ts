@@ -6,6 +6,7 @@ const products = [
   {
     name: "Peanut Butter Biscuits",
     description: "Crunchy, all-natural peanut butter biscuits made with whole wheat flour and real peanut butter. A classic treat your dog will love!",
+    quantity: 100,
     price: 12.99,
     image: "/images/products/peanut-butter-biscuits.svg",
     category: "treats",
@@ -14,6 +15,7 @@ const products = [
   {
     name: "Sweet Potato Chews",
     description: "Dehydrated sweet potato slices that are naturally sweet and packed with vitamins. A healthy, grain-free chewing snack.",
+    quantity: 50,
     price: 9.99,
     image: "/images/products/sweet-potato-chews.svg",
     category: "treats",
@@ -22,6 +24,7 @@ const products = [
   {
     name: "Salmon Training Treats",
     description: "Bite-sized, soft salmon treats perfect for training sessions. Rich in omega-3 fatty acids for a healthy coat.",
+    quantity: 20,
     price: 14.99,
     image: "/images/products/salmon-treats.svg",
     category: "treats",
@@ -30,6 +33,7 @@ const products = [
   {
     name: "Chicken Jerky Strips",
     description: "Premium chicken breast jerky, slow-dried to perfection. No fillers, no artificial preservatives — just pure chicken.",
+    quantity: 30,
     price: 16.99,
     image: "/images/products/chicken-jerky.svg",
     category: "treats",
@@ -38,6 +42,7 @@ const products = [
   {
     name: "Rope Tug Toy",
     description: "Durable, multi-colored cotton rope toy perfect for tug-of-war. Helps clean teeth while your pup plays!",
+    quantity: 15,
     price: 8.99,
     image: "/images/products/rope-toy.svg",
     category: "toys",
@@ -46,6 +51,7 @@ const products = [
   {
     name: "Squeaky Bone Toy",
     description: "A classic squeaky bone made from durable, non-toxic rubber. Hours of squeaky fun for your furry friend.",
+    quantity: 25,
     price: 6.99,
     image: "/images/products/squeaky-bone.svg",
     category: "toys",
@@ -54,6 +60,7 @@ const products = [
   {
     name: "Puzzle Treat Dispenser",
     description: "Interactive puzzle toy that dispenses treats as your dog solves it. Great for mental stimulation and reducing boredom.",
+    quantity: 10,
     price: 19.99,
     image: "/images/products/puzzle-toy.svg",
     category: "toys",
@@ -62,6 +69,7 @@ const products = [
   {
     name: "Plush Duck Toy",
     description: "Soft plush duck with an internal squeaker. Perfect for gentle chewers who love a cuddly companion.",
+    quantity: 40,
     price: 11.99,
     image: "/images/products/plush-duck.svg",
     category: "toys",
@@ -70,6 +78,7 @@ const products = [
   {
     name: "Classic Leather Collar",
     description: "Handcrafted genuine leather collar with a sturdy brass buckle. Available in multiple sizes for the perfect fit.",
+    quantity: 20,
     price: 24.99,
     image: "/images/products/leather-collar.svg",
     category: "accessories",
@@ -78,6 +87,7 @@ const products = [
   {
     name: "Bandana Set (3-Pack)",
     description: "Adorable, adjustable bandanas in three stylish patterns. Snap-on design makes them easy to put on and take off.",
+    quantity: 50,
     price: 15.99,
     image: "/images/products/bandana-set.svg",
     category: "accessories",
@@ -86,6 +96,7 @@ const products = [
   {
     name: "Premium Grain-Free Kibble",
     description: "High-protein, grain-free dry dog food made with real deboned chicken as the first ingredient. For all life stages.",
+    quantity: 100,
     price: 49.99,
     image: "/images/products/grain-free-kibble.svg",
     category: "food",
@@ -94,6 +105,7 @@ const products = [
   {
     name: "Wet Food Variety Pack",
     description: "A variety pack of 12 cans featuring chicken, beef, and lamb recipes. Made with real meat and vegetables.",
+    quantity: 30,
     price: 34.99,
     image: "/images/products/wet-food-pack.svg",
     category: "food",
