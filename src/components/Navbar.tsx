@@ -9,14 +9,22 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const { itemCount } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
+  const isDev = (process.env.NODE_ENV as string) === "development";
+  const isQual = (process.env.NODE_ENV as string) === "qual";
 
   return (
     <nav className="bg-[#4A7C8A] text-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <img src="/images/logo.svg" alt="Barks-A-Lot" className="h-10 w-10 rounded-full" />
+            <img src="/images/Barks-A-Lot Logo.png" alt="Barks-A-Lot" className="h-10 w-10 rounded-full" />
             <span className="hidden sm:inline">Barks-A-Lot</span>
+            {
+              isDev ?  (
+              <span className="ml-3 inline-flex items-center rounded-md bg-yellow-400/10 px-2 py-1 text-sm font-medium text-yellow-500 inset-ring-yellow-400/20">DEV</span>
+            ) : isQual ? (
+              <span className="ml-3 inline-flex items-center rounded-md bg-red-400/10 px-2 py-1 text-sm font-medium text-red-500 inset-ring-red-400/20">QUAL</span>
+            ) : null}
           </Link>
 
           <div className="hidden md:flex items-center gap-6">

@@ -6,12 +6,13 @@ import { useCart } from "@/context/CartContext";
 interface ProductCardProps {
   id: string;
   name: string;
+  quantity: number;
   price: number;
   image: string;
   category: string;
 }
 
-export default function ProductCard({ id, name, price, image, category }: ProductCardProps) {
+export default function ProductCard({ id, name, quantity, price, image, category }: ProductCardProps) {
   const { addItem } = useCart();
 
   return (
@@ -34,6 +35,13 @@ export default function ProductCard({ id, name, price, image, category }: Produc
             {name}
           </h3>
         </Link>
+        {
+          quantity > 0 ? (
+            <p className="font-semibold text-green-600 mt-1">{quantity} In Stock</p>
+          ) : (
+            <p className="font-semibold text-red-600 mt-1">Out of Stock</p>
+          )
+        }
         <div className="flex items-center justify-between mt-3">
           <span className="text-lg font-bold text-[#C8722A]">${price.toFixed(2)}</span>
           <button

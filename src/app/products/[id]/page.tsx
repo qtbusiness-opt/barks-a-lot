@@ -67,9 +67,11 @@ export default function ProductDetailPage() {
             {product.category}
           </span>
           <h1 className="text-3xl font-bold text-[#2A4A52] mt-2">{product.name}</h1>
-          <p className="text-2xl font-bold text-[#C8722A] mt-4">
-            ${product.price.toFixed(2)}
-            <span className="text-2xl text-green-600 mt-4 ml-auto">
+          <p className="text-2xl font-bold mt-4 justify-between flex items-center gap-4">
+            <span className="text-[#C8722A]">
+              ${product.price.toFixed(2)}
+            </span>
+            <span className="text-green-600">
               {product.inStock ? `${product.quantity} In Stock` : "Out of Stock"}
             </span>
           </p>
