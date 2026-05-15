@@ -12,7 +12,7 @@ FROM base AS dev
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
-COPY prisma ./prisma
+COPY . .
 RUN npx prisma generate
 EXPOSE 3000
 ENV PORT=3000
