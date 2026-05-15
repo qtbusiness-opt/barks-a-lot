@@ -7,7 +7,7 @@ export default function Footer() {
         <div>
           <h3 className="text-white font-bold text-lg mb-3">Barks-A-Lot Treats & More</h3>
           <p className="text-sm">
-            Premium treats and accessories for your furry best friend. Made with love, delivered with care.
+            Premium treats and accessories for your furry friend. Made with love, delivered with care.
           </p>
         </div>
         <div>
@@ -21,9 +21,9 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-semibold mb-3">Contact</h4>
           <ul className="space-y-2 text-sm">
-            <li>info@barks-a-lot.com</li>
-            <li>(555) BARK-ALOT</li>
-            <li>123 Puppy Lane, Dogtown, USA</li>
+            <li><Link href="mailto:info@barks-a-lot.com">info@barks-a-lot.com</Link></li>
+            <li><Link href="tel:(805) 800-6896">(805) 800-6896</Link></li>
+            <li>1150 N New Creek Dr, Meridian, ID, USA</li>
           </ul>
         </div>
       </div>

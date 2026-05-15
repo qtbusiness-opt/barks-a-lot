@@ -11,7 +11,11 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=file:/app/data/dev.db
       - JWT_SECRET=${JWT_SECRET:-dev-secret-not-for-production}
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
     volumes:
+      - .:/app
+      - /app/node_modules
       - dev-data:/app/data
     restart: unless-stopped
 

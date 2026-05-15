@@ -7,7 +7,12 @@ import { CartProvider } from "@/context/CartContext";
 
 export const metadata: Metadata = {
   title: "Barks-A-Lot Treats & More",
-  description: "Premium treats and accessories for your furry best friend",
+  description: "Premium treats and accessories for your furry friend",
+  icons: {
+    icon: "/images/Barks-A-Lot Logo.png",
+    apple: "/images/Barks-A-Lot Logo.png",
+    shortcut: "/images/Barks-A-Lot Logo.png",
+  },
 };
 
 export default function RootLayout({

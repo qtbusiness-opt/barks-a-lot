@@ -30,7 +30,7 @@ async function main() {
   }
 
   console.log("Starting Next.js dev server...");
-  const child = spawn("npx", ["next", "dev"], {
+  const child = spawn("npx", ["next", "dev", "--hostname", "0.0.0.0"], {
     stdio: "inherit",
     env: { ...process.env },
   });

@@ -5,16 +5,7 @@ services:
       target: dev
       args:
         DATABASE_URL: "file:/app/data/dev.db"
-    develop:
-      watch:
-        - action: sync
-          path: ./src
-          target: /app/src
-        - action: sync
-          path: ./public
-          target: /app/public
-        - action: rebuild
-          path: ./package.json
+    command: ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node scripts/start-dev.js"]
     ports:
       - "3000:3000"
     environment:
@@ -22,7 +13,10 @@ services:
       - DATABASE_URL=file:/app/data/dev.db
       - JWT_SECRET=${JWT_SECRET:-dev-secret-not-for-production}
       - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
     volumes:
+      - .:/app
+      - /app/node_modules
       - dev-data:/app/data
     restart: unless-stopped
 
