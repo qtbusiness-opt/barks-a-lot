@@ -7,7 +7,10 @@ services:
         DATABASE_URL: "file:/app/data/qual.db"
     ports:
       - "3001:3000"
-    env_file: .env.qual
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/qual.db
+      - JWT_SECRET=${JWT_SECRET:-change-this-qual-secret}
     volumes:
       - qual-data:/app/data
     restart: unless-stopped

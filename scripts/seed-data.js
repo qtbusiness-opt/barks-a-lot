@@ -1,8 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
-
-const products = [
+module.exports = [
   {
     name: "Peanut Butter Biscuits",
     description: "Crunchy, all-natural peanut butter biscuits made with whole wheat flour and real peanut butter. A classic treat your dog will love!",
@@ -112,17 +108,3 @@ const products = [
     featured: false,
   },
 ];
-
-async function main() {
-  console.log("Seeding database...");
-
-  for (const product of products) {
-    await prisma.product.create({ data: product });
-  }
-
-  console.log(`Seeded ${products.length} products.`);
-}
-
-main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());

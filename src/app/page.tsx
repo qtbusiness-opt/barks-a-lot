@@ -23,10 +23,10 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-[#4A7C8A] to-[#3A6270] text-white">
+      <section className="bg-linear-to-br from-[#4A7C8A] to-[#3A6270] text-white">
         <div className="max-w-7xl mx-auto px-4 py-20 sm:py-28 flex flex-col items-center text-center">
           <img
-            src="/images/logo.svg"
+            src="/images/Barks-A-Lot Logo.png"
             alt="Barks-A-Lot Treats & More"
             className="h-40 w-40 mb-6 rounded-full shadow-xl"
           />

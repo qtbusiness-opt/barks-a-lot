@@ -8,6 +8,7 @@ import ProductCard from "@/components/ProductCard";
 interface Product {
   id: string;
   name: string;
+  quantity: number;
   price: number;
   image: string;
   category: string;

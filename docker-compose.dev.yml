@@ -2,12 +2,26 @@ services:
   app:
     build:
       context: .
+      target: dev
       args:
-        NODE_ENV: development
         DATABASE_URL: "file:/app/data/dev.db"
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: sync
+          path: ./public
+          target: /app/public
+        - action: rebuild
+          path: ./package.json
     ports:
       - "3000:3000"
-    env_file: .env.dev
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=file:/app/data/dev.db
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-not-for-production}
+      - WATCHPACK_POLLING=true
     volumes:
       - dev-data:/app/data
     restart: unless-stopped
