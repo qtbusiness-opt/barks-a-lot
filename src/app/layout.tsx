@@ -17,9 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({
- 
- <div styleName={styles['0']}>.9++
- .................</div> children,
+  children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {

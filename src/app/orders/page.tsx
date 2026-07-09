@@ -22,19 +22,15 @@ interface Order {
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[] | null>(null);
 
   useEffect(() => {
     if (user) {
-      api
-        .get("/orders")
-        .then((res) => setOrders(res.data.orders))
-        .finally(() => setLoading(false));
-    } else if (!authLoading) {
-      setLoading(false);
+      api.get("/orders").then((res) => setOrders(res.data.orders));
     }
-  }, [user, authLoading]);
+  }, [user]);
+
+  const loading = authLoading || (!!user && orders === null);
 
   if (!authLoading && !user) {
     return (
@@ -59,11 +55,13 @@ export default function OrdersPage() {
     );
   }
 
+  const orderList = orders ?? [];
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
       <h1 className="text-3xl font-bold text-[#2A4A52] mb-8">My Orders</h1>
 
-      {orders.length === 0 ? (
+      {orderList.length === 0 ? (
         <div className="text-center py-10">
           <p className="text-gray-500 mb-6">You haven&apos;t placed any orders yet.</p>
           <Link
@@ -75,7 +73,7 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {orders.map((order) => (
+          {orderList.map((order) => (
             <div key={order.id} className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex justify-between items-start mb-4">
                 <div>

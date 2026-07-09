@@ -19,18 +19,18 @@ const CATEGORIES = ["all", "treats", "toys", "accessories", "food"];
 function ProductsContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") || "all";
-  const [products, setProducts] = useState<Product[]>([]);
   const [category, setCategory] = useState(initialCategory);
-  const [loading, setLoading] = useState(true);
+  const [result, setResult] = useState<{ category: string; products: Product[] } | null>(null);
 
   useEffect(() => {
-    setLoading(true);
     const params = category !== "all" ? `?category=${category}` : "";
     api
       .get(`/products${params}`)
-      .then((res) => setProducts(res.data.products))
-      .finally(() => setLoading(false));
+      .then((res) => setResult({ category, products: res.data.products }));
   }, [category]);
+
+  const loading = result?.category !== category;
+  const products = result?.products ?? [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">

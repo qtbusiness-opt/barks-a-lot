@@ -1,4 +1,4 @@
-const { execSync, spawn } = require("child_process");
+const { spawn } = require("child_process");
 const { PrismaClient } = require("@prisma/client");
 
 const products = require("./seed-data");
