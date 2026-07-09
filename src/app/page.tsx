@@ -8,6 +8,7 @@ import ProductCard from "@/components/ProductCard";
 interface Product {
   id: string;
   name: string;
+  quantity: number;
   price: number;
   image: string;
   category: string;
@@ -34,7 +35,7 @@ export default function HomePage() {
             Barks-A-Lot Treats & More
           </h1>
           <p className="text-lg sm:text-xl text-[#E8DFC8] max-w-2xl mb-8">
-            Premium, tail-wagging treats and accessories for your furry best friend.
+            Premium, tail-wagging treats and accessories for your furry friend.
             Made with love, delivered with care.
           </p>
           <Link
@@ -51,17 +52,16 @@ export default function HomePage() {
         <h2 className="text-3xl font-bold text-center text-[#2A4A52] mb-10">
           Shop by Category
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="flex flex-wrap justify-center gap-6">
           {[
             { name: "Treats", icon: "🦴", slug: "treats" },
             { name: "Toys", icon: "🧸", slug: "toys" },
             { name: "Accessories", icon: "🎀", slug: "accessories" },
-            { name: "Food", icon: "🥩", slug: "food" },
           ].map((cat) => (
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}
-              className="bg-white rounded-xl shadow-md p-8 text-center hover:shadow-lg hover:-translate-y-1 transition-all"
+              className="w-full sm:w-56 bg-white rounded-xl shadow-md p-8 text-center hover:shadow-lg hover:-translate-y-1 transition-all"
             >
               <span className="text-4xl mb-3 block">{cat.icon}</span>
               <h3 className="text-lg font-semibold text-[#2A4A52]">{cat.name}</h3>
@@ -106,9 +106,9 @@ export default function HomePage() {
           </div>
           <div>
             <div className="text-3xl mb-2">🚚</div>
-            <h3 className="font-semibold text-[#2A4A52] text-lg">Fast Shipping</h3>
+            <h3 className="font-semibold text-[#2A4A52] text-lg">Free Shipping</h3>
             <p className="text-sm text-gray-600 mt-1">
-              Free shipping on orders over $50
+              Orders over $50 ship at no cost
             </p>
           </div>
           <div>

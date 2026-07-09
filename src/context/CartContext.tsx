@@ -26,8 +26,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("barks-cart");
-    if (saved) setItems(JSON.parse(saved));
+    // localStorage is client-only; loading after mount (instead of in the
+    // useState initializer) keeps the server and first client render
+    // identical, avoiding an SSR hydration mismatch.
+    try {
+      const saved = localStorage.getItem("barks-cart");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved) setItems(JSON.parse(saved));
+    } catch {
+      // Corrupted cart data — start with an empty cart.
+    }
   }, []);
 
   useEffect(() => {

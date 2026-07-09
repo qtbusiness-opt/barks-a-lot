@@ -5,16 +5,6 @@ services:
       target: dev
       args:
         DATABASE_URL: "file:/app/data/dev.db"
-    develop:
-      watch:
-        - action: sync
-          path: ./src
-          target: /app/src
-        - action: sync
-          path: ./public
-          target: /app/public
-        - action: rebuild
-          path: ./package.json
     ports:
       - "3000:3000"
     environment:
@@ -23,6 +13,10 @@ services:
       - JWT_SECRET=${JWT_SECRET:-dev-secret-not-for-production}
       - WATCHPACK_POLLING=true
     volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./prisma:/app/prisma
+      - ./scripts:/app/scripts
       - dev-data:/app/data
     restart: unless-stopped
 

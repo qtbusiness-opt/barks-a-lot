@@ -10,13 +10,14 @@ RUN npm ci
 # --- Dev target: runs next dev with hot reload ---
 FROM base AS dev
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
 RUN npx prisma generate
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node scripts/start-dev.js"]
+CMD ["sh", "-c", "npx prisma generate && node node_modules/prisma/build/index.js migrate deploy && node scripts/start-dev.js"]
 
 # --- Production build ---
 FROM base AS builder

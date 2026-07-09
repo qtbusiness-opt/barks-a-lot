@@ -1,4 +1,4 @@
-const { execSync, spawn } = require("child_process");
+const { spawn } = require("child_process");
 const { PrismaClient } = require("@prisma/client");
 
 const products = require("./seed-data");
@@ -30,7 +30,7 @@ async function main() {
   }
 
   console.log("Starting Next.js dev server...");
-  const child = spawn("npx", ["next", "dev"], {
+  const child = spawn("npx", ["next", "dev", "--hostname", "0.0.0.0"], {
     stdio: "inherit",
     env: { ...process.env },
   });
