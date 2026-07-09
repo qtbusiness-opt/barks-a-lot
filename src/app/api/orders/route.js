@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 
@@ -17,7 +17,7 @@ export async function GET() {
   return NextResponse.json({ orders });
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req) {
   const auth = await getAuthUser();
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -33,30 +33,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const productIds = items.map((i: { productId: string }) => i.productId);
+    const productIds = items.map((i) => i.productId);
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
     });
 
-    const productMap: Record<string, { price: number }> = {};
+    const productMap = {};
     for (const p of products) {
       productMap[p.id] = p;
     }
 
     let total = 0;
-    const orderItems = items.map(
-      (item: { productId: string; quantity: number }) => {
-        const product = productMap[item.productId];
-        if (!product) throw new Error(`Product ${item.productId} not found`);
-        const itemTotal = product.price * item.quantity;
-        total += itemTotal;
-        return {
-          productId: item.productId,
-          quantity: item.quantity,
-          price: product.price,
-        };
-      }
-    );
+    const orderItems = items.map((item) => {
+      const product = productMap[item.productId];
+      if (!product) throw new Error(`Product ${item.productId} not found`);
+      const itemTotal = product.price * item.quantity;
+      total += itemTotal;
+      return {
+        productId: item.productId,
+        quantity: item.quantity,
+        price: product.price,
+      };
+    });
 
     const order = await prisma.order.create({
       data: {

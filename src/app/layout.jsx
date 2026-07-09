@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -6,7 +5,7 @@ import Script from "next/script";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Barks-A-Lot Treats & More",
   description: "Premium treats and accessories for your furry friend",
   icons: {
@@ -16,11 +15,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">

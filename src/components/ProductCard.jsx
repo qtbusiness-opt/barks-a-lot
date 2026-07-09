@@ -3,16 +3,7 @@
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 
-interface ProductCardProps {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  image: string;
-  category: string;
-}
-
-export default function ProductCard({ id, name, quantity, price, image, category }: ProductCardProps) {
+export default function ProductCard({ id, name, quantity, price, image, category }) {
   const { addItem } = useCart();
 
   return (

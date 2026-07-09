@@ -5,24 +5,9 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
 
-interface OrderItem {
-  id: string;
-  quantity: number;
-  price: number;
-  product: { name: string; image: string };
-}
-
-interface Order {
-  id: string;
-  status: string;
-  total: number;
-  createdAt: string;
-  items: OrderItem[];
-}
-
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
-  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [orders, setOrders] = useState(null);
 
   useEffect(() => {
     if (user) {

@@ -3,4 +3,5 @@ node_modules
 .git
 *.md
 .env*.local
-prisma/dev.db
+*.db
+*.db-journal

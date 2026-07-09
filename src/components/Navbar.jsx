@@ -9,8 +9,8 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const { itemCount } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
-  const isDev = (process.env.NODE_ENV as string) === "development";
-  const isQual = (process.env.NODE_ENV as string) === "qual";
+  const isDev = process.env.NODE_ENV === "development";
+  const isQual = process.env.NODE_ENV === "qual";
 
   return (
     <nav className="bg-[#4A7C8A] text-white shadow-lg sticky top-0 z-50">
