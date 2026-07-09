@@ -11,9 +11,43 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const { items, total, clearCart } = useCart();
   const router = useRouter();
-  const [form, setForm] = useState({ address: "", city: "", state: "", zip: "" });
+  const [form, setForm] = useState({
+    guestName: "",
+    guestEmail: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+  });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmation, setConfirmation] = useState(null);
+
+  // Guest orders finish here (guests have no orders page), so show the
+  // confirmation inline after the cart has been cleared.
+  if (confirmation) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+        <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">
+          Thank You for Your Order!
+        </h1>
+        <p className="text-gray-600 mb-2">
+          Your confirmation number is
+        </p>
+        <p className="text-2xl font-bold text-[#C8722A] mb-6">{confirmation}</p>
+        <p className="text-gray-500 mb-8">
+          Keep this number for your records — you&apos;ll need it if you contact
+          us about your order.
+        </p>
+        <Link
+          href="/products"
+          className="bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] transition"
+        >
+          Continue Shopping
+        </Link>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -30,33 +64,26 @@ export default function CheckoutPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">Checkout</h1>
-        <p className="text-gray-500 mb-6">Please log in to complete your order.</p>
-        <Link
-          href="/login"
-          className="bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] transition"
-        >
-          Log In
-        </Link>
-      </div>
-    );
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSubmitting(true);
 
     try {
-      await api.post("/orders", {
+      const res = await api.post("/orders", {
         items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
-        ...form,
+        address: form.address,
+        city: form.city,
+        state: form.state,
+        zip: form.zip,
+        ...(user ? {} : { guestEmail: form.guestEmail, guestName: form.guestName }),
       });
       clearCart();
-      router.push("/orders");
+      if (user) {
+        router.push("/orders");
+      } else {
+        setConfirmation(res.data.order.confirmationNumber);
+      }
     } catch {
       setError("Failed to place order. Please try again.");
     } finally {
@@ -73,6 +100,37 @@ export default function CheckoutPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!user && (
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-[#2A4A52]">
+                  Guest Checkout
+                </h2>
+                <Link
+                  href="/login"
+                  className="text-sm text-[#4A7C8A] font-medium hover:underline"
+                >
+                  Have an account? Log in
+                </Link>
+              </div>
+              <input
+                type="text"
+                placeholder="Name"
+                value={form.guestName}
+                onChange={(e) => update("guestName", e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={form.guestEmail}
+                onChange={(e) => update("guestEmail", e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]"
+              />
+            </>
+          )}
+
           <h2 className="text-xl font-semibold text-[#2A4A52]">Shipping Address</h2>
           {error && (
             <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>

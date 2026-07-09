@@ -24,16 +24,22 @@ export async function GET() {
 
 export async function POST(req) {
   const auth = await getAuthUser();
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   try {
-    const { items, address, city, state, zip } = await req.json();
+    const { items, address, city, state, zip, guestEmail, guestName } = await req.json();
 
     if (!items?.length || !address || !city || !state || !zip) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // Guest orders have no account, so an email is required to reference
+    // the order later.
+    if (!auth && !guestEmail) {
+      return NextResponse.json(
+        { error: "Email is required for guest checkout" },
         { status: 400 }
       );
     }
@@ -63,7 +69,9 @@ export async function POST(req) {
 
     const order = await prisma.order.create({
       data: {
-        userId: auth.userId,
+        userId: auth?.userId ?? null,
+        guestEmail: auth ? null : guestEmail,
+        guestName: auth ? null : guestName || null,
         confirmationNumber: generateConfirmationNumber(),
         total,
         address,

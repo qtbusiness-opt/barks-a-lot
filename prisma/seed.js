@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const products = require("../scripts/seed-data");
+const seedAdmin = require("../scripts/seed-admin");
 
 const prisma = new PrismaClient();
 
@@ -11,6 +12,7 @@ async function main() {
   }
 
   console.log(`Seeded ${products.length} products.`);
+  await seedAdmin(prisma);
 }
 
 main()

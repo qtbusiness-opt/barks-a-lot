@@ -11,6 +11,8 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=file:/app/data/dev.db
       - JWT_SECRET=${JWT_SECRET:-dev-secret-not-for-production}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@barks-a-lot.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
       - WATCHPACK_POLLING=true
     volumes:
       - ./src:/app/src
