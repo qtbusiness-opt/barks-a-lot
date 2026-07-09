@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Script from "next/script";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 
@@ -16,7 +17,9 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({
-  children,
+ 
+ <div styleName={styles['0']}>.9++
+ .................</div> children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
@@ -30,6 +33,11 @@ export default function RootLayout({
             <Footer />
           </CartProvider>
         </AuthProvider>
+        <Script
+          src="https://cdn.jsdelivr.net/npm/@tailwindplus/elements@1"
+          type="module"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
