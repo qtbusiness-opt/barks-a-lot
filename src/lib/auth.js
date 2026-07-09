@@ -3,25 +3,19 @@ import { cookies } from "next/headers";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
 
-export interface JwtPayload {
-  userId: string;
-  email: string;
-  role: string;
-}
-
-export function signToken(payload: JwtPayload): string {
+export function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: "30m" });
 }
 
-export function verifyToken(token: string): JwtPayload | null {
+export function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+    return jwt.verify(token, JWT_SECRET);
   } catch {
     return null;
   }
 }
 
-export async function getAuthUser(): Promise<JwtPayload | null> {
+export async function getAuthUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   if (!token) return null;

@@ -1,29 +1,11 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  quantity: number;
-}
+const CartContext = createContext(undefined);
 
-interface CartContextType {
-  items: CartItem[];
-  addItem: (product: Omit<CartItem, "quantity">, quantity?: number) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
-  clearCart: () => void;
-  total: number;
-  itemCount: number;
-}
-
-const CartContext = createContext<CartContextType | undefined>(undefined);
-
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+export function CartProvider({ children }) {
+  const [items, setItems] = useState([]);
 
   useEffect(() => {
     // localStorage is client-only; loading after mount (instead of in the
@@ -42,7 +24,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("barks-cart", JSON.stringify(items));
   }, [items]);
 
-  const addItem = (product: Omit<CartItem, "quantity">, quantity = 1) => {
+  const addItem = (product, quantity = 1) => {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) {
@@ -54,11 +36,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeItem = (id: string) => {
+  const removeItem = (id) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateQuantity = (id, quantity) => {
     if (quantity <= 0) {
       removeItem(id);
       return;

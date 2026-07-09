@@ -45,7 +45,7 @@ export default function CheckoutPage() {
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSubmitting(true);
@@ -64,7 +64,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const update = (field: string, value: string) =>
+  const update = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
   return (

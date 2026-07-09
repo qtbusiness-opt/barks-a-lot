@@ -5,17 +5,8 @@ import Link from "next/link";
 import api from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 
-interface Product {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  image: string;
-  category: string;
-}
-
 export default function HomePage() {
-  const [featured, setFeatured] = useState<Product[]>([]);
+  const [featured, setFeatured] = useState([]);
 
   useEffect(() => {
     api.get("/products?featured=true").then((res) => setFeatured(res.data.products));

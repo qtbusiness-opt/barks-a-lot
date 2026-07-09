@@ -5,24 +5,9 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
 
-interface OrderItem {
-  id: string;
-  quantity: number;
-  price: number;
-  product: { name: string; image: string };
-}
-
-interface Order {
-  id: string;
-  status: string;
-  total: number;
-  createdAt: string;
-  items: OrderItem[];
-}
-
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
-  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [orders, setOrders] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -80,7 +65,9 @@ export default function OrdersPage() {
                   <p className="text-sm text-gray-500">
                     Order placed {new Date(order.createdAt).toLocaleDateString()}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">ID: {order.id}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Confirmation #: {order.confirmationNumber}
+                  </p>
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${

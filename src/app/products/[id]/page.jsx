@@ -6,21 +6,10 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  quantity: number;
-  price: number;
-  image: string;
-  category: string;
-  inStock: boolean;
-}
-
 export default function ProductDetailPage() {
   const { id } = useParams();
   const { addItem } = useCart();
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState(null);
   const [qty, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 

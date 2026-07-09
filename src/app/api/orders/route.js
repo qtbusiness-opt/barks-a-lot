@@ -1,6 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+
+function generateConfirmationNumber() {
+  return `BAL-${randomBytes(5).toString("hex").toUpperCase()}`;
+}
 
 export async function GET() {
   const auth = await getAuthUser();
@@ -17,51 +22,49 @@ export async function GET() {
   return NextResponse.json({ orders });
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req) {
   const auth = await getAuthUser();
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const { items, confirmationNumber, address, city, state, zip } = await req.json();
+    const { items, address, city, state, zip } = await req.json();
 
-    if (!items?.length || !confirmationNumber || !address || !city || !state || !zip) {
+    if (!items?.length || !address || !city || !state || !zip) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    const productIds = items.map((i: { productId: string }) => i.productId);
+    const productIds = items.map((i) => i.productId);
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
     });
 
-    const productMap: Record<string, { price: number }> = {};
+    const productMap = {};
     for (const p of products) {
       productMap[p.id] = p;
     }
 
     let total = 0;
-    const orderItems = items.map(
-      (item: { productId: string; quantity: number }) => {
-        const product = productMap[item.productId];
-        if (!product) throw new Error(`Product ${item.productId} not found`);
-        const itemTotal = product.price * item.quantity;
-        total += itemTotal;
-        return {
-          productId: item.productId,
-          quantity: item.quantity,
-          price: product.price,
-        };
-      }
-    );
+    const orderItems = items.map((item) => {
+      const product = productMap[item.productId];
+      if (!product) throw new Error(`Product ${item.productId} not found`);
+      const itemTotal = product.price * item.quantity;
+      total += itemTotal;
+      return {
+        productId: item.productId,
+        quantity: item.quantity,
+        price: product.price,
+      };
+    });
 
     const order = await prisma.order.create({
       data: {
         userId: auth.userId,
-        confirmationNumber,
+        confirmationNumber: generateConfirmationNumber(),
         total,
         address,
         city,

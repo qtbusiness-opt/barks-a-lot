@@ -5,22 +5,13 @@ import { useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 
-interface Product {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  image: string;
-  category: string;
-}
-
 const CATEGORIES = ["all", "treats", "toys", "accessories", "food"];
 
 function ProductsContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") || "all";
   const [category, setCategory] = useState(initialCategory);
-  const [result, setResult] = useState<{ category: string; products: Product[] } | null>(null);
+  const [result, setResult] = useState(null);
 
   useEffect(() => {
     const params = category !== "all" ? `?category=${category}` : "";
