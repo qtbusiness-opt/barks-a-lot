@@ -1,6 +1,11 @@
+import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+
+function generateConfirmationNumber() {
+  return `BAL-${randomBytes(5).toString("hex").toUpperCase()}`;
+}
 
 export async function GET() {
   const auth = await getAuthUser();
@@ -24,9 +29,9 @@ export async function POST(req) {
   }
 
   try {
-    const { items, confirmationNumber, address, city, state, zip } = await req.json();
+    const { items, address, city, state, zip } = await req.json();
 
-    if (!items?.length || !confirmationNumber || !address || !city || !state || !zip) {
+    if (!items?.length || !address || !city || !state || !zip) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -59,7 +64,7 @@ export async function POST(req) {
     const order = await prisma.order.create({
       data: {
         userId: auth.userId,
-        confirmationNumber,
+        confirmationNumber: generateConfirmationNumber(),
         total,
         address,
         city,
