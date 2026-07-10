@@ -2,6 +2,7 @@ const { spawn } = require("child_process");
 const { PrismaClient } = require("@prisma/client");
 
 const products = require("./seed-data");
+const seedAdmin = require("./seed-admin");
 
 async function main() {
   const dbUrl = process.env.DATABASE_URL;
@@ -25,6 +26,7 @@ async function main() {
     } else {
       console.log(`Database already has ${count} products, skipping seed.`);
     }
+    await seedAdmin(prisma);
   } finally {
     await prisma.$disconnect();
   }

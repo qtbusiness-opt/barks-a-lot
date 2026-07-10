@@ -36,8 +36,10 @@ model Product {
 model Order {
   id                 String      @id @default(cuid())
   confirmationNumber String      @unique
-  userId             String
-  user               User        @relation(fields: [userId], references: [id])
+  userId             String?
+  user               User?       @relation(fields: [userId], references: [id])
+  guestEmail         String?
+  guestName          String?
   status             String      @default("pending")
   total              Float
   address            String

@@ -33,6 +33,9 @@ export default function Navbar() {
             {user && (
               <Link href="/orders" className="hover:text-[#E8DFC8] transition">Orders</Link>
             )}
+            {user?.role === "admin" && (
+              <Link href="/admin" className="hover:text-[#E8DFC8] transition">Admin</Link>
+            )}
             <Link href="/cart" className="relative hover:text-[#E8DFC8] transition">
               Cart
               {itemCount > 0 && (
@@ -81,6 +84,9 @@ export default function Navbar() {
             <Link href="/products" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Shop</Link>
             {user && (
               <Link href="/orders" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Orders</Link>
+            )}
+            {user?.role === "admin" && (
+              <Link href="/admin" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Admin</Link>
             )}
             <Link href="/cart" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>
               Cart {itemCount > 0 && `(${itemCount})`}

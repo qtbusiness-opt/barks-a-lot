@@ -11,6 +11,8 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=file:/app/data/qual.db
       - JWT_SECRET=${JWT_SECRET:-change-this-qual-secret}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@barks-a-lot.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-this-admin-password}
     volumes:
       - qual-data:/app/data
     restart: unless-stopped
