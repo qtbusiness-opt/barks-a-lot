@@ -87,13 +87,40 @@ after(() => {
   if (dbDir) rmSync(dbDir, { recursive: true, force: true });
 });
 
-test("register creates an account and a session", async () => {
+// Sign in through the Auth.js credentials flow: fetch a CSRF token, then
+// post the form to the credentials callback. Returns the session cookie,
+// or "" when the credentials were rejected.
+async function loginAs(email, password) {
+  const csrfRes = await fetch(`${BASE}/api/auth/csrf`);
+  const { csrfToken } = await csrfRes.json();
+  const csrfCookies = csrfRes.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .join("; ");
+
+  const res = await fetch(`${BASE}/api/auth/callback/credentials`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Cookie: csrfCookies,
+    },
+    body: new URLSearchParams({ csrfToken, email, password }),
+    redirect: "manual",
+  });
+
+  const sessionCookie = res.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .find((c) => c.startsWith("authjs.session-token="));
+  return sessionCookie ? `${csrfCookies}; ${sessionCookie}` : "";
+}
+
+test("register creates an account", async () => {
   const res = await api("POST", "/auth/register", {
     body: { name: "Test User", email: "user@test.local", password: "secret123" },
   });
-  assert.equal(res.status, 200);
+  assert.equal(res.status, 201);
   assert.equal(res.data.user.role, "customer");
-  assert.match(res.cookie, /^token=/);
 });
 
 test("register rejects invalid input", async () => {
@@ -104,18 +131,13 @@ test("register rejects invalid input", async () => {
 });
 
 test("login rejects a wrong password", async () => {
-  const res = await api("POST", "/auth/login", {
-    body: { email: "user@test.local", password: "wrong-password" },
-  });
-  assert.equal(res.status, 401);
+  const cookie = await loginAs("user@test.local", "wrong-password");
+  assert.equal(cookie, "");
 });
 
 test("login succeeds with correct credentials", async () => {
-  const res = await api("POST", "/auth/login", {
-    body: { email: "user@test.local", password: "secret123" },
-  });
-  assert.equal(res.status, 200);
-  assert.match(res.cookie, /^token=/);
+  const cookie = await loginAs("user@test.local", "secret123");
+  assert.match(cookie, /authjs\.session-token=/);
 });
 
 test("orders API requires auth for order history", async () => {
@@ -183,9 +205,8 @@ test("ordering more than available stock is rejected and nothing is written", as
 });
 
 test("logged-in customer order is linked to the account", async () => {
-  const login = await api("POST", "/auth/login", {
-    body: { email: "user@test.local", password: "secret123" },
-  });
+  const cookie = await loginAs("user@test.local", "secret123");
+  assert.notEqual(cookie, "");
 
   const { data: products } = await api("GET", "/products");
   const product = products.products.find((p) => p.quantity >= 1);
@@ -199,11 +220,11 @@ test("logged-in customer order is linked to the account", async () => {
       state: "ID",
       zip: "83701",
     },
-    cookie: login.cookie,
+    cookie,
   });
   assert.equal(created.status, 201);
 
-  const history = await api("GET", "/orders", { cookie: login.cookie });
+  const history = await api("GET", "/orders", { cookie });
   assert.equal(history.status, 200);
   assert.ok(
     history.data.orders.some((o) => o.id === created.data.order.id),
@@ -215,34 +236,30 @@ test("admin API is forbidden for anonymous and customer sessions", async () => {
   const anon = await api("GET", "/admin/orders");
   assert.equal(anon.status, 403);
 
-  const login = await api("POST", "/auth/login", {
-    body: { email: "user@test.local", password: "secret123" },
-  });
-  const asCustomer = await api("GET", "/admin/orders", { cookie: login.cookie });
+  const cookie = await loginAs("user@test.local", "secret123");
+  const asCustomer = await api("GET", "/admin/orders", { cookie });
   assert.equal(asCustomer.status, 403);
 });
 
 test("admin can list orders and update status", async () => {
-  const login = await api("POST", "/auth/login", {
-    body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-  });
-  assert.equal(login.status, 200);
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  assert.notEqual(cookie, "");
 
-  const list = await api("GET", "/admin/orders", { cookie: login.cookie });
+  const list = await api("GET", "/admin/orders", { cookie });
   assert.equal(list.status, 200);
   assert.ok(list.data.orders.length >= 1);
 
   const orderId = list.data.orders[0].id;
   const patched = await api("PATCH", `/admin/orders/${orderId}`, {
     body: { status: "shipped" },
-    cookie: login.cookie,
+    cookie,
   });
   assert.equal(patched.status, 200);
   assert.equal(patched.data.order.status, "shipped");
 
   const invalid = await api("PATCH", `/admin/orders/${orderId}`, {
     body: { status: "not-a-status" },
-    cookie: login.cookie,
+    cookie,
   });
   assert.equal(invalid.status, 400);
 });

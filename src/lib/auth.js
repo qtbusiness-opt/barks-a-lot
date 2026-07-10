@@ -1,47 +1,17 @@
-import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
+import { auth, SESSION_SECONDS } from "@/auth";
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+// Single entry point for API routes to resolve the current user. Wraps
+// Auth.js and re-enforces the short admin session window server-side so
+// a stale admin token can never authorize an admin action.
+export async function getAuthUser() {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id) return null;
 
-// Admin sessions are kept short (CLAUDE.md §1); customers get a longer
-// "remember me" window. Cookie maxAge must match the JWT expiry so the
-// browser doesn't send tokens that are already dead.
-export const SESSION_SECONDS = {
-  admin: 30 * 60,
-  customer: 7 * 24 * 60 * 60,
-};
-
-export function sessionSeconds(role) {
-  return role === "admin" ? SESSION_SECONDS.admin : SESSION_SECONDS.customer;
-}
-
-export function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: sessionSeconds(payload.role),
-  });
-}
-
-export function verifyToken(token) {
-  try {
-    return jwt.verify(token, JWT_SECRET);
-  } catch {
+  const age = Math.floor(Date.now() / 1000) - (user.issuedAt ?? 0);
+  if (user.role === "admin" && age > SESSION_SECONDS.admin) {
     return null;
   }
-}
 
-export async function getAuthUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  if (!token) return null;
-  return verifyToken(token);
-}
-
-export function sessionCookieOptions(role) {
-  return {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: sessionSeconds(role),
-    path: "/",
-  };
+  return { userId: user.id, email: user.email, role: user.role };
 }

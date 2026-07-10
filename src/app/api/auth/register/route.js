@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { signToken, sessionCookieOptions } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 
 const registerSchema = z.object({
@@ -11,6 +10,8 @@ const registerSchema = z.object({
   password: z.string().min(6).max(100),
 });
 
+// Sign-in itself is handled by Auth.js (/api/auth/[...nextauth]); this
+// route only creates the account. The client signs in right after.
 export async function POST(req) {
   if (!rateLimit("register", req)) {
     return NextResponse.json(
@@ -46,19 +47,10 @@ export async function POST(req) {
 
     console.info(`[auth] account created user=${user.id}`);
 
-    const token = signToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    const response = NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
-    });
-
-    response.cookies.set("token", token, sessionCookieOptions(user.role));
-
-    return response;
+    return NextResponse.json(
+      { user: { id: user.id, email: user.email, name: user.name, role: user.role } },
+      { status: 201 }
+    );
   } catch (err) {
     console.error("[auth] register error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

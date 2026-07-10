@@ -23,7 +23,12 @@ export function proxy(request) {
     }
   }
 
-  if (pathname.startsWith("/admin") && !request.cookies.get("token")) {
+  // Auth.js prefixes its session cookie with __Secure- when served over
+  // HTTPS in production.
+  const hasSession =
+    request.cookies.get("authjs.session-token") ||
+    request.cookies.get("__Secure-authjs.session-token");
+  if (pathname.startsWith("/admin") && !hasSession) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

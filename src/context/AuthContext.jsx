@@ -1,41 +1,49 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext } from "react";
+import { SessionProvider, useSession, signIn, signOut } from "next-auth/react";
 import api from "@/lib/api";
 
 const AuthContext = createContext(undefined);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+function AuthState({ children }) {
+  const { data: session, status } = useSession();
 
-  useEffect(() => {
-    api
-      .get("/auth/me")
-      .then((res) => setUser(res.data.user))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, []);
+  const user = session?.user
+    ? {
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        role: session.user.role,
+      }
+    : null;
 
   const login = async (email, password) => {
-    const res = await api.post("/auth/login", { email, password });
-    setUser(res.data.user);
+    const res = await signIn("credentials", { redirect: false, email, password });
+    if (res?.error) throw new Error("Invalid credentials");
   };
 
   const register = async (name, email, password) => {
-    const res = await api.post("/auth/register", { name, email, password });
-    setUser(res.data.user);
+    await api.post("/auth/register", { name, email, password });
+    await login(email, password);
   };
 
-  const logout = async () => {
-    await api.post("/auth/me");
-    setUser(null);
-  };
+  const logout = () => signOut({ redirect: false });
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading: status === "loading", login, register, logout }}
+    >
       {children}
     </AuthContext.Provider>
+  );
+}
+
+export function AuthProvider({ children }) {
+  return (
+    <SessionProvider>
+      <AuthState>{children}</AuthState>
+    </SessionProvider>
   );
 }
 
