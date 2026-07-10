@@ -16,16 +16,16 @@ export default function HomePage() {
     <div>
       {/* Hero Section */}
       <section className="bg-linear-to-br from-[#4A7C8A] to-[#3A6270] text-white">
-        <div className="max-w-7xl mx-auto px-4 py-20 sm:py-28 flex flex-col items-center text-center">
+        <div className="max-w-7xl mx-auto safe-x py-12 sm:py-28 flex flex-col items-center text-center">
           <img
             src="/images/Barks-A-Lot Logo.png"
             alt="Barks-A-Lot Treats & More"
-            className="h-40 w-40 mb-6 rounded-full shadow-xl"
+            className="h-28 w-28 sm:h-40 sm:w-40 mb-6 rounded-full shadow-xl"
           />
-          <h1 className="text-4xl sm:text-5xl font-bold mb-4">
+          <h1 className="text-3xl sm:text-5xl font-bold mb-4">
             Barks-A-Lot Treats & More
           </h1>
-          <p className="text-lg sm:text-xl text-[#E8DFC8] max-w-2xl mb-8">
+          <p className="text-base sm:text-xl text-[#E8DFC8] max-w-2xl mb-8">
             Premium, tail-wagging treats and accessories for your furry friend.
             Made with love, delivered with care.
           </p>
@@ -39,11 +39,11 @@ export default function HomePage() {
       </section>
 
       {/* Categories */}
-      <section className="max-w-7xl mx-auto px-4 py-16">
+      <section className="max-w-7xl mx-auto safe-x py-10 sm:py-16">
         <h2 className="text-3xl font-bold text-center text-[#2A4A52] mb-10">
           Shop by Category
         </h2>
-        <div className="flex flex-wrap justify-center gap-6">
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-6">
           {[
             { name: "Treats", icon: "🦴", slug: "treats" },
             { name: "Toys", icon: "🧸", slug: "toys" },
@@ -52,7 +52,7 @@ export default function HomePage() {
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}
-              className="w-full sm:w-56 bg-white rounded-xl shadow-md p-8 text-center hover:shadow-lg hover:-translate-y-1 transition-all"
+              className="w-[calc(50%-0.375rem)] sm:w-56 bg-white rounded-xl shadow-md p-5 sm:p-8 text-center hover:shadow-lg hover:-translate-y-1 active:translate-y-0 transition-all"
             >
               <span className="text-4xl mb-3 block">{cat.icon}</span>
               <h3 className="text-lg font-semibold text-[#2A4A52]">{cat.name}</h3>
@@ -63,12 +63,12 @@ export default function HomePage() {
 
       {/* Featured Products */}
       {featured.length > 0 && (
-        <section className="bg-[#F5F0E8] py-16">
-          <div className="max-w-7xl mx-auto px-4">
+        <section className="bg-[#F5F0E8] py-10 sm:py-16">
+          <div className="max-w-7xl mx-auto safe-x">
             <h2 className="text-3xl font-bold text-center text-[#2A4A52] mb-10">
               Featured Products
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
               {featured.map((product) => (
                 <ProductCard key={product.id} {...product} />
               ))}
@@ -86,7 +86,7 @@ export default function HomePage() {
       )}
 
       {/* Trust banner */}
-      <section className="max-w-7xl mx-auto px-4 py-16">
+      <section className="max-w-7xl mx-auto safe-x py-10 sm:py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
           <div>
             <div className="text-3xl mb-2">🐾</div>

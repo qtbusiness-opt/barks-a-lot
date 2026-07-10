@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function Footer() {
   return (
     <footer className="bg-[#3A6270] text-[#E8DFC8] mt-auto">
-      <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto safe-x py-8 sm:py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div>
           <h3 className="text-white font-bold text-lg mb-3">Barks-A-Lot Treats & More</h3>
           <p className="text-sm">
@@ -27,7 +27,7 @@ export default function Footer() {
           </ul>
         </div>
       </div>
-      <div className="border-t border-[#4A7C8A] text-center py-4 text-sm">
+      <div className="border-t border-[#4A7C8A] text-center py-4 text-sm safe-bottom">
         &copy; {new Date().getFullYear()} Barks-A-Lot Treats & More. All rights reserved.
       </div>
     </footer>

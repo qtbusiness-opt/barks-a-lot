@@ -24,15 +24,15 @@ function ProductsContent() {
   const products = result?.products ?? [];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-[#2A4A52] mb-8">Our Products</h1>
+    <div className="max-w-7xl mx-auto safe-x py-6 sm:py-10">
+      <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">Our Products</h1>
 
-      <div className="flex flex-wrap gap-2 mb-8">
+      <div className="flex sm:flex-wrap gap-2 mb-6 sm:mb-8 overflow-x-auto pb-2 -mx-1 px-1">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`px-4 py-2 rounded-full text-sm font-medium capitalize transition ${
+            className={`shrink-0 min-h-11 px-4 py-2 rounded-full text-sm font-medium capitalize transition ${
               category === cat
                 ? "bg-[#4A7C8A] text-white"
                 : "bg-white text-[#4A7C8A] border border-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white"
@@ -50,7 +50,7 @@ function ProductsContent() {
           No products found in this category.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
           {products.map((product) => (
             <ProductCard key={product.id} {...product} />
           ))}

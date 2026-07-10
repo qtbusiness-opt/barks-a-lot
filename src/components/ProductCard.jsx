@@ -41,21 +41,23 @@ export default function ProductCard({
           )}
         </div>
       </Link>
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         <span className="text-xs text-[#4A7C8A] font-medium uppercase tracking-wide">
           {category}
         </span>
         <Link href={`/products/${id}`}>
-          <h3 className="font-semibold text-[#2A4A52] mt-1 hover:text-[#4A7C8A] transition">
+          <h3 className="font-semibold text-sm sm:text-base text-[#2A4A52] mt-1 hover:text-[#4A7C8A] transition line-clamp-2">
             {name}
           </h3>
         </Link>
         {stock > 0 ? (
-          <p className="font-semibold text-green-600 mt-1">{stock} In Stock</p>
+          <p className="font-semibold text-sm text-green-600 mt-1">{stock} In Stock</p>
         ) : (
-          <p className="font-semibold text-red-600 mt-1">Out of Stock</p>
+          <p className="font-semibold text-sm text-red-600 mt-1">Out of Stock</p>
         )}
-        <div className="flex items-center justify-between mt-3">
+        {/* Cards are ~140px wide in the 2-up phone grid, so the price and
+            button stack there and sit side by side from sm up. */}
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between mt-3">
           <span className="text-lg font-bold text-[#C8722A]">
             {minPrice === maxPrice
               ? `$${minPrice.toFixed(2)}`
@@ -64,7 +66,7 @@ export default function ProductCard({
           {hasVariants ? (
             <Link
               href={`/products/${id}`}
-              className="bg-[#4A7C8A] text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-[#3A6270] transition"
+              className="bg-[#4A7C8A] text-white px-3 py-2.5 sm:py-1.5 rounded-lg text-sm font-medium text-center hover:bg-[#3A6270] active:bg-[#2A4A52] transition"
             >
               Choose Options
             </Link>
@@ -72,7 +74,7 @@ export default function ProductCard({
             <button
               onClick={() => addItem({ productId: id, name, price, image })}
               disabled={stock <= 0}
-              className="bg-[#4A7C8A] text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-[#3A6270] transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#4A7C8A] text-white px-3 py-2.5 sm:py-1.5 rounded-lg text-sm font-medium hover:bg-[#3A6270] active:bg-[#2A4A52] transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add to Cart
             </button>

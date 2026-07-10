@@ -28,7 +28,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-16">
+    <div className="max-w-md mx-auto safe-x py-10 sm:py-16">
       <div className="bg-white rounded-xl shadow-md p-8">
         <h1 className="text-2xl font-bold text-[#2A4A52] text-center mb-6">
           Welcome Back
