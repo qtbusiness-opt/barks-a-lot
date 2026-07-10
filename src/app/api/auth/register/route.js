@@ -1,18 +1,34 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { signToken } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
+const registerSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  email: z.email(),
+  password: z.string().min(6).max(100),
+});
+
+// Sign-in itself is handled by Auth.js (/api/auth/[...nextauth]); this
+// route only creates the account. The client signs in right after.
 export async function POST(req) {
-  try {
-    const { email, password, name } = await req.json();
+  if (!rateLimit("register", req)) {
+    return NextResponse.json(
+      { error: "Too many attempts. Please try again in a minute." },
+      { status: 429 }
+    );
+  }
 
-    if (!email || !password || !name) {
+  try {
+    const parsed = registerSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Name, email, and password are required" },
+        { error: "Please provide a name, a valid email, and a password of at least 6 characters" },
         { status: 400 }
       );
     }
+    const { email, password, name } = parsed.data;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -23,30 +39,20 @@ export async function POST(req) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    // Role is always "customer" here — admin accounts are only created by
+    // the seed process or promoted manually, never via public signup.
     const user = await prisma.user.create({
       data: { email, password: hashedPassword, name },
     });
 
-    const token = signToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    console.info(`[auth] account created user=${user.id}`);
 
-    const response = NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
-    });
-
-    response.cookies.set("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
-
-    return response;
-  } catch {
+    return NextResponse.json(
+      { user: { id: user.id, email: user.email, name: user.name, role: user.role } },
+      { status: 201 }
+    );
+  } catch (err) {
+    console.error("[auth] register error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

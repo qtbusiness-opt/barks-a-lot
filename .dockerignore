@@ -2,6 +2,9 @@ node_modules
 .next
 .git
 *.md
-.env*.local
+.env
+.env.*
+!.env.example
 *.db
 *.db-journal
+data

@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "format": "prettier --write \"src/**/*.{js,jsx}\" \"scripts/**/*.js\" \"prisma/seed.js\"",
+    "test": "node --test tests/*.test.mjs",
     "seed": "node prisma/seed.js",
     "db:migrate": "npx prisma migrate dev",
     "db:studio": "npx prisma studio"
@@ -15,17 +17,18 @@
     "@prisma/client": "~6.19.2",
     "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
-    "cookie": "^1.1.1",
-    "jsonwebtoken": "^9.0.3",
-    "next": "16.2.2",
+    "next": "^16.2.10",
+    "next-auth": "^5.0.0-beta.31",
     "prisma": "~6.19.2",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.2",
+    "eslint-config-next": "^16.2.10",
+    "prettier": "^3.9.5",
     "tailwindcss": "^4"
   }
 }

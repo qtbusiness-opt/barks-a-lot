@@ -68,6 +68,11 @@ export default function OrdersPage() {
                   <p className="text-xs text-gray-400 mt-1">
                     Confirmation #: {order.confirmationNumber}
                   </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {order.fulfillmentType === "pickup"
+                      ? "Pickup at market/event"
+                      : "Ships to your address"}
+                  </p>
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${
