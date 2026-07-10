@@ -15,6 +15,12 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-this-admin-password}
     volumes:
       - qual-data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
 
 volumes:

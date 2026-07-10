@@ -41,11 +41,16 @@ model Order {
   guestEmail         String?
   guestName          String?
   status             String      @default("pending")
+  // "online" (web checkout) | "market" (in-person sale recorded after the
+  // fact) — one inventory ledger across both sales channels.
+  channel            String      @default("online")
+  // "shipping" | "pickup" — pickup orders (markets/expos) need no address.
+  fulfillmentType    String      @default("shipping")
   total              Float
-  address            String
-  city               String
-  state              String
-  zip                String
+  address            String?
+  city               String?
+  state              String?
+  zip                String?
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
   items              OrderItem[]

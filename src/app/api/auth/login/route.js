@@ -1,34 +1,44 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { signToken } from "@/lib/auth";
+import { signToken, sessionCookieOptions } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
+
+const loginSchema = z.object({
+  email: z.email(),
+  password: z.string().min(1),
+});
 
 export async function POST(req) {
-  try {
-    const { email, password } = await req.json();
+  if (!rateLimit("login", req)) {
+    return NextResponse.json(
+      { error: "Too many attempts. Please try again in a minute." },
+      { status: 429 }
+    );
+  }
 
-    if (!email || !password) {
+  try {
+    const parsed = loginSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json(
         { error: "Email and password are required" },
         { status: 400 }
       );
     }
+    const { email, password } = parsed.data;
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
+    const valid = user && (await bcrypt.compare(password, user.password));
+    if (!valid) {
+      console.warn(`[auth] login failed email=${email}`);
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
       );
     }
 
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
-      return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
-    }
+    console.info(`[auth] login success user=${user.id} role=${user.role}`);
 
     const token = signToken({
       userId: user.id,
@@ -40,16 +50,11 @@ export async function POST(req) {
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
     });
 
-    response.cookies.set("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
+    response.cookies.set("token", token, sessionCookieOptions(user.role));
 
     return response;
-  } catch {
+  } catch (err) {
+    console.error("[auth] login error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

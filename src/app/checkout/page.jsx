@@ -7,10 +7,14 @@ import { useCart } from "@/context/CartContext";
 import api from "@/lib/api";
 import Link from "next/link";
 
+const inputClass =
+  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+
 export default function CheckoutPage() {
   const { user } = useAuth();
   const { items, total, clearCart } = useCart();
   const router = useRouter();
+  const [fulfillmentType, setFulfillmentType] = useState("shipping");
   const [form, setForm] = useState({
     guestName: "",
     guestEmail: "",
@@ -31,13 +35,14 @@ export default function CheckoutPage() {
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">
           Thank You for Your Order!
         </h1>
-        <p className="text-gray-600 mb-2">
-          Your confirmation number is
+        <p className="text-gray-600 mb-2">Your confirmation number is</p>
+        <p className="text-2xl font-bold text-[#C8722A] mb-6">
+          {confirmation.number}
         </p>
-        <p className="text-2xl font-bold text-[#C8722A] mb-6">{confirmation}</p>
         <p className="text-gray-500 mb-8">
-          Keep this number for your records — you&apos;ll need it if you contact
-          us about your order.
+          {confirmation.fulfillmentType === "pickup"
+            ? "We'll have your order ready for pickup at the market — just give us your confirmation number at the booth."
+            : "Keep this number for your records — you'll need it if you contact us about your order."}
         </p>
         <Link
           href="/products"
@@ -72,20 +77,30 @@ export default function CheckoutPage() {
     try {
       const res = await api.post("/orders", {
         items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
-        address: form.address,
-        city: form.city,
-        state: form.state,
-        zip: form.zip,
+        fulfillmentType,
+        ...(fulfillmentType === "shipping"
+          ? {
+              address: form.address,
+              city: form.city,
+              state: form.state,
+              zip: form.zip,
+            }
+          : {}),
         ...(user ? {} : { guestEmail: form.guestEmail, guestName: form.guestName }),
       });
       clearCart();
       if (user) {
         router.push("/orders");
       } else {
-        setConfirmation(res.data.order.confirmationNumber);
+        setConfirmation({
+          number: res.data.order.confirmationNumber,
+          fulfillmentType,
+        });
       }
-    } catch {
-      setError("Failed to place order. Please try again.");
+    } catch (err) {
+      setError(
+        err.response?.data?.error || "Failed to place order. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -113,62 +128,133 @@ export default function CheckoutPage() {
                   Have an account? Log in
                 </Link>
               </div>
-              <input
-                type="text"
-                placeholder="Name"
-                value={form.guestName}
-                onChange={(e) => update("guestName", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={form.guestEmail}
-                onChange={(e) => update("guestEmail", e.target.value)}
-                required
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]"
-              />
+              <div>
+                <label htmlFor="guest-name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Name
+                </label>
+                <input
+                  id="guest-name"
+                  type="text"
+                  value={form.guestName}
+                  onChange={(e) => update("guestName", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="guest-email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  id="guest-email"
+                  type="email"
+                  value={form.guestEmail}
+                  onChange={(e) => update("guestEmail", e.target.value)}
+                  required
+                  className={inputClass}
+                />
+              </div>
             </>
           )}
 
-          <h2 className="text-xl font-semibold text-[#2A4A52]">Shipping Address</h2>
+          <fieldset>
+            <legend className="text-xl font-semibold text-[#2A4A52] mb-2">
+              Delivery Method
+            </legend>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 border border-gray-300 rounded-lg px-4 py-3 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
+                <input
+                  type="radio"
+                  name="fulfillment"
+                  value="shipping"
+                  checked={fulfillmentType === "shipping"}
+                  onChange={() => setFulfillmentType("shipping")}
+                />
+                <span className="text-sm font-medium">Ship to me</span>
+              </label>
+              <label className="flex items-center gap-2 border border-gray-300 rounded-lg px-4 py-3 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
+                <input
+                  type="radio"
+                  name="fulfillment"
+                  value="pickup"
+                  checked={fulfillmentType === "pickup"}
+                  onChange={() => setFulfillmentType("pickup")}
+                />
+                <span className="text-sm font-medium">Pickup at market/event</span>
+              </label>
+            </div>
+          </fieldset>
+
           {error && (
             <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>
           )}
-          <input
-            type="text"
-            placeholder="Street Address"
-            value={form.address}
-            onChange={(e) => update("address", e.target.value)}
-            required
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]"
-          />
-          <input
-            type="text"
-            placeholder="City"
-            value={form.city}
-            onChange={(e) => update("city", e.target.value)}
-            required
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]"
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="State"
-              value={form.state}
-              onChange={(e) => update("state", e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]"
-            />
-            <input
-              type="text"
-              placeholder="ZIP Code"
-              value={form.zip}
-              onChange={(e) => update("zip", e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]"
-            />
-          </div>
+
+          {fulfillmentType === "shipping" ? (
+            <>
+              <h2 className="text-xl font-semibold text-[#2A4A52]">
+                Shipping Address
+              </h2>
+              <div>
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                  Street Address
+                </label>
+                <input
+                  id="address"
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => update("address", e.target.value)}
+                  required
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                  City
+                </label>
+                <input
+                  id="city"
+                  type="text"
+                  value={form.city}
+                  onChange={(e) => update("city", e.target.value)}
+                  required
+                  className={inputClass}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
+                    State
+                  </label>
+                  <input
+                    id="state"
+                    type="text"
+                    value={form.state}
+                    onChange={(e) => update("state", e.target.value)}
+                    required
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="zip" className="block text-sm font-medium text-gray-700 mb-1">
+                    ZIP Code
+                  </label>
+                  <input
+                    id="zip"
+                    type="text"
+                    value={form.zip}
+                    onChange={(e) => update("zip", e.target.value)}
+                    required
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-gray-600 bg-[#F5F0E8] p-4 rounded-lg">
+              No address needed — pick up your order at our next market or
+              event. We&apos;ll hold it under your confirmation number.
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={submitting}

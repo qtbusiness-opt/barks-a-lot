@@ -99,7 +99,10 @@ export default function AdminPage() {
                       : `Guest: ${order.guestName ? `${order.guestName} — ` : ""}${order.guestEmail}`}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {order.address}, {order.city}, {order.state} {order.zip}
+                    {order.fulfillmentType === "pickup"
+                      ? "Pickup at market/event"
+                      : `Ship to: ${order.address}, ${order.city}, ${order.state} ${order.zip}`}
+                    {order.channel === "market" && " · Market sale"}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

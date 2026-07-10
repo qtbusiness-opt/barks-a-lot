@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 
-const VALID_STATUSES = ["pending", "shipped", "delivered", "cancelled"];
+const statusSchema = z.object({
+  status: z.enum(["pending", "shipped", "delivered", "cancelled"]),
+});
 
 export async function PATCH(req, { params }) {
   const auth = await getAuthUser();
@@ -13,15 +16,14 @@ export async function PATCH(req, { params }) {
   const { id } = await params;
 
   try {
-    const { status } = await req.json();
-
-    if (!VALID_STATUSES.includes(status)) {
+    const parsed = statusSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
     const order = await prisma.order.update({
       where: { id },
-      data: { status },
+      data: { status: parsed.data.status },
       include: {
         items: { include: { product: true } },
         user: { select: { name: true, email: true } },
