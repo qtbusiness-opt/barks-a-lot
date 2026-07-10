@@ -31,7 +31,7 @@ export default function CheckoutPage() {
   // confirmation inline after the cart has been cleared.
   if (confirmation) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+      <div className="max-w-4xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">
           Thank You for Your Order!
         </h1>
@@ -56,7 +56,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+      <div className="max-w-4xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">Checkout</h1>
         <p className="text-gray-500 mb-6">Your cart is empty.</p>
         <Link
@@ -114,11 +114,11 @@ export default function CheckoutPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-[#2A4A52] mb-8">Checkout</h1>
+    <div className="max-w-4xl mx-auto safe-x py-6 sm:py-10">
+      <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">Checkout</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+        <form onSubmit={handleSubmit} className="space-y-4 order-2 md:order-1">
           {!user && (
             <>
               <div className="flex items-center justify-between">
@@ -164,8 +164,8 @@ export default function CheckoutPage() {
             <legend className="text-xl font-semibold text-[#2A4A52] mb-2">
               Delivery Method
             </legend>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 border border-gray-300 rounded-lg px-4 py-3 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+              <label className="flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
                 <input
                   type="radio"
                   name="fulfillment"
@@ -175,7 +175,7 @@ export default function CheckoutPage() {
                 />
                 <span className="text-sm font-medium">Ship to me</span>
               </label>
-              <label className="flex items-center gap-2 border border-gray-300 rounded-lg px-4 py-3 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
+              <label className="flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
                 <input
                   type="radio"
                   name="fulfillment"
@@ -268,7 +268,7 @@ export default function CheckoutPage() {
           </button>
         </form>
 
-        <div className="bg-[#F5F0E8] rounded-xl p-6">
+        <div className="bg-[#F5F0E8] rounded-xl p-4 sm:p-6 order-1 md:order-2 md:self-start">
           <h2 className="text-xl font-semibold text-[#2A4A52] mb-4">Order Summary</h2>
           <div className="space-y-3">
             {items.map((item) => (

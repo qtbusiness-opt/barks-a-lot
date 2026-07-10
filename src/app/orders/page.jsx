@@ -19,7 +19,7 @@ export default function OrdersPage() {
 
   if (!authLoading && !user) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+      <div className="max-w-4xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">My Orders</h1>
         <p className="text-gray-500 mb-6">Please log in to view your orders.</p>
         <Link
@@ -43,8 +43,8 @@ export default function OrdersPage() {
   const orderList = orders ?? [];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-[#2A4A52] mb-8">My Orders</h1>
+    <div className="max-w-4xl mx-auto safe-x py-6 sm:py-10">
+      <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">My Orders</h1>
 
       {orderList.length === 0 ? (
         <div className="text-center py-10">
@@ -59,8 +59,8 @@ export default function OrdersPage() {
       ) : (
         <div className="space-y-6">
           {orderList.map((order) => (
-            <div key={order.id} className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex justify-between items-start mb-4">
+            <div key={order.id} className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+              <div className="flex flex-wrap gap-2 justify-between items-start mb-4">
                 <div>
                   <p className="text-sm text-gray-500">
                     Order placed {new Date(order.createdAt).toLocaleDateString()}

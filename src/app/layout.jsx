@@ -13,6 +13,19 @@ export const metadata = {
     apple: "/images/Barks-A-Lot Logo.png",
     shortcut: "/images/Barks-A-Lot Logo.png",
   },
+  appleWebApp: {
+    title: "Barks-A-Lot",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Let content extend under the iPhone notch/home indicator; safe-area
+  // padding in globals.css keeps interactive elements clear of them.
+  viewportFit: "cover",
+  themeColor: "#4A7C8A",
 };
 
 export default function RootLayout({ children }) {

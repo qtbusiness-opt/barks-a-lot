@@ -13,8 +13,8 @@ export default function Navbar() {
   const isQual = process.env.NODE_ENV === "qual";
 
   return (
-    <nav className="bg-[#4A7C8A] text-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="bg-[#4A7C8A] text-white shadow-lg sticky top-0 z-50 safe-top">
+      <div className="max-w-7xl mx-auto safe-x sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
             <img src="/images/Barks-A-Lot Logo.png" alt="Barks-A-Lot" className="h-10 w-10 rounded-full" />
@@ -64,37 +64,57 @@ export default function Navbar() {
             )}
           </div>
 
-          <button
-            className="md:hidden text-white"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {menuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          {/* On phones the cart stays one tap away instead of hiding
+              behind the menu. */}
+          <div className="flex items-center md:hidden">
+            <Link
+              href="/cart"
+              aria-label={`Cart, ${itemCount} items`}
+              className="relative flex items-center justify-center h-11 w-11 active:bg-white/10 rounded-lg"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 4.6a1 1 0 00.9 1.4h12M10 21a1 1 0 11-2 0 1 1 0 012 0zm8 0a1 1 0 11-2 0 1 1 0 012 0z" />
+              </svg>
+              {itemCount > 0 && (
+                <span className="absolute top-0.5 right-0.5 bg-[#C8722A] text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center">
+                  {itemCount}
+                </span>
               )}
-            </svg>
-          </button>
+            </Link>
+            <button
+              className="flex items-center justify-center h-11 w-11 active:bg-white/10 rounded-lg"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-expanded={menuOpen}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {menuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
 
         {menuOpen && (
-          <div className="md:hidden pb-4 space-y-2">
-            <Link href="/" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Home</Link>
-            <Link href="/products" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Shop</Link>
+          <div className="md:hidden pb-4 divide-y divide-white/10">
+            <Link href="/" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Home</Link>
+            <Link href="/products" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Shop</Link>
             {user && (
-              <Link href="/orders" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Orders</Link>
+              <Link href="/orders" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Orders</Link>
             )}
             {user?.role === "admin" && (
-              <Link href="/admin" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Admin</Link>
+              <Link href="/admin" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Admin</Link>
             )}
-            <Link href="/cart" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>
+            <Link href="/cart" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>
               Cart {itemCount > 0 && `(${itemCount})`}
             </Link>
             {user ? (
-              <button onClick={() => { logout(); setMenuOpen(false); }} className="block py-2 hover:text-[#E8DFC8]">Logout</button>
+              <button onClick={() => { logout(); setMenuOpen(false); }} className="block w-full text-left py-3 active:text-[#E8DFC8]">Logout</button>
             ) : (
-              <Link href="/login" className="block py-2 hover:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Login</Link>
+              <Link href="/login" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Login</Link>
             )}
           </div>
         )}

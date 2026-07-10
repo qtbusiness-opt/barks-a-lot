@@ -68,8 +68,8 @@ export default function ProductDetailPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      <Link href="/products" className="text-[#4A7C8A] hover:underline mb-6 inline-block">
+    <div className="max-w-7xl mx-auto safe-x py-6 sm:py-10">
+      <Link href="/products" className="inline-flex items-center min-h-11 text-[#4A7C8A] hover:underline mb-2 sm:mb-6">
         &larr; Back to Products
       </Link>
 
@@ -86,7 +86,7 @@ export default function ProductDetailPage() {
           <span className="text-sm text-[#4A7C8A] font-medium uppercase tracking-wide">
             {product.category}
           </span>
-          <h1 className="text-3xl font-bold text-[#2A4A52] mt-2">{product.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mt-2">{product.name}</h1>
 
           {product.limitedQuantity != null && (
             <p className="inline-block bg-[#C8722A] text-white text-sm font-semibold px-3 py-1 rounded-full mt-2">
@@ -96,7 +96,7 @@ export default function ProductDetailPage() {
             </p>
           )}
 
-          <p className="text-2xl font-bold mt-4 justify-between flex items-center gap-4">
+          <p className="text-xl sm:text-2xl font-bold mt-4 justify-between flex items-center gap-4">
             <span className="text-[#C8722A]">${price.toFixed(2)}</span>
             <span className={stock > 0 ? "text-green-600" : "text-red-600"}>
               {!product.available
@@ -152,7 +152,7 @@ export default function ProductDetailPage() {
               id="qty"
               value={qty}
               onChange={(e) => setQuantity(Number(e.target.value))}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              className="border border-gray-300 rounded-lg px-3 py-2 min-h-11 text-base sm:text-sm"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <option key={n} value={n}>{n}</option>

@@ -44,7 +44,7 @@ export default function AdminPage() {
 
   if (authLoading || (isAdmin && orders === null && !error)) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-20 text-center text-gray-500">
+      <div className="max-w-6xl mx-auto safe-x py-20 text-center text-gray-500">
         Loading...
       </div>
     );
@@ -52,7 +52,7 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-20 text-center">
+      <div className="max-w-6xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">Admin</h1>
         <p className="text-gray-500 mb-6">
           You need an admin account to view this page.
@@ -70,7 +70,7 @@ export default function AdminPage() {
   const orderList = orders ?? [];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
+    <div className="max-w-6xl mx-auto safe-x py-6 sm:py-10">
       <h1 className="text-3xl font-bold text-[#2A4A52] mb-8">
         Admin — Orders
       </h1>
@@ -84,7 +84,7 @@ export default function AdminPage() {
       ) : (
         <div className="space-y-6">
           {orderList.map((order) => (
-            <div key={order.id} className="bg-white rounded-xl shadow-sm p-6">
+            <div key={order.id} className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
               <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                 <div>
                   <p className="font-semibold text-[#2A4A52]">
@@ -116,7 +116,7 @@ export default function AdminPage() {
                   <select
                     value={order.status}
                     onChange={(e) => updateStatus(order.id, e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    className="border border-gray-300 rounded-lg px-3 py-2 min-h-11 text-base sm:text-sm"
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
