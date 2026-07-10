@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { visibleInListing } from "@/lib/catalog";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
@@ -12,8 +13,12 @@ export async function GET(req) {
 
   const products = await prisma.product.findMany({
     where,
+    include: { variants: true },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ products });
+  // Availability windows and sold-out limited drops are filtered here
+  // rather than in SQL — the catalog is small and the rules live in one
+  // place (src/lib/catalog.js) shared with checkout.
+  return NextResponse.json({ products: products.filter((p) => visibleInListing(p)) });
 }

@@ -129,7 +129,10 @@ export default function AdminPage() {
               <div className="space-y-2">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-4 text-sm">
-                    <span className="flex-1">{item.product.name}</span>
+                    <span className="flex-1">
+                      {item.product.name}
+                      {item.variant && ` — ${item.variant.name}`}
+                    </span>
                     <span className="text-gray-500">x {item.quantity}</span>
                     <span className="w-20 text-right font-medium">
                       ${(item.price * item.quantity).toFixed(2)}

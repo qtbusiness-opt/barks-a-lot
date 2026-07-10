@@ -11,6 +11,7 @@ import { spawn, execSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { PrismaClient } from "@prisma/client";
 
 const PORT = 4123;
 const BASE = `http://localhost:${PORT}`;
@@ -19,6 +20,7 @@ const ADMIN_PASSWORD = "test-admin-pw";
 
 let server;
 let dbDir;
+let dbUrl;
 
 function cookieFrom(res) {
   const raw = res.headers.get("set-cookie");
@@ -45,9 +47,10 @@ async function api(method, route, { body, cookie } = {}) {
 
 before(async () => {
   dbDir = mkdtempSync(path.join(tmpdir(), "barks-test-"));
+  dbUrl = `file:${path.join(dbDir, "test.db")}`;
   const env = {
     ...process.env,
-    DATABASE_URL: `file:${path.join(dbDir, "test.db")}`,
+    DATABASE_URL: dbUrl,
     JWT_SECRET: "test-secret",
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
@@ -262,4 +265,96 @@ test("admin can list orders and update status", async () => {
     cookie,
   });
   assert.equal(invalid.status, 400);
+});
+
+test("variant products require an option and track per-variant stock", async () => {
+  const { data } = await api("GET", "/products");
+  const product = data.products.find((p) => p.variants.length > 0);
+  assert.ok(product, "seeded variant product exists");
+
+  // Ordering a variant product without choosing an option is rejected.
+  const noVariant = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      guestEmail: "guest@test.local",
+    },
+  });
+  assert.equal(noVariant.status, 400);
+
+  const variant = product.variants.find((v) => v.quantity >= 2);
+  const res = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, variantId: variant.id, quantity: 2 }],
+      fulfillmentType: "pickup",
+      guestEmail: "guest@test.local",
+    },
+  });
+  assert.equal(res.status, 201);
+  const line = res.data.order.items[0];
+  assert.equal(line.variantId, variant.id);
+  assert.equal(line.price, variant.price ?? product.price);
+
+  // Only the chosen variant's stock is decremented.
+  const detail = await api("GET", `/products/${product.id}`);
+  const afterVariant = detail.data.product.variants.find((v) => v.id === variant.id);
+  assert.equal(afterVariant.quantity, variant.quantity - 2);
+
+  // Overselling a single variant is rejected.
+  const oversell = await api("POST", "/orders", {
+    body: {
+      items: [
+        { productId: product.id, variantId: variant.id, quantity: afterVariant.quantity + 1 },
+      ],
+      fulfillmentType: "pickup",
+      guestEmail: "guest@test.local",
+    },
+  });
+  assert.equal(oversell.status, 409);
+});
+
+test("limited drops report remaining stock in listings", async () => {
+  const { data } = await api("GET", "/products");
+  const drop = data.products.find((p) => p.limitedQuantity != null);
+  assert.ok(drop, "seeded limited drop is visible while in its window");
+  assert.ok(drop.quantity <= drop.limitedQuantity);
+});
+
+test("expired limited drops are hidden and cannot be purchased", async () => {
+  // Insert an already-expired drop directly — there is deliberately no
+  // public API for creating products.
+  const prisma = new PrismaClient({ datasourceUrl: dbUrl });
+  const expired = await prisma.product.create({
+    data: {
+      name: "Expired Test Drop",
+      description: "A drop whose window has closed",
+      quantity: 5,
+      limitedQuantity: 5,
+      price: 9.99,
+      image: "/images/products/plush-duck.svg",
+      category: "toys",
+      availableFrom: new Date(Date.now() - 60 * 86400_000),
+      availableUntil: new Date(Date.now() - 30 * 86400_000),
+    },
+  });
+  await prisma.$disconnect();
+
+  const { data } = await api("GET", "/products");
+  assert.ok(
+    !data.products.some((p) => p.id === expired.id),
+    "expired drop is hidden from listings"
+  );
+
+  const detail = await api("GET", `/products/${expired.id}`);
+  assert.equal(detail.status, 200);
+  assert.equal(detail.data.product.available, false);
+
+  const purchase = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: expired.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      guestEmail: "guest@test.local",
+    },
+  });
+  assert.equal(purchase.status, 409);
 });
