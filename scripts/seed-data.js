@@ -2,11 +2,36 @@ module.exports = [
   {
     name: "Peanut Butter Biscuits",
     description: "Crunchy, all-natural peanut butter biscuits made with whole wheat flour and real peanut butter. A classic treat your dog will love!",
-    quantity: 100,
+    // Stock lives on the variants below.
+    quantity: 0,
     price: 12.99,
     image: "/images/products/peanut-butter-biscuits.svg",
     category: "treats",
     featured: true,
+    variants: [
+      {
+        name: "Small Bag (8 oz)",
+        attributes: JSON.stringify({ flavor: "peanut butter", size: "small" }),
+        price: 12.99,
+        quantity: 60,
+      },
+      {
+        name: "Large Bag (16 oz)",
+        attributes: JSON.stringify({ flavor: "peanut butter", size: "large" }),
+        price: 21.99,
+        quantity: 30,
+      },
+      {
+        name: "Grain-Free Small Bag (8 oz)",
+        attributes: JSON.stringify({
+          flavor: "peanut butter",
+          size: "small",
+          dietary: ["grain-free"],
+        }),
+        price: 14.99,
+        quantity: 25,
+      },
+    ],
   },
   {
     name: "Sweet Potato Chews",
@@ -83,11 +108,29 @@ module.exports = [
   {
     name: "Bandana Set (3-Pack)",
     description: "Adorable, adjustable bandanas in three stylish patterns. Snap-on design makes them easy to put on and take off.",
-    quantity: 50,
+    quantity: 0,
     price: 15.99,
     image: "/images/products/bandana-set.svg",
     category: "accessories",
     featured: false,
+    variants: [
+      {
+        name: "Small / Plaid",
+        attributes: JSON.stringify({ size: "small", pattern: "plaid" }),
+        quantity: 20,
+      },
+      {
+        name: "Medium / Floral",
+        attributes: JSON.stringify({ size: "medium", pattern: "floral" }),
+        quantity: 18,
+      },
+      {
+        name: "Large / Bones",
+        attributes: JSON.stringify({ size: "large", pattern: "bones" }),
+        price: 17.99,
+        quantity: 12,
+      },
+    ],
   },
   {
     name: "Premium Grain-Free Kibble",
@@ -106,5 +149,18 @@ module.exports = [
     image: "/images/products/wet-food-pack.svg",
     category: "food",
     featured: false,
+  },
+  {
+    name: "Plushie Adoption — Seasonal Drop",
+    description: "Adopt one of our hand-sewn seasonal plushies! A one-off batch — once they're adopted, they're gone. Each comes with an adoption certificate.",
+    quantity: 20,
+    limitedQuantity: 20,
+    // A 60-day drop window starting at seed time keeps dev data realistic.
+    availableFrom: new Date(),
+    availableUntil: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+    price: 29.99,
+    image: "/images/products/plush-duck.svg",
+    category: "toys",
+    featured: true,
   },
 ];

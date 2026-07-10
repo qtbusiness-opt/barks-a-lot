@@ -97,7 +97,10 @@ export default function OrdersPage() {
                       className="w-12 h-12 rounded-lg object-cover bg-[#F5F0E8]"
                     />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{item.product.name}</p>
+                      <p className="text-sm font-medium">
+                        {item.product.name}
+                        {item.variant && ` — ${item.variant.name}`}
+                      </p>
                       <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                     </div>
                     <p className="text-sm font-medium">

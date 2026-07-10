@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { isWithinWindow } from "@/lib/catalog";
 
 function generateConfirmationNumber() {
   return `BAL-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -15,6 +16,7 @@ const orderSchema = z
       .array(
         z.object({
           productId: z.string().min(1),
+          variantId: z.string().min(1).optional(),
           quantity: z.number().int().min(1).max(100),
         })
       )
@@ -43,7 +45,7 @@ export async function GET() {
 
   const orders = await prisma.order.findMany({
     where: { userId: auth.userId },
-    include: { items: { include: { product: true } } },
+    include: { items: { include: { product: true, variant: true } } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -80,44 +82,86 @@ export async function POST(req) {
       );
     }
 
-    // Price and stock are verified server-side inside one transaction:
-    // the stock check, decrement, and order creation succeed or fail
-    // together so concurrent checkouts can't oversell.
+    // Price, availability, and stock are verified server-side inside one
+    // transaction: the stock check, decrement, and order creation succeed
+    // or fail together so concurrent checkouts can't oversell.
     const order = await prisma.$transaction(async (tx) => {
       const productIds = items.map((i) => i.productId);
       const products = await tx.product.findMany({
         where: { id: { in: productIds } },
+        include: { variants: true },
       });
       const productMap = {};
       for (const p of products) productMap[p.id] = p;
 
+      const fail = (code, message) =>
+        Object.assign(new Error(message), { code });
+
       let total = 0;
       const orderItems = [];
-      for (const item of items) {
-        const product = productMap[item.productId];
-        if (!product) {
-          throw Object.assign(new Error("Product not found"), { code: 404 });
-        }
-        if (!product.inStock || product.quantity < item.quantity) {
-          throw Object.assign(
-            new Error(`Not enough stock for ${product.name}`),
-            { code: 409 }
-          );
-        }
-        total += product.price * item.quantity;
-        orderItems.push({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: product.price,
-        });
-      }
+      // Track per-product/variant decrements before applying them, so a
+      // failure on any line item aborts the whole transaction untouched.
+      const decrements = [];
 
       for (const item of items) {
-        const remaining = productMap[item.productId].quantity - item.quantity;
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { quantity: remaining, inStock: remaining > 0 },
-        });
+        const product = productMap[item.productId];
+        if (!product) throw fail(404, "Product not found");
+        if (!isWithinWindow(product)) {
+          throw fail(409, `${product.name} is not currently available`);
+        }
+
+        if (product.variants.length > 0) {
+          const variant = product.variants.find((v) => v.id === item.variantId);
+          if (!variant) {
+            throw fail(400, `Please choose an option for ${product.name}`);
+          }
+          if (variant.quantity < item.quantity) {
+            throw fail(409, `Not enough stock for ${product.name} (${variant.name})`);
+          }
+          const price = variant.price ?? product.price;
+          total += price * item.quantity;
+          orderItems.push({
+            productId: product.id,
+            variantId: variant.id,
+            quantity: item.quantity,
+            price,
+          });
+          decrements.push({ product, variant, quantity: item.quantity });
+        } else {
+          if (!product.inStock || product.quantity < item.quantity) {
+            throw fail(409, `Not enough stock for ${product.name}`);
+          }
+          total += product.price * item.quantity;
+          orderItems.push({
+            productId: product.id,
+            quantity: item.quantity,
+            price: product.price,
+          });
+          decrements.push({ product, quantity: item.quantity });
+        }
+      }
+
+      for (const { product, variant, quantity } of decrements) {
+        if (variant) {
+          const remaining = variant.quantity - quantity;
+          await tx.productVariant.update({
+            where: { id: variant.id },
+            data: { quantity: remaining },
+          });
+          variant.quantity = remaining;
+          const anyLeft = product.variants.some((v) => v.quantity > 0);
+          await tx.product.update({
+            where: { id: product.id },
+            data: { inStock: anyLeft },
+          });
+        } else {
+          const remaining = product.quantity - quantity;
+          await tx.product.update({
+            where: { id: product.id },
+            data: { quantity: remaining, inStock: remaining > 0 },
+          });
+          product.quantity = remaining;
+        }
       }
 
       return tx.order.create({
@@ -135,13 +179,13 @@ export async function POST(req) {
           zip: zip ?? null,
           items: { create: orderItems },
         },
-        include: { items: { include: { product: true } } },
+        include: { items: { include: { product: true, variant: true } } },
       });
     });
 
     return NextResponse.json({ order }, { status: 201 });
   } catch (err) {
-    if (err.code === 409 || err.code === 404) {
+    if ([400, 404, 409].includes(err.code)) {
       return NextResponse.json({ error: err.message }, { status: err.code });
     }
     console.error("[orders] create error:", err);

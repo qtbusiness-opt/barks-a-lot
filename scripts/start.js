@@ -1,7 +1,7 @@
 const { execSync } = require("child_process");
 const { PrismaClient } = require("@prisma/client");
 
-const products = require("./seed-data");
+const seedProducts = require("./seed-products");
 const seedAdmin = require("./seed-admin");
 
 async function main() {
@@ -26,10 +26,8 @@ async function main() {
     const count = await prisma.product.count();
     if (count === 0) {
       console.log("Seeding database...");
-      for (const product of products) {
-        await prisma.product.create({ data: product });
-      }
-      console.log(`Seeded ${products.length} products.`);
+      const seeded = await seedProducts(prisma);
+      console.log(`Seeded ${seeded} products.`);
     } else {
       console.log(`Database already has ${count} products, skipping seed.`);
     }

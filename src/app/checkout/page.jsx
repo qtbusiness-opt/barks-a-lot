@@ -76,7 +76,11 @@ export default function CheckoutPage() {
 
     try {
       const res = await api.post("/orders", {
-        items: items.map((i) => ({ productId: i.id, quantity: i.quantity })),
+        items: items.map((i) => ({
+          productId: i.productId,
+          ...(i.variantId ? { variantId: i.variantId } : {}),
+          quantity: i.quantity,
+        })),
         fulfillmentType,
         ...(fulfillmentType === "shipping"
           ? {
@@ -268,7 +272,7 @@ export default function CheckoutPage() {
           <h2 className="text-xl font-semibold text-[#2A4A52] mb-4">Order Summary</h2>
           <div className="space-y-3">
             {items.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
+              <div key={item.key} className="flex justify-between text-sm">
                 <span>
                   {item.name} x {item.quantity}
                 </span>

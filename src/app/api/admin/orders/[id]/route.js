@@ -25,7 +25,7 @@ export async function PATCH(req, { params }) {
       where: { id },
       data: { status: parsed.data.status },
       include: {
-        items: { include: { product: true } },
+        items: { include: { product: true, variant: true } },
         user: { select: { name: true, email: true } },
       },
     });

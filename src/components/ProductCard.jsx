@@ -3,18 +3,42 @@
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 
-export default function ProductCard({ id, name, quantity, price, image, category }) {
+export default function ProductCard({
+  id,
+  name,
+  quantity,
+  price,
+  image,
+  category,
+  variants = [],
+  limitedQuantity = null,
+}) {
   const { addItem } = useCart();
+
+  const hasVariants = variants.length > 0;
+  const stock = hasVariants
+    ? variants.reduce((sum, v) => sum + v.quantity, 0)
+    : quantity;
+  const prices = hasVariants
+    ? variants.map((v) => v.price ?? price)
+    : [price];
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
 
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition group">
       <Link href={`/products/${id}`}>
-        <div className="aspect-square overflow-hidden bg-[#F5F0E8]">
+        <div className="relative aspect-square overflow-hidden bg-[#F5F0E8]">
           <img
             src={image}
             alt={name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
+          {limitedQuantity != null && stock > 0 && (
+            <span className="absolute top-2 left-2 bg-[#C8722A] text-white text-xs font-semibold px-2 py-1 rounded-full">
+              Limited: {stock} of {limitedQuantity} left
+            </span>
+          )}
         </div>
       </Link>
       <div className="p-4">
@@ -26,21 +50,33 @@ export default function ProductCard({ id, name, quantity, price, image, category
             {name}
           </h3>
         </Link>
-        {
-          quantity > 0 ? (
-            <p className="font-semibold text-green-600 mt-1">{quantity} In Stock</p>
-          ) : (
-            <p className="font-semibold text-red-600 mt-1">Out of Stock</p>
-          )
-        }
+        {stock > 0 ? (
+          <p className="font-semibold text-green-600 mt-1">{stock} In Stock</p>
+        ) : (
+          <p className="font-semibold text-red-600 mt-1">Out of Stock</p>
+        )}
         <div className="flex items-center justify-between mt-3">
-          <span className="text-lg font-bold text-[#C8722A]">${price.toFixed(2)}</span>
-          <button
-            onClick={() => addItem({ id, name, price, image })}
-            className="bg-[#4A7C8A] text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-[#3A6270] transition"
-          >
-            Add to Cart
-          </button>
+          <span className="text-lg font-bold text-[#C8722A]">
+            {minPrice === maxPrice
+              ? `$${minPrice.toFixed(2)}`
+              : `From $${minPrice.toFixed(2)}`}
+          </span>
+          {hasVariants ? (
+            <Link
+              href={`/products/${id}`}
+              className="bg-[#4A7C8A] text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-[#3A6270] transition"
+            >
+              Choose Options
+            </Link>
+          ) : (
+            <button
+              onClick={() => addItem({ productId: id, name, price, image })}
+              disabled={stock <= 0}
+              className="bg-[#4A7C8A] text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-[#3A6270] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add to Cart
+            </button>
+          )}
         </div>
       </div>
     </div>

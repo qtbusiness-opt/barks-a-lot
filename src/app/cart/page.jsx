@@ -28,7 +28,7 @@ export default function CartPage() {
       <div className="space-y-4">
         {items.map((item) => (
           <div
-            key={item.id}
+            key={item.key}
             className="bg-white rounded-xl shadow-sm p-4 flex items-center gap-4"
           >
             <img
@@ -42,14 +42,16 @@ export default function CartPage() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                onClick={() => updateQuantity(item.key, item.quantity - 1)}
+                aria-label={`Decrease quantity of ${item.name}`}
                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
               >
                 -
               </button>
               <span className="w-8 text-center font-medium">{item.quantity}</span>
               <button
-                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                onClick={() => updateQuantity(item.key, item.quantity + 1)}
+                aria-label={`Increase quantity of ${item.name}`}
                 className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
               >
                 +
@@ -59,7 +61,8 @@ export default function CartPage() {
               ${(item.price * item.quantity).toFixed(2)}
             </p>
             <button
-              onClick={() => removeItem(item.id)}
+              onClick={() => removeItem(item.key)}
+              aria-label={`Remove ${item.name} from cart`}
               className="text-red-400 hover:text-red-600 transition"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
