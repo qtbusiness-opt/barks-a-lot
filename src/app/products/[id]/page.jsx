@@ -23,7 +23,6 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [variantId, setVariantId] = useState(null);
   const [qty, setQuantity] = useState(1);
-  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -52,6 +51,7 @@ export default function ProductDetailPage() {
   const purchasable =
     product.available && stock > 0 && (!hasVariants || variant !== null);
 
+  // The added-to-cart notice (drawer/bottom sheet) provides the feedback.
   const handleAdd = () => {
     addItem(
       {
@@ -63,8 +63,6 @@ export default function ProductDetailPage() {
       },
       qty
     );
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
   };
 
   return (
@@ -175,19 +173,8 @@ export default function ProductDetailPage() {
               ? "Out of Stock"
               : hasVariants && !variant
               ? "Choose an Option"
-              : added
-              ? "Added to Cart!"
               : "Add to Cart"}
           </button>
-
-          {added && (
-            <Link
-              href="/cart"
-              className="mt-4 inline-block text-[#4A7C8A] hover:underline font-medium ml-4"
-            >
-              View Cart &rarr;
-            </Link>
-          )}
         </div>
       </div>
     </div>

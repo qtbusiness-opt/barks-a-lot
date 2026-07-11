@@ -12,6 +12,9 @@ function lineKey(productId, variantId) {
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
+  // The most recently added item, consumed by the added-to-cart notice
+  // (drawer on desktop, bottom sheet on mobile).
+  const [lastAdded, setLastAdded] = useState(null);
 
   useEffect(() => {
     // localStorage is client-only; loading after mount (instead of in the
@@ -48,7 +51,10 @@ export function CartProvider({ children }) {
       }
       return [...prev, { ...entry, key, quantity }];
     });
+    setLastAdded({ ...entry, quantity });
   };
+
+  const dismissLastAdded = () => setLastAdded(null);
 
   const removeItem = (key) => {
     setItems((prev) => prev.filter((i) => i.key !== key));
@@ -71,7 +77,17 @@ export function CartProvider({ children }) {
 
   return (
     <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clearCart, total, itemCount }}
+      value={{
+        items,
+        addItem,
+        removeItem,
+        updateQuantity,
+        clearCart,
+        total,
+        itemCount,
+        lastAdded,
+        dismissLastAdded,
+      }}
     >
       {children}
     </CartContext.Provider>

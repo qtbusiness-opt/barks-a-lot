@@ -1,6 +1,7 @@
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import AddedToCartNotice from "@/components/AddedToCartNotice";
 import Script from "next/script";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
@@ -37,6 +38,7 @@ export default function RootLayout({ children }) {
             <Navbar />
             <main className="flex-1">{children}</main>
             <Footer />
+            <AddedToCartNotice />
           </CartProvider>
         </AuthProvider>
         <Script
