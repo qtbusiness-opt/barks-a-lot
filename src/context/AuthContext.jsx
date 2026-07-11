@@ -30,7 +30,13 @@ function AuthState({ children }) {
 
   // Send everyone (admin or customer) back to the homepage on logout so
   // they never land stranded on a page that now requires a session.
-  const logout = () => signOut({ redirectTo: "/" });
+  // Navigate client-side rather than via Auth.js's redirectTo: the server
+  // builds that URL from the host it's bound to, which is 0.0.0.0 inside
+  // Docker — the browser's own origin is always right.
+  const logout = async () => {
+    await signOut({ redirect: false });
+    window.location.assign("/");
+  };
 
   return (
     <AuthContext.Provider
