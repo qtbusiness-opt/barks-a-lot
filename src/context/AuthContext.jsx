@@ -1,7 +1,13 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { SessionProvider, useSession, signIn, signOut } from "next-auth/react";
+import {
+  SessionProvider,
+  useSession,
+  getSession,
+  signIn,
+  signOut,
+} from "next-auth/react";
 import api from "@/lib/api";
 
 const AuthContext = createContext(undefined);
@@ -18,9 +24,13 @@ function AuthState({ children }) {
       }
     : null;
 
+  // Returns the signed-in user so callers can route by role (admins land
+  // on the dashboard).
   const login = async (email, password) => {
     const res = await signIn("credentials", { redirect: false, email, password });
     if (res?.error) throw new Error("Invalid credentials");
+    const fresh = await getSession();
+    return fresh?.user ?? null;
   };
 
   const register = async (name, email, password) => {
@@ -35,6 +45,11 @@ function AuthState({ children }) {
   // Docker — the browser's own origin is always right.
   const logout = async () => {
     await signOut({ redirect: false });
+    // The cart belongs to the person, not the browser — clear it so the
+    // next user of this device doesn't inherit it. The full-page
+    // navigation below re-initializes CartProvider from the (now empty)
+    // storage.
+    localStorage.removeItem("barks-cart");
     window.location.assign("/");
   };
 

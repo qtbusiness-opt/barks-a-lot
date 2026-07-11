@@ -18,8 +18,8 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await login(email, password);
-      router.push("/");
+      const user = await login(email, password);
+      router.push(user?.role === "admin" ? "/admin" : "/");
     } catch {
       setError("Invalid email or password");
     } finally {

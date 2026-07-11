@@ -7,13 +7,25 @@ import ProductCard from "@/components/ProductCard";
 
 export default function HomePage() {
   const [featured, setFeatured] = useState([]);
+  const [announcement, setAnnouncement] = useState(null);
 
   useEffect(() => {
     api.get("/products?featured=true").then((res) => setFeatured(res.data.products));
+    api.get("/announcements").then((res) => setAnnouncement(res.data.announcement));
   }, []);
 
   return (
     <div>
+      {/* Latest store announcement */}
+      {announcement && (
+        <div className="bg-[#C8722A] text-white">
+          <p className="max-w-7xl mx-auto safe-x py-2.5 text-sm text-center">
+            <span className="font-bold">{announcement.title}:</span>{" "}
+            {announcement.body}
+          </p>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="bg-linear-to-br from-[#4A7C8A] to-[#3A6270] text-white">
         <div className="max-w-7xl mx-auto safe-x py-12 sm:py-28 flex flex-col items-center text-center">

@@ -358,3 +358,111 @@ test("expired limited drops are hidden and cannot be purchased", async () => {
   });
   assert.equal(purchase.status, 409);
 });
+
+test("admin stats are admin-only and back the four dashboard panels", async () => {
+  const anon = await api("GET", "/admin/stats");
+  assert.equal(anon.status, 403);
+
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const res = await api("GET", "/admin/stats", { cookie });
+  assert.equal(res.status, 200);
+  const { stats } = res.data;
+  assert.ok(stats.orders.total >= 1);
+  assert.ok(stats.products.inStock >= 1);
+  assert.ok(typeof stats.announcements === "number");
+  assert.ok(typeof stats.notifications === "number");
+});
+
+test("admins can create products that appear on the storefront", async () => {
+  const payload = {
+    name: "Test Admin Biscuit",
+    description: "Created through the admin dashboard",
+    price: 7.5,
+    image: "/images/products/squeaky-bone.svg",
+    category: "treats",
+    quantity: 5,
+    featured: false,
+  };
+
+  const anon = await api("POST", "/admin/products", { body: payload });
+  assert.equal(anon.status, 403);
+
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  const invalid = await api("POST", "/admin/products", {
+    body: { ...payload, price: -2, category: "nonsense" },
+    cookie,
+  });
+  assert.equal(invalid.status, 400);
+
+  const created = await api("POST", "/admin/products", { body: payload, cookie });
+  assert.equal(created.status, 201);
+  assert.equal(created.data.product.inStock, true);
+
+  const zeroStock = await api("POST", "/admin/products", {
+    body: { ...payload, name: "Test Sold Out Biscuit", quantity: 0 },
+    cookie,
+  });
+  assert.equal(zeroStock.status, 201);
+  assert.equal(zeroStock.data.product.inStock, false);
+
+  const { data } = await api("GET", "/products");
+  assert.ok(
+    data.products.some((p) => p.id === created.data.product.id),
+    "new product is visible on the public storefront"
+  );
+});
+
+test("status changes record a notification tied to the order email", async () => {
+  const email = "notify-me@test.local";
+  const { data: products } = await api("GET", "/products");
+  const product = products.products.find((p) => p.variants.length === 0 && p.quantity >= 1);
+
+  const order = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      guestEmail: email,
+    },
+  });
+  assert.equal(order.status, 201);
+
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const list = await api("GET", "/admin/orders", { cookie });
+  const target = list.data.orders.find(
+    (o) => o.confirmationNumber === order.data.order.confirmationNumber
+  );
+  const patched = await api("PATCH", `/admin/orders/${target.id}`, {
+    body: { status: "delivered" },
+    cookie,
+  });
+  assert.equal(patched.status, 200);
+
+  const notifications = await api("GET", "/admin/notifications", { cookie });
+  assert.equal(notifications.status, 200);
+  assert.ok(
+    notifications.data.notifications.some(
+      (n) => n.email === email && n.message.includes("delivered")
+    ),
+    "notification recorded against the guest email"
+  );
+});
+
+test("announcements: admin creates, storefront shows the latest", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  const anon = await api("POST", "/admin/announcements", {
+    body: { title: "x", body: "y" },
+  });
+  assert.equal(anon.status, 403);
+
+  const created = await api("POST", "/admin/announcements", {
+    body: { title: "Market This Weekend", body: "Find us at the farmers market Saturday 9-2!" },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+
+  const latest = await api("GET", "/announcements");
+  assert.equal(latest.status, 200);
+  assert.equal(latest.data.announcement.title, "Market This Weekend");
+});
