@@ -16,7 +16,7 @@ import { PrismaClient } from "@prisma/client";
 const PORT = 4123;
 const BASE = `http://localhost:${PORT}`;
 const ADMIN_EMAIL = "admin@test.local";
-const ADMIN_PASSWORD = "test-admin-pw";
+const ADMIN_PASSWORD = "test-admin-pw8";
 
 let server;
 let dbDir;
@@ -800,4 +800,49 @@ test("image uploads are admin-only, stored, and served back", async () => {
   // Path traversal in the name is a 404, not a file read.
   const traversal = await fetch(`${BASE}/api/uploads/..%2F..%2Fpackage.json`);
   assert.equal(traversal.status, 404);
+});
+
+test("admins can create admin accounts with hardened passwords", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  const anon = await api("POST", "/admin/users", {
+    body: { name: "Sneaky", email: "sneaky@test.local", password: "password1" },
+  });
+  assert.equal(anon.status, 403);
+
+  // Too short, and missing a number — both rejected.
+  const short = await api("POST", "/admin/users", {
+    body: { name: "Partner", email: "partner@test.local", password: "abc1234" },
+    cookie,
+  });
+  assert.equal(short.status, 400);
+  const noNumber = await api("POST", "/admin/users", {
+    body: { name: "Partner", email: "partner@test.local", password: "abcdefgh" },
+    cookie,
+  });
+  assert.equal(noNumber.status, 400);
+
+  const created = await api("POST", "/admin/users", {
+    body: { name: "Partner", email: "partner@test.local", password: "trusty-pup8" },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  assert.ok(!("password" in created.data.admin), "password never returned");
+
+  // The new admin can log in immediately (pre-verified) and use admin APIs.
+  const partnerCookie = await loginAs("partner@test.local", "trusty-pup8");
+  assert.match(partnerCookie, /authjs\.session-token=/);
+  const stats = await api("GET", "/admin/stats", { cookie: partnerCookie });
+  assert.equal(stats.status, 200);
+  assert.ok(stats.data.stats.adminUsers >= 2);
+
+  const list = await api("GET", "/admin/users", { cookie });
+  assert.ok(list.data.admins.some((a) => a.email === "partner@test.local"));
+
+  // Duplicate emails are rejected.
+  const dupe = await api("POST", "/admin/users", {
+    body: { name: "Partner", email: "partner@test.local", password: "trusty-pup8" },
+    cookie,
+  });
+  assert.equal(dupe.status, 409);
 });

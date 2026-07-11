@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { isWithinWindow } from "@/lib/catalog";
+import { sendOrderConfirmationEmail } from "@/lib/order-emails";
 
 function generateConfirmationNumber() {
   return `BAL-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -245,6 +246,9 @@ export async function POST(req) {
         },
       });
     });
+
+    // Fire-and-forget: a mail hiccup must never fail a placed order.
+    await sendOrderConfirmationEmail(order);
 
     return NextResponse.json({ order }, { status: 201 });
   } catch (err) {

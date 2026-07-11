@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { sendOrderStatusEmail } from "@/lib/order-emails";
 
 const statusSchema = z.object({
   status: z.enum(["pending", "shipped", "delivered", "cancelled"]),
@@ -43,13 +44,13 @@ export async function PATCH(req, { params }) {
     // email for customers, guest email for guest checkouts).
     const email = order.user?.email ?? order.guestEmail;
     if (email) {
+      const message = `Your order ${order.confirmationNumber} ${STATUS_MESSAGES[status]}.`;
       await prisma.notification.create({
-        data: {
-          email,
-          orderId: order.id,
-          message: `Your order ${order.confirmationNumber} ${STATUS_MESSAGES[status]}.`,
-        },
+        data: { email, orderId: order.id, message },
       });
+      // The recorded notification is the source of truth; the email is
+      // best-effort delivery of the same message.
+      await sendOrderStatusEmail(order, message);
     }
 
     return NextResponse.json({ order });

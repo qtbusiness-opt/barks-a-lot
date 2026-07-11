@@ -98,6 +98,14 @@ export default function AdminDashboardPage() {
           value={stats?.upcomingEvents}
           detail="Manage markets and expos on the calendar"
         />
+        <StatPanel
+          href="/admin/users"
+          icon="🔑"
+          accent="bg-blue-500/10"
+          label="Admin Accounts"
+          value={stats?.adminUsers}
+          detail="Create and review admin logins"
+        />
       </div>
     </AdminShell>
   );
