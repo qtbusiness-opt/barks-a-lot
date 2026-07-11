@@ -466,3 +466,179 @@ test("announcements: admin creates, storefront shows the latest", async () => {
   assert.equal(latest.status, 200);
   assert.equal(latest.data.announcement.title, "Market This Weekend");
 });
+
+test("admins can edit products; unchecking In Stock wipes quantity", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Test Editable Chew",
+      description: "About to be edited",
+      price: 5,
+      image: "/images/products/rope-toy.svg",
+      category: "toys",
+      quantity: 9,
+      featured: false,
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const id = created.data.product.id;
+
+  const edited = await api("PATCH", `/admin/products/${id}`, {
+    body: { price: 6.5, name: "Test Edited Chew" },
+    cookie,
+  });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.data.product.price, 6.5);
+  assert.equal(edited.data.product.name, "Test Edited Chew");
+  assert.equal(edited.data.product.quantity, 9);
+
+  // Unchecking In Stock wipes the quantity to zero.
+  const wiped = await api("PATCH", `/admin/products/${id}`, {
+    body: { inStock: false },
+    cookie,
+  });
+  assert.equal(wiped.status, 200);
+  assert.equal(wiped.data.product.quantity, 0);
+  assert.equal(wiped.data.product.inStock, false);
+
+  // Re-checking with a quantity restores stock.
+  const restocked = await api("PATCH", `/admin/products/${id}`, {
+    body: { inStock: true, quantity: 4 },
+    cookie,
+  });
+  assert.equal(restocked.data.product.quantity, 4);
+  assert.equal(restocked.data.product.inStock, true);
+
+  const anon = await api("PATCH", `/admin/products/${id}`, {
+    body: { price: 1 },
+  });
+  assert.equal(anon.status, 403);
+});
+
+test("product deletion works but is blocked by order history", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  const fresh = await api("POST", "/admin/products", {
+    body: {
+      name: "Test Deletable Toy",
+      description: "Never ordered",
+      price: 3,
+      image: "/images/products/rope-toy.svg",
+      category: "toys",
+      quantity: 2,
+      featured: false,
+    },
+    cookie,
+  });
+  const freshId = fresh.data.product.id;
+
+  const ordered = await api("POST", "/admin/products", {
+    body: {
+      name: "Test Ordered Toy",
+      description: "Has order history",
+      price: 3,
+      image: "/images/products/rope-toy.svg",
+      category: "toys",
+      quantity: 5,
+      featured: false,
+    },
+    cookie,
+  });
+  const orderedId = ordered.data.product.id;
+  const order = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: orderedId, quantity: 1 }],
+      fulfillmentType: "pickup",
+      guestEmail: "history@test.local",
+    },
+  });
+  assert.equal(order.status, 201);
+
+  const deleted = await api("DELETE", `/admin/products/${freshId}`, { cookie });
+  assert.equal(deleted.status, 200);
+
+  const blocked = await api("DELETE", `/admin/products/${orderedId}`, { cookie });
+  assert.equal(blocked.status, 409);
+
+  const list = await api("GET", "/admin/products", { cookie });
+  assert.ok(!list.data.products.some((p) => p.id === freshId));
+  assert.ok(list.data.products.some((p) => p.id === orderedId));
+});
+
+test("admins can edit and delete announcements", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  const created = await api("POST", "/admin/announcements", {
+    body: { title: "Temp Notice", body: "Original text" },
+    cookie,
+  });
+  const id = created.data.announcement.id;
+
+  const edited = await api("PATCH", `/admin/announcements/${id}`, {
+    body: { body: "Edited text" },
+    cookie,
+  });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.data.announcement.body, "Edited text");
+
+  const deleted = await api("DELETE", `/admin/announcements/${id}`, { cookie });
+  assert.equal(deleted.status, 200);
+
+  const list = await api("GET", "/admin/announcements", { cookie });
+  assert.ok(!list.data.announcements.some((a) => a.id === id));
+});
+
+test("events: admin CRUD, public read-only calendar queries", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const date = "2031-05-17";
+
+  const anonCreate = await api("POST", "/admin/events", {
+    body: { title: "Nope", description: "x", date, color: "teal" },
+  });
+  assert.equal(anonCreate.status, 403);
+
+  const created = await api("POST", "/admin/events", {
+    body: {
+      title: "Test Market Day",
+      description: "Booth by the fountain",
+      location: "Town Square",
+      date,
+      color: "green",
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const id = created.data.event.id;
+
+  // Public month + day queries see it.
+  const month = await api("GET", "/events?month=2031-05");
+  assert.ok(month.data.events.some((e) => e.id === id));
+  const day = await api("GET", `/events?date=${date}`);
+  assert.equal(day.data.events.length, 1);
+  assert.equal(day.data.events[0].color, "green");
+
+  const otherDay = await api("GET", "/events?date=2031-05-18");
+  assert.equal(otherDay.data.events.length, 0);
+
+  // Edit moves the date and recolors the badge.
+  const patched = await api("PATCH", `/admin/events/${id}`, {
+    body: { date: "2031-06-02", color: "purple" },
+    cookie,
+  });
+  assert.equal(patched.status, 200);
+  const moved = await api("GET", "/events?date=2031-06-02");
+  assert.equal(moved.data.events[0].color, "purple");
+
+  const badColor = await api("PATCH", `/admin/events/${id}`, {
+    body: { color: "hot-pink" },
+    cookie,
+  });
+  assert.equal(badColor.status, 400);
+
+  const deleted = await api("DELETE", `/admin/events/${id}`, { cookie });
+  assert.equal(deleted.status, 200);
+  const gone = await api("GET", "/events?date=2031-06-02");
+  assert.equal(gone.data.events.length, 0);
+});

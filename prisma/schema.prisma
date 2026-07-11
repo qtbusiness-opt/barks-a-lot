@@ -112,3 +112,17 @@ model Notification {
   orderId   String?
   createdAt DateTime @default(now())
 }
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  location    String?
+  // Calendar day of the event, stored as midnight UTC and compared by
+  // YYYY-MM-DD key so it renders the same in every timezone.
+  date        DateTime
+  // Badge color key from the fixed palette, chosen by the admin.
+  color       String   @default("teal")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

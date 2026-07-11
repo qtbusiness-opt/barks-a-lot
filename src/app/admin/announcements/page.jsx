@@ -8,6 +8,105 @@ import AdminShell from "@/components/AdminShell";
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
 
+function AnnouncementRow({ announcement, onSaved, onDeleted, onError }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ title: "", body: "" });
+
+  const startEdit = () => {
+    setForm({ title: announcement.title, body: announcement.body });
+    setEditing(true);
+  };
+
+  const save = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    onError("");
+    try {
+      const res = await api.patch(
+        `/admin/announcements/${announcement.id}`,
+        form
+      );
+      onSaved(res.data.announcement);
+      setEditing(false);
+    } catch (err) {
+      onError(err.response?.data?.error || "Failed to update announcement.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm(`Delete "${announcement.title}"?`)) return;
+    onError("");
+    try {
+      await api.delete(`/admin/announcements/${announcement.id}`);
+      onDeleted(announcement.id);
+    } catch (err) {
+      onError(err.response?.data?.error || "Failed to delete announcement.");
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="flex justify-between items-start gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-[#2A4A52]">{announcement.title}</p>
+          <p className="text-sm text-gray-600 mt-1">{announcement.body}</p>
+        </div>
+        <p className="text-xs text-gray-400 shrink-0">
+          {new Date(announcement.createdAt).toLocaleDateString()}
+        </p>
+      </div>
+      <div className="flex gap-2 mt-3">
+        <button
+          onClick={editing ? () => setEditing(false) : startEdit}
+          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+        >
+          {editing ? "Close" : "Edit"}
+        </button>
+        <button
+          onClick={remove}
+          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition"
+        >
+          Delete
+        </button>
+      </div>
+      {editing && (
+        <form onSubmit={save} className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+              required
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <textarea
+              value={form.body}
+              onChange={(e) => setForm((p) => ({ ...p, body: e.target.value }))}
+              required
+              rows={3}
+              className={inputClass}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 export default function AdminAnnouncementsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -105,15 +204,19 @@ export default function AdminAnnouncementsPage() {
           ) : (
             <div className="space-y-3">
               {announcements.map((a) => (
-                <div key={a.id} className="bg-white rounded-xl shadow-sm p-4">
-                  <div className="flex justify-between items-start gap-3">
-                    <p className="font-semibold text-[#2A4A52]">{a.title}</p>
-                    <p className="text-xs text-gray-400 shrink-0">
-                      {new Date(a.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">{a.body}</p>
-                </div>
+                <AnnouncementRow
+                  key={a.id}
+                  announcement={a}
+                  onSaved={(updated) =>
+                    setAnnouncements((prev) =>
+                      prev.map((x) => (x.id === updated.id ? updated : x))
+                    )
+                  }
+                  onDeleted={(id) =>
+                    setAnnouncements((prev) => prev.filter((x) => x.id !== id))
+                  }
+                  onError={setError}
+                />
               ))}
             </div>
           )}
