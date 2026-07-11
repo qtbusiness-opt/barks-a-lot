@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Barks-A-Lot Treats & More
 
-## Getting Started
+E-commerce storefront and admin for Barks-A-Lot: Next.js (App Router, JSX),
+Prisma + SQLite, Auth.js, Tailwind, Docker.
 
-First, run the development server:
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Create your .env (see "API keys" below)
+# 2. Start the dev stack (hot reload, seeded catalog + admin account)
+docker compose -f docker-compose.dev.yml up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Storefront: http://localhost:3000
+- Admin login: `admin@barks-a-lot.com` / `admin123` (dev defaults —
+  override with `ADMIN_EMAIL` / `ADMIN_PASSWORD`; admin passwords need
+  8+ characters with a letter and a number)
+- Qual runs on port 3001 (`docker-compose.qual.yml`), prod on 3002
+  (`docker-compose.prod.yml`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API keys
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env` file next to the compose files (it's gitignored; compose
+reads it automatically) with:
 
-## Learn More
+```bash
+# Google Maps — event address autofill + embedded maps.
+# Browser-exposed by design: restrict it by HTTP referrer in Google Cloud
+# Console (Maps Embed API + Places API enabled).
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your-maps-key"
 
-To learn more about Next.js, take a look at the following resources:
+# Resend — verification, order confirmation, and status-update emails.
+RESEND_API_KEY="re_..."
+# Until your domain is verified in Resend, their sandbox sender is the
+# only allowed from-address and delivery is limited to your own account
+# email. After verifying barks-a-lot.com in Resend, switch to e.g.
+# "Barks-A-Lot <orders@barks-a-lot.com>".
+EMAIL_FROM="Barks-A-Lot <onboarding@resend.dev>"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Absolute base URL used inside emailed links (verification etc.)
+APP_URL="http://localhost:3000"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Without these keys everything still runs: the location field is a plain
+input, maps render as open-in-Google-Maps links, and outgoing email is
+logged to the server console instead.
 
-## Deploy on Vercel
+Note for qual/prod: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is baked into the
+client bundle at image build time, so rebuild (`--build`) after changing it.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Everyday commands
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm test          # integration + unit tests (boots a real server)
+npm run lint      # eslint
+npm run format    # prettier
+npx prisma migrate dev --name <change>   # after editing schema.prisma
+```
