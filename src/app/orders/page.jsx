@@ -70,7 +70,11 @@ export default function OrdersPage() {
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
-                      ? "Pickup at market/event"
+                      ? order.pickupEvent
+                        ? `Pickup at ${order.pickupEvent.title} — ${new Date(
+                            `${String(order.pickupEvent.date).slice(0, 10)}T00:00:00`
+                          ).toLocaleDateString()}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
+                        : "Pickup at market/event"
                       : "Ships to your address"}
                   </p>
                 </div>

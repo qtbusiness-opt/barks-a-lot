@@ -73,6 +73,9 @@ model Order {
   channel            String      @default("online")
   // "shipping" | "pickup" — pickup orders (markets/expos) need no address.
   fulfillmentType    String      @default("shipping")
+  // The market/expo the customer chose to pick up at.
+  pickupEventId      String?
+  pickupEvent        Event?      @relation(fields: [pickupEventId], references: [id])
   total              Float
   address            String?
   city               String?
@@ -125,4 +128,5 @@ model Event {
   color       String   @default("teal")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  pickupOrders Order[]
 }

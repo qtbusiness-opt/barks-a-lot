@@ -28,6 +28,8 @@ const orderSchema = z
     zip: z.string().trim().max(20).optional(),
     guestEmail: z.email().optional(),
     guestName: z.string().trim().max(100).optional(),
+    // Event id, or "next" for the nearest upcoming event that isn't today.
+    pickupEventId: z.string().min(1).optional(),
   })
   .refine(
     // Pickup orders (collected at a market/event) need no address.
@@ -45,7 +47,10 @@ export async function GET() {
 
   const orders = await prisma.order.findMany({
     where: { userId: auth.userId },
-    include: { items: { include: { product: true, variant: true } } },
+    include: {
+      items: { include: { product: true, variant: true } },
+      pickupEvent: true,
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -70,8 +75,17 @@ export async function POST(req) {
         { status: 400 }
       );
     }
-    const { items, fulfillmentType, address, city, state, zip, guestEmail, guestName } =
-      parsed.data;
+    const {
+      items,
+      fulfillmentType,
+      address,
+      city,
+      state,
+      zip,
+      guestEmail,
+      guestName,
+      pickupEventId,
+    } = parsed.data;
 
     // Guest orders have no account, so an email is required to reference
     // the order later.
@@ -80,6 +94,48 @@ export async function POST(req) {
         { error: "Email is required for guest checkout" },
         { status: 400 }
       );
+    }
+
+    // Pickup orders are tied to a specific market/expo. "next" resolves
+    // to the nearest upcoming event that is not today.
+    let pickupEvent = null;
+    if (fulfillmentType === "pickup") {
+      if (!pickupEventId) {
+        return NextResponse.json(
+          { error: "Please choose a pickup event" },
+          { status: 400 }
+        );
+      }
+      const startOfToday = new Date();
+      startOfToday.setUTCHours(0, 0, 0, 0);
+      if (pickupEventId === "next") {
+        const startOfTomorrow = new Date(
+          startOfToday.getTime() + 24 * 60 * 60 * 1000
+        );
+        pickupEvent = await prisma.event.findFirst({
+          where: { date: { gte: startOfTomorrow } },
+          orderBy: { date: "asc" },
+        });
+        if (!pickupEvent) {
+          return NextResponse.json(
+            {
+              error:
+                "There are no upcoming events to assign — please pick a specific event",
+            },
+            { status: 409 }
+          );
+        }
+      } else {
+        pickupEvent = await prisma.event.findUnique({
+          where: { id: pickupEventId },
+        });
+        if (!pickupEvent || pickupEvent.date < startOfToday) {
+          return NextResponse.json(
+            { error: "That event isn't available for pickup" },
+            { status: 409 }
+          );
+        }
+      }
     }
 
     // Price, availability, and stock are verified server-side inside one
@@ -116,7 +172,10 @@ export async function POST(req) {
             throw fail(400, `Please choose an option for ${product.name}`);
           }
           if (variant.quantity < item.quantity) {
-            throw fail(409, `Not enough stock for ${product.name} (${variant.name})`);
+            throw fail(
+              409,
+              `Not enough stock for ${product.name} (${variant.name})`
+            );
           }
           const price = variant.price ?? product.price;
           total += price * item.quantity;
@@ -172,6 +231,7 @@ export async function POST(req) {
           confirmationNumber: generateConfirmationNumber(),
           channel: "online",
           fulfillmentType,
+          pickupEventId: pickupEvent?.id ?? null,
           total,
           address: address ?? null,
           city: city ?? null,
@@ -179,7 +239,10 @@ export async function POST(req) {
           zip: zip ?? null,
           items: { create: orderItems },
         },
-        include: { items: { include: { product: true, variant: true } } },
+        include: {
+          items: { include: { product: true, variant: true } },
+          pickupEvent: true,
+        },
       });
     });
 

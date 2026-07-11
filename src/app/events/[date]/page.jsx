@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { EVENT_COLORS, EVENT_COLOR_KEYS, badgeClass } from "@/lib/event-colors";
+import LocationInput from "@/components/LocationInput";
+import EventMap from "@/components/EventMap";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -100,6 +102,7 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
         </p>
       )}
       <p className="text-gray-600 mt-3 leading-relaxed">{event.description}</p>
+      <EventMap location={event.location} />
 
       {isAdmin && (
         <>
@@ -149,10 +152,9 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Location
                   </label>
-                  <input
-                    type="text"
+                  <LocationInput
                     value={form.location}
-                    onChange={(e) => update("location", e.target.value)}
+                    onChange={(v) => update("location", v)}
                     className={inputClass}
                   />
                 </div>

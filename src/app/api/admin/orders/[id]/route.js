@@ -35,6 +35,7 @@ export async function PATCH(req, { params }) {
       include: {
         items: { include: { product: true, variant: true } },
         user: { select: { name: true, email: true } },
+        pickupEvent: true,
       },
     });
 

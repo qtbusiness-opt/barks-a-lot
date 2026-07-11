@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
 import { EVENT_COLORS, EVENT_COLOR_KEYS } from "@/lib/event-colors";
+import LocationInput from "@/components/LocationInput";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -86,11 +87,10 @@ function NewEventForm() {
           <label htmlFor="e-loc" className="block text-sm font-medium text-gray-700 mb-1">
             Location (optional)
           </label>
-          <input
+          <LocationInput
             id="e-loc"
-            type="text"
             value={form.location}
-            onChange={(e) => update("location", e.target.value)}
+            onChange={(v) => update("location", v)}
             className={inputClass}
           />
         </div>

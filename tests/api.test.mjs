@@ -55,6 +55,7 @@ before(async () => {
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
     RATE_LIMIT_MAX: "1000",
+    UPLOADS_DIR: path.join(dbDir, "uploads"),
     NODE_ENV: "development",
   };
 
@@ -167,6 +168,7 @@ test("guest pickup order succeeds without address and decrements stock", async (
     body: {
       items: [{ productId: product.id, quantity: 2 }],
       fulfillmentType: "pickup",
+      pickupEventId: "next",
       guestEmail: "guest@test.local",
     },
   });
@@ -198,6 +200,7 @@ test("ordering more than available stock is rejected and nothing is written", as
     body: {
       items: [{ productId: product.id, quantity: product.quantity + 1 }],
       fulfillmentType: "pickup",
+      pickupEventId: "next",
       guestEmail: "guest@test.local",
     },
   });
@@ -277,6 +280,7 @@ test("variant products require an option and track per-variant stock", async () 
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
+      pickupEventId: "next",
       guestEmail: "guest@test.local",
     },
   });
@@ -287,6 +291,7 @@ test("variant products require an option and track per-variant stock", async () 
     body: {
       items: [{ productId: product.id, variantId: variant.id, quantity: 2 }],
       fulfillmentType: "pickup",
+      pickupEventId: "next",
       guestEmail: "guest@test.local",
     },
   });
@@ -307,6 +312,7 @@ test("variant products require an option and track per-variant stock", async () 
         { productId: product.id, variantId: variant.id, quantity: afterVariant.quantity + 1 },
       ],
       fulfillmentType: "pickup",
+      pickupEventId: "next",
       guestEmail: "guest@test.local",
     },
   });
@@ -353,6 +359,7 @@ test("expired limited drops are hidden and cannot be purchased", async () => {
     body: {
       items: [{ productId: expired.id, quantity: 1 }],
       fulfillmentType: "pickup",
+      pickupEventId: "next",
       guestEmail: "guest@test.local",
     },
   });
@@ -422,6 +429,7 @@ test("status changes record a notification tied to the order email", async () =>
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
+      pickupEventId: "next",
       guestEmail: email,
     },
   });
@@ -551,6 +559,7 @@ test("product deletion works but is blocked by order history", async () => {
     body: {
       items: [{ productId: orderedId, quantity: 1 }],
       fulfillmentType: "pickup",
+      pickupEventId: "next",
       guestEmail: "history@test.local",
     },
   });
@@ -641,4 +650,112 @@ test("events: admin CRUD, public read-only calendar queries", async () => {
   assert.equal(deleted.status, 200);
   const gone = await api("GET", "/events?date=2031-06-02");
   assert.equal(gone.data.events.length, 0);
+});
+
+test("pickup orders require an event; Next Event resolves to the nearest not-today", async () => {
+  const { data: products } = await api("GET", "/products");
+  const product = products.products.find((p) => p.variants.length === 0 && p.quantity >= 2);
+
+  // Upcoming endpoint lists the seeded events for the dropdown.
+  const upcoming = await api("GET", "/events?upcoming=true");
+  assert.equal(upcoming.status, 200);
+  assert.ok(upcoming.data.events.length >= 2);
+
+  // Pickup without an event is rejected.
+  const noEvent = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      guestEmail: "pickup@test.local",
+    },
+  });
+  assert.equal(noEvent.status, 400);
+
+  // "next" resolves server-side to the nearest upcoming event (not today):
+  // the seeded Farmers Market, 3 days out.
+  const nextOrder = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "pickup@test.local",
+    },
+  });
+  assert.equal(nextOrder.status, 201);
+  assert.equal(nextOrder.data.order.pickupEvent.title, "Farmers Market");
+
+  // An explicit event id is honored.
+  const expo = upcoming.data.events.find((e) => e.title === "Pet Expo");
+  const explicit = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: expo.id,
+      guestEmail: "pickup@test.local",
+    },
+  });
+  assert.equal(explicit.status, 201);
+  assert.equal(explicit.data.order.pickupEvent.id, expo.id);
+
+  // A bogus event id is rejected.
+  const bogus = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "not-a-real-event",
+      guestEmail: "pickup@test.local",
+    },
+  });
+  assert.equal(bogus.status, 409);
+});
+
+test("image uploads are admin-only, stored, and served back", async () => {
+  // Smallest valid PNG (1x1 transparent).
+  const pngBytes = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+    "base64"
+  );
+
+  const makeForm = (type, name) => {
+    const fd = new FormData();
+    fd.append("file", new Blob([pngBytes], { type }), name);
+    return fd;
+  };
+
+  // Anonymous uploads are forbidden.
+  const anon = await fetch(`${BASE}/api/admin/uploads`, {
+    method: "POST",
+    body: makeForm("image/png", "sneaky.png"),
+  });
+  assert.equal(anon.status, 403);
+
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  // Non-image types are rejected.
+  const badType = await fetch(`${BASE}/api/admin/uploads`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+    body: makeForm("text/plain", "notes.txt"),
+  });
+  assert.equal(badType.status, 400);
+
+  // A PNG uploads and is served back with the right content type.
+  const uploaded = await fetch(`${BASE}/api/admin/uploads`, {
+    method: "POST",
+    headers: { Cookie: cookie },
+    body: makeForm("image/png", "product.png"),
+  });
+  assert.equal(uploaded.status, 201);
+  const { url } = await uploaded.json();
+  assert.match(url, /^\/api\/uploads\/[a-f0-9]{16}\.png$/);
+
+  const served = await fetch(`${BASE}${url}`);
+  assert.equal(served.status, 200);
+  assert.equal(served.headers.get("content-type"), "image/png");
+  const body = Buffer.from(await served.arrayBuffer());
+  assert.deepEqual(body, pngBytes);
+
+  // Path traversal in the name is a 404, not a file read.
+  const traversal = await fetch(`${BASE}/api/uploads/..%2F..%2Fpackage.json`);
+  assert.equal(traversal.status, 404);
 });

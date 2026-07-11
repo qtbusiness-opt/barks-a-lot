@@ -52,3 +52,6 @@ next-env.d.ts
 *.db-journal
 prisma/dev.db
 prisma/dev.db-journal
+
+# runtime uploads
+data/

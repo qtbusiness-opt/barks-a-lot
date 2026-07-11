@@ -72,7 +72,11 @@ export default function AdminOrdersPage() {
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
-                      ? "Pickup at market/event"
+                      ? order.pickupEvent
+                        ? `Pickup at ${order.pickupEvent.title} — ${new Date(
+                            `${String(order.pickupEvent.date).slice(0, 10)}T00:00:00`
+                          ).toLocaleDateString()}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
+                        : "Pickup at market/event"
                       : `Ship to: ${order.address}, ${order.city}, ${order.state} ${order.zip}`}
                     {order.channel === "market" && " · Market sale"}
                   </p>
