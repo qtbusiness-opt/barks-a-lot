@@ -94,3 +94,21 @@ model OrderItem {
   quantity  Int
   price     Float
 }
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  // Admin who created it, for the audit trail.
+  createdBy String
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  // Customer or guest email the notification is addressed to.
+  email     String
+  message   String
+  orderId   String?
+  createdAt DateTime @default(now())
+}
