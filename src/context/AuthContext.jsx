@@ -28,7 +28,9 @@ function AuthState({ children }) {
     await login(email, password);
   };
 
-  const logout = () => signOut({ redirect: false });
+  // Send everyone (admin or customer) back to the homepage on logout so
+  // they never land stranded on a page that now requires a session.
+  const logout = () => signOut({ redirectTo: "/" });
 
   return (
     <AuthContext.Provider
