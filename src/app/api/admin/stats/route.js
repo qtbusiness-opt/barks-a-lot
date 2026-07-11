@@ -9,6 +9,9 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+
   const [
     totalOrders,
     pendingOrders,
@@ -17,6 +20,7 @@ export async function GET() {
     variantUnits,
     announcements,
     notifications,
+    upcomingEvents,
   ] = await Promise.all([
     prisma.order.count(),
     prisma.order.count({ where: { status: "pending" } }),
@@ -25,6 +29,7 @@ export async function GET() {
     prisma.productVariant.aggregate({ _sum: { quantity: true } }),
     prisma.announcement.count(),
     prisma.notification.count(),
+    prisma.event.count({ where: { date: { gte: startOfToday } } }),
   ]);
 
   return NextResponse.json({
@@ -36,6 +41,7 @@ export async function GET() {
       },
       announcements,
       notifications,
+      upcomingEvents,
     },
   });
 }

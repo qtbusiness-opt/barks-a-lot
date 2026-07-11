@@ -51,7 +51,7 @@ export default function AdminDashboardPage() {
         <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <StatPanel
           href="/admin/orders"
           icon="📦"
@@ -89,6 +89,14 @@ export default function AdminDashboardPage() {
           label="Customer Notifications"
           value={stats?.notifications}
           detail="Order updates sent to customer emails"
+        />
+        <StatPanel
+          href="/events"
+          icon="📅"
+          accent="bg-purple-500/10"
+          label="Upcoming Events"
+          value={stats?.upcomingEvents}
+          detail="Manage markets and expos on the calendar"
         />
       </div>
     </AdminShell>

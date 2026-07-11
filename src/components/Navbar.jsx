@@ -30,6 +30,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-6">
             <Link href="/" className="hover:text-[#E8DFC8] transition">Home</Link>
             <Link href="/products" className="hover:text-[#E8DFC8] transition">Shop</Link>
+            <Link href="/events" className="hover:text-[#E8DFC8] transition">Events</Link>
             {user && (
               <Link href="/orders" className="hover:text-[#E8DFC8] transition">Orders</Link>
             )}
@@ -102,6 +103,7 @@ export default function Navbar() {
           <div className="md:hidden pb-4 divide-y divide-white/10">
             <Link href="/" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Home</Link>
             <Link href="/products" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Shop</Link>
+            <Link href="/events" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Events</Link>
             {user && (
               <Link href="/orders" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Orders</Link>
             )}
