@@ -119,12 +119,54 @@ async function loginAs(email, password) {
   return sessionCookie ? `${csrfCookies}; ${sessionCookie}` : "";
 }
 
-test("register creates an account", async () => {
+test("register creates an unverified account; login is blocked until verified", async () => {
   const res = await api("POST", "/auth/register", {
     body: { name: "Test User", email: "user@test.local", password: "secret123" },
   });
   assert.equal(res.status, 201);
   assert.equal(res.data.user.role, "customer");
+  // Test server runs in development with no mail provider, so the
+  // verification link comes back for local testing.
+  assert.ok(res.data.devVerificationUrl, "dev verification link returned");
+
+  // Correct credentials are rejected until the email is verified.
+  const blocked = await loginAs("user@test.local", "secret123");
+  assert.equal(blocked, "");
+
+  // Consuming the emailed token verifies the account...
+  const token = new URL(res.data.devVerificationUrl).searchParams.get("token");
+  const verified = await api("POST", "/auth/verify", { body: { token } });
+  assert.equal(verified.status, 200);
+
+  // ...and the token is single-use.
+  const reused = await api("POST", "/auth/verify", { body: { token } });
+  assert.equal(reused.status, 400);
+
+  const cookie = await loginAs("user@test.local", "secret123");
+  assert.match(cookie, /authjs\.session-token=/);
+});
+
+test("resend verification always answers 200 and reissues for unverified accounts", async () => {
+  const reg = await api("POST", "/auth/register", {
+    body: { name: "Resend Tester", email: "resend@test.local", password: "secret123" },
+  });
+  assert.equal(reg.status, 201);
+
+  // Unknown emails get the same response — no account probing.
+  const unknown = await api("POST", "/auth/resend-verification", {
+    body: { email: "who@test.local" },
+  });
+  assert.equal(unknown.status, 200);
+
+  const resent = await api("POST", "/auth/resend-verification", {
+    body: { email: "resend@test.local" },
+  });
+  assert.equal(resent.status, 200);
+
+  // The original link was invalidated by the resend; garbage tokens fail.
+  const oldToken = new URL(reg.data.devVerificationUrl).searchParams.get("token");
+  const stale = await api("POST", "/auth/verify", { body: { token: oldToken } });
+  assert.equal(stale.status, 400);
 });
 
 test("register rejects invalid input", async () => {

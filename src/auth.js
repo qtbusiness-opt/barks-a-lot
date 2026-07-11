@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -9,6 +9,13 @@ const credentialsSchema = z.object({
   email: z.email(),
   password: z.string().min(1),
 });
+
+// Distinguishable from a bad password so the login page can offer to
+// resend the verification email. Only thrown AFTER the password checks
+// out, so it doesn't leak whether an email has an account.
+class EmailUnverified extends CredentialsSignin {
+  code = "email-unverified";
+}
 
 // Admin sessions are kept short (CLAUDE.md §1); customers get a longer
 // "remember me" window. The global maxAge covers customers; admin expiry
@@ -50,6 +57,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!valid) {
           console.warn(`[auth] login failed email=${email}`);
           return null;
+        }
+
+        if (user.role !== "admin" && !user.emailVerified) {
+          console.warn(`[auth] login blocked (unverified) user=${user.id}`);
+          throw new EmailUnverified();
         }
 
         console.info(`[auth] login success user=${user.id} role=${user.role}`);

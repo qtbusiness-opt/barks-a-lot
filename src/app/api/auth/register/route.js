@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { issueVerificationEmail } from "@/lib/verification";
+import { emailConfigured } from "@/lib/mailer";
 
 const registerSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -10,8 +12,8 @@ const registerSchema = z.object({
   password: z.string().min(6).max(100),
 });
 
-// Sign-in itself is handled by Auth.js (/api/auth/[...nextauth]); this
-// route only creates the account. The client signs in right after.
+// Creates the account unverified and emails a verification link — the
+// customer can't sign in until they click it.
 export async function POST(req) {
   if (!rateLimit("register", req)) {
     return NextResponse.json(
@@ -45,10 +47,23 @@ export async function POST(req) {
       data: { email, password: hashedPassword, name },
     });
 
-    console.info(`[auth] account created user=${user.id}`);
+    const verificationUrl = await issueVerificationEmail(
+      user,
+      new URL(req.url).origin
+    );
+
+    console.info(`[auth] account created user=${user.id} (verification sent)`);
 
     return NextResponse.json(
-      { user: { id: user.id, email: user.email, name: user.name, role: user.role } },
+      {
+        user: { id: user.id, email: user.email, name: user.name, role: user.role },
+        message: "Check your email to verify your account.",
+        // Local-dev convenience only: with no email provider configured the
+        // link would otherwise live only in the server logs.
+        ...(!emailConfigured && process.env.NODE_ENV !== "production"
+          ? { devVerificationUrl: verificationUrl }
+          : {}),
+      },
       { status: 201 }
     );
   } catch (err) {

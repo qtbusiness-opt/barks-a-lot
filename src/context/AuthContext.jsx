@@ -28,14 +28,25 @@ function AuthState({ children }) {
   // on the dashboard).
   const login = async (email, password) => {
     const res = await signIn("credentials", { redirect: false, email, password });
-    if (res?.error) throw new Error("Invalid credentials");
+    if (res?.error) {
+      const err = new Error(
+        res.code === "email-unverified"
+          ? "Please verify your email before logging in."
+          : "Invalid credentials"
+      );
+      err.code = res.code;
+      throw err;
+    }
     const fresh = await getSession();
     return fresh?.user ?? null;
   };
 
+  // New accounts must verify their email before they can sign in, so
+  // registration doesn't auto-login; it returns the API response
+  // (message + dev verification link when no mailer is configured).
   const register = async (name, email, password) => {
-    await api.post("/auth/register", { name, email, password });
-    await login(email, password);
+    const res = await api.post("/auth/register", { name, email, password });
+    return res.data;
   };
 
   // Send everyone (admin or customer) back to the homepage on logout so
