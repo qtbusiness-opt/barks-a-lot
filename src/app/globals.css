@@ -40,6 +40,49 @@ body {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
+/* Added-to-cart notice: bottom sheet slides up on phones, drawer slides
+   in from the right on desktop. */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}
+
+.md\:animate-slide-in-right {
+  animation: slide-up 0.25s ease-out;
+}
+
+@media (min-width: 48rem) {
+  .md\:animate-slide-in-right {
+    animation: slide-in-right 0.25s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .md\:animate-slide-in-right {
+    animation: none;
+  }
+}
+
 /* iOS zooms the page when a focused input's font is under 16px — force
    at least 16px on form controls for touch devices. */
 @media (pointer: coarse) {
