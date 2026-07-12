@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
@@ -10,6 +10,32 @@ import { SHIPPING_ENABLED } from "@/lib/features";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+
+// Square Web Payments SDK. The app id is public by design (it only
+// tokenizes cards in the browser); the secret access token lives
+// server-side. Without an app id the card form is skipped and the
+// server skips charging too — payments simply aren't configured yet.
+const SQUARE_APP_ID = process.env.NEXT_PUBLIC_SQUARE_APP_ID;
+const SQUARE_LOCATION_ID = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID;
+const SQUARE_SDK_URL = SQUARE_APP_ID?.startsWith("sandbox-")
+  ? "https://sandbox.web.squarecdn.com/v1/square.js"
+  : "https://web.squarecdn.com/v1/square.js";
+
+function loadSquareSdk() {
+  return new Promise((resolve, reject) => {
+    if (window.Square) return resolve(window.Square);
+    let script = document.querySelector(`script[src="${SQUARE_SDK_URL}"]`);
+    if (!script) {
+      script = document.createElement("script");
+      script.src = SQUARE_SDK_URL;
+      document.head.appendChild(script);
+    }
+    script.addEventListener("load", () => resolve(window.Square));
+    script.addEventListener("error", () =>
+      reject(new Error("Square SDK failed to load"))
+    );
+  });
+}
 
 const eventDay = (event) => String(event.date).slice(0, 10);
 
@@ -105,6 +131,9 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
+  // "off" (Square not configured) | "loading" | "ready" | "error"
+  const [cardStatus, setCardStatus] = useState(SQUARE_APP_ID ? "loading" : "off");
+  const cardRef = useRef(null);
 
   useEffect(() => {
     api
@@ -112,6 +141,38 @@ export default function CheckoutPage() {
       .then((res) => setUpcomingEvents(res.data.events))
       .catch(() => setUpcomingEvents([]));
   }, []);
+
+  // Mount the Square card form when the review step opens; the iframe
+  // keeps card details inside Square — they never touch our servers.
+  useEffect(() => {
+    if (step !== 1 || !SQUARE_APP_ID) return undefined;
+    let cancelled = false;
+    let cardInstance;
+    (async () => {
+      try {
+        const Square = await loadSquareSdk();
+        const payments = SQUARE_LOCATION_ID
+          ? Square.payments(SQUARE_APP_ID, SQUARE_LOCATION_ID)
+          : Square.payments(SQUARE_APP_ID);
+        cardInstance = await payments.card();
+        if (cancelled) {
+          cardInstance.destroy();
+          return;
+        }
+        await cardInstance.attach("#card-container");
+        cardRef.current = cardInstance;
+        setCardStatus("ready");
+      } catch (err) {
+        console.error("[checkout] Square init failed:", err);
+        if (!cancelled) setCardStatus("error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+      cardRef.current = null;
+      cardInstance?.destroy();
+    };
+  }, [step]);
 
   const events = upcomingEvents ?? [];
   const hasEvents = events.length > 0;
@@ -173,11 +234,37 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0 });
   };
 
-  // Square payment processing plugs in here: tokenize the card, then send
-  // the payment token along with the order payload.
+  // Tokenize the card with Square, then send the one-time token with the
+  // order payload; the server charges the verified total.
   const handleProcessPayment = async () => {
     setError("");
     setSubmitting(true);
+
+    let paymentToken;
+    if (SQUARE_APP_ID) {
+      if (!cardRef.current) {
+        setError("The payment form isn't ready yet — give it a second and try again.");
+        setSubmitting(false);
+        return;
+      }
+      try {
+        const result = await cardRef.current.tokenize();
+        if (result.status !== "OK") {
+          setError(
+            result.errors?.[0]?.message ||
+              "Please check your card details and try again."
+          );
+          setSubmitting(false);
+          return;
+        }
+        paymentToken = result.token;
+      } catch {
+        setError("Please check your card details and try again.");
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const res = await api.post("/orders", {
         items: items.map((i) => ({
@@ -195,6 +282,7 @@ export default function CheckoutPage() {
             }
           : { pickupEventId: pickupChoice }),
         ...(user ? {} : { guestEmail: form.guestEmail, guestName: form.guestName }),
+        ...(paymentToken ? { paymentToken } : {}),
       });
       clearCart();
       if (user) {
@@ -493,6 +581,31 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {SQUARE_APP_ID && (
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+              <h2 className="text-xl font-semibold text-[#2A4A52] mb-3">Payment</h2>
+              {cardStatus === "error" ? (
+                <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                  The payment form couldn&apos;t be loaded. Please refresh the
+                  page and try again.
+                </p>
+              ) : (
+                <>
+                  {cardStatus === "loading" && (
+                    <p className="text-sm text-gray-500 mb-2">
+                      Loading secure payment form...
+                    </p>
+                  )}
+                  <div id="card-container" />
+                  <p className="text-xs text-gray-500 mt-2">
+                    Payments are processed securely by Square — your card
+                    details never touch our servers.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => setStep(0)}
@@ -500,11 +613,13 @@ export default function CheckoutPage() {
             >
               Back
             </button>
-            {/* Square payment SDK will mount its card form here; the button
-                then submits the tokenized payment with the order. */}
             <button
               onClick={handleProcessPayment}
-              disabled={submitting || (fulfillmentType === "pickup" && !chosenEvent)}
+              disabled={
+                submitting ||
+                (fulfillmentType === "pickup" && !chosenEvent) ||
+                (SQUARE_APP_ID && cardStatus !== "ready")
+              }
               className="sm:flex-[2] bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
             >
               {submitting

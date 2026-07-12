@@ -7,6 +7,12 @@ import { rateLimit } from "@/lib/rate-limit";
 import { isWithinWindow } from "@/lib/catalog";
 import { sendOrderConfirmationEmail } from "@/lib/order-emails";
 import { SHIPPING_ENABLED } from "@/lib/features";
+import { restockOrderItems } from "@/lib/inventory";
+import {
+  isPaymentConfigured,
+  chargePayment,
+  PaymentError,
+} from "@/lib/payments";
 
 function generateConfirmationNumber() {
   return `BAL-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -34,6 +40,9 @@ const orderSchema = z
     guestName: z.string().trim().max(100).optional(),
     // Event id, or "next" for the nearest upcoming event that isn't today.
     pickupEventId: z.string().min(1).optional(),
+    // Square card token from the Web Payments SDK. Required when payments
+    // are configured; ignored otherwise (dev/tests without a Square token).
+    paymentToken: z.string().min(1).max(500).optional(),
   })
   .refine(
     // Pickup orders (collected at a market/event) need no address.
@@ -89,7 +98,16 @@ export async function POST(req) {
       guestEmail,
       guestName,
       pickupEventId,
+      paymentToken,
     } = parsed.data;
+
+    // With Square configured, no order is created without a card token.
+    if (isPaymentConfigured() && !paymentToken) {
+      return NextResponse.json(
+        { error: "Please enter your card details to place the order" },
+        { status: 400 }
+      );
+    }
 
     // Pickup-only launch: the shipping path stays in the codebase but is
     // refused until SHIPPING_ENABLED is flipped back on.
@@ -263,6 +281,35 @@ export async function POST(req) {
         },
       });
     });
+
+    // Charge the tokenized card for the server-computed total. If the
+    // charge fails, undo the order (restock + delete) so a declined card
+    // never holds inventory — the DB work and the charge succeed or fail
+    // as a pair.
+    if (isPaymentConfigured()) {
+      try {
+        const payment = await chargePayment({
+          sourceId: paymentToken,
+          amountCents: Math.round(order.total * 100),
+          note: `Barks-A-Lot order ${order.confirmationNumber}`,
+        });
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { paymentId: payment.id },
+        });
+        order.paymentId = payment.id;
+      } catch (err) {
+        await prisma.$transaction(async (tx) => {
+          await restockOrderItems(tx, order.items);
+          await tx.orderItem.deleteMany({ where: { orderId: order.id } });
+          await tx.order.delete({ where: { id: order.id } });
+        });
+        if (err instanceof PaymentError) {
+          return NextResponse.json({ error: err.message }, { status: 402 });
+        }
+        throw err;
+      }
+    }
 
     // Remember this shipping address in the customer's address book
     // (deduplicated; guests have no book). Dormant while pickup-only.

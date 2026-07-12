@@ -4,10 +4,15 @@ import { getAuthUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { restockOrderItems } from "@/lib/inventory";
 import { sendOrderStatusEmail } from "@/lib/order-emails";
+import {
+  isPaymentConfigured,
+  refundPayment,
+  PaymentError,
+} from "@/lib/payments";
 
 // Customer self-service cancellation. Allowed until the order is picked
-// up ("delivered"); restores inventory and notifies the customer, same
-// as an admin-made cancellation.
+// up ("delivered"); refunds the Square charge, restores inventory, and
+// notifies the customer, same as an admin-made cancellation.
 export async function POST(req, { params }) {
   if (!rateLimit("cancel-order", req)) {
     return NextResponse.json(
@@ -27,28 +32,50 @@ export async function POST(req, { params }) {
     Object.assign(new Error(message), { code });
 
   try {
-    const order = await prisma.$transaction(async (tx) => {
-      const existing = await tx.order.findUnique({
-        where: { id },
-        include: { items: true },
+    const existing = await prisma.order.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+    // Ownership check folded into the lookup: someone else's order id
+    // is indistinguishable from a missing one.
+    if (!existing || existing.userId !== auth.userId) {
+      throw fail(404, "Order not found");
+    }
+    if (existing.status === "delivered") {
+      throw fail(409, "This order has already been picked up");
+    }
+    if (existing.status === "cancelled") {
+      throw fail(409, "This order is already cancelled");
+    }
+
+    // Refund before touching the order. The refund's idempotency key is
+    // derived from the order id, so a retried cancellation can never
+    // refund twice; if Square is unreachable the order stays active and
+    // the customer can simply try again.
+    let refunded = false;
+    if (existing.paymentId && isPaymentConfigured()) {
+      await refundPayment({
+        paymentId: existing.paymentId,
+        amountCents: Math.round(existing.total * 100),
+        orderId: existing.id,
+        reason: `Customer cancelled ${existing.confirmationNumber}`,
       });
-      // Ownership check folded into the lookup: someone else's order id
-      // is indistinguishable from a missing one.
-      if (!existing || existing.userId !== auth.userId) {
-        throw fail(404, "Order not found");
-      }
-      if (existing.status === "delivered") {
-        throw fail(409, "This order has already been picked up");
-      }
-      if (existing.status === "cancelled") {
-        throw fail(409, "This order is already cancelled");
-      }
+      refunded = true;
+    }
+
+    const order = await prisma.$transaction(async (tx) => {
+      // Atomic status flip guards against a concurrent double-cancel
+      // restocking the same items twice.
+      const { count } = await tx.order.updateMany({
+        where: { id, status: { in: ["pending", "shipped"] } },
+        data: { status: "cancelled" },
+      });
+      if (count === 0) throw fail(409, "This order is already cancelled");
 
       await restockOrderItems(tx, existing.items);
 
-      return tx.order.update({
+      return tx.order.findUnique({
         where: { id },
-        data: { status: "cancelled" },
         include: {
           items: { include: { product: true, variant: true } },
           user: { select: { name: true, email: true } },
@@ -63,7 +90,11 @@ export async function POST(req, { params }) {
     // changes — the recorded notification is the source of truth.
     const email = order.user?.email ?? order.guestEmail;
     if (email) {
-      const message = `Your order ${order.confirmationNumber} has been cancelled.`;
+      const message =
+        `Your order ${order.confirmationNumber} has been cancelled.` +
+        (refunded
+          ? " Your payment has been refunded to your original payment method."
+          : "");
       await prisma.notification.create({
         data: { email, orderId: order.id, message },
       });
@@ -72,6 +103,15 @@ export async function POST(req, { params }) {
 
     return NextResponse.json({ order });
   } catch (err) {
+    if (err instanceof PaymentError) {
+      return NextResponse.json(
+        {
+          error:
+            "We couldn't process your refund just now, so the order wasn't cancelled — please try again in a minute.",
+        },
+        { status: 502 }
+      );
+    }
     if ([404, 409].includes(err.code)) {
       return NextResponse.json({ error: err.message }, { status: err.code });
     }

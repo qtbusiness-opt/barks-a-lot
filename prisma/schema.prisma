@@ -108,6 +108,10 @@ model Order {
   pickupEventId      String?
   pickupEvent        Event?      @relation(fields: [pickupEventId], references: [id])
   total              Float
+  // Square payment id for the charge — the only payment detail we store
+  // (never card numbers). Null when payments aren't configured (dev) or
+  // for market sales recorded after the fact.
+  paymentId          String?
   address            String?
   city               String?
   state              String?

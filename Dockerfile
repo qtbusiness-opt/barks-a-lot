@@ -32,6 +32,12 @@ ENV DATABASE_URL=${DATABASE_URL}
 # HTTP referrer in Google Cloud rather than treating it as a secret.
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+# Square app + location ids are also browser-side (inlined at build);
+# the SQUARE_ACCESS_TOKEN secret stays runtime-only and is never baked in.
+ARG NEXT_PUBLIC_SQUARE_APP_ID=""
+ENV NEXT_PUBLIC_SQUARE_APP_ID=${NEXT_PUBLIC_SQUARE_APP_ID}
+ARG NEXT_PUBLIC_SQUARE_LOCATION_ID=""
+ENV NEXT_PUBLIC_SQUARE_LOCATION_ID=${NEXT_PUBLIC_SQUARE_LOCATION_ID}
 RUN npx prisma generate
 RUN npm run build
 
