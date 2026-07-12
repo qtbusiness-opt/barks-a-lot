@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import api from "@/lib/api";
 import Link from "next/link";
+import { SHIPPING_ENABLED } from "@/lib/features";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -87,7 +88,10 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [step, setStep] = useState(0);
-  const [fulfillmentType, setFulfillmentType] = useState("shipping");
+  // Pickup-only launch: every order is collected at a market/event.
+  const [fulfillmentType, setFulfillmentType] = useState(
+    SHIPPING_ENABLED ? "shipping" : "pickup"
+  );
   const [pickupChoice, setPickupChoice] = useState("");
   const [upcomingEvents, setUpcomingEvents] = useState(null);
   const [form, setForm] = useState({
@@ -264,47 +268,67 @@ export default function CheckoutPage() {
               </>
             )}
 
-            <fieldset>
-              <legend className="text-xl font-semibold text-[#2A4A52] mb-2">
-                Delivery Method
-              </legend>
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-                <label className="flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
-                  <input
-                    type="radio"
-                    name="fulfillment"
-                    value="shipping"
-                    checked={fulfillmentType === "shipping"}
-                    onChange={() => setFulfillmentType("shipping")}
-                  />
-                  <span className="text-sm font-medium">Ship to me</span>
-                </label>
-                <label
-                  className={`flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 ${
-                    hasEvents
-                      ? "cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]"
-                      : "opacity-50 cursor-not-allowed"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="fulfillment"
-                    value="pickup"
-                    checked={fulfillmentType === "pickup"}
-                    onChange={() => setFulfillmentType("pickup")}
-                    disabled={!hasEvents}
-                  />
-                  <span className="text-sm font-medium">
-                    Pickup at market/event
-                    {upcomingEvents !== null && !hasEvents && (
-                      <span className="block text-xs text-gray-500 font-normal">
-                        No upcoming events scheduled
-                      </span>
-                    )}
-                  </span>
-                </label>
+            {SHIPPING_ENABLED ? (
+              <fieldset>
+                <legend className="text-xl font-semibold text-[#2A4A52] mb-2">
+                  Delivery Method
+                </legend>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                  <label className="flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
+                    <input
+                      type="radio"
+                      name="fulfillment"
+                      value="shipping"
+                      checked={fulfillmentType === "shipping"}
+                      onChange={() => setFulfillmentType("shipping")}
+                    />
+                    <span className="text-sm font-medium">Ship to me</span>
+                  </label>
+                  <label
+                    className={`flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 ${
+                      hasEvents
+                        ? "cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]"
+                        : "opacity-50 cursor-not-allowed"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="fulfillment"
+                      value="pickup"
+                      checked={fulfillmentType === "pickup"}
+                      onChange={() => setFulfillmentType("pickup")}
+                      disabled={!hasEvents}
+                    />
+                    <span className="text-sm font-medium">
+                      Pickup at market/event
+                      {upcomingEvents !== null && !hasEvents && (
+                        <span className="block text-xs text-gray-500 font-normal">
+                          No upcoming events scheduled
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+            ) : (
+              <div>
+                <h2 className="text-xl font-semibold text-[#2A4A52] mb-2">
+                  Delivery Method
+                </h2>
+                {upcomingEvents !== null && !hasEvents ? (
+                  <p className="text-sm text-amber-800 bg-amber-50 p-3 rounded-lg">
+                    Online orders are picked up at our markets and events, and
+                    nothing is on the calendar just yet. Check back soon — new
+                    events are added all the time!
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-600 bg-[#F5F0E8] p-3 rounded-lg">
+                    All online orders are picked up at one of our markets or
+                    events — choose the one that works best for you below.
+                  </p>
+                )}
               </div>
-            </fieldset>
+            )}
 
             {fulfillmentType === "shipping" ? (
               <>
@@ -366,7 +390,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </>
-            ) : (
+            ) : hasEvents ? (
               <div>
                 <label htmlFor="pickup-event" className="block text-xl font-semibold text-[#2A4A52] mb-2">
                   Pickup Event
@@ -402,11 +426,12 @@ export default function CheckoutPage() {
                   </p>
                 )}
               </div>
-            )}
+            ) : null}
 
             <button
               type="submit"
-              className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition"
+              disabled={fulfillmentType === "pickup" && !hasEvents}
+              className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Continue to Review
             </button>

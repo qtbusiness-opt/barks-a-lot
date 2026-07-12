@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { SHIPPING_ENABLED } from "@/lib/features";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -307,8 +308,9 @@ export default function ProfilePage() {
           </Link>
         )}
 
-        {/* Address book — customers only */}
-        {isCustomer && (
+        {/* Address book — customers only; hidden while the store is
+            pickup-only since no addresses are recorded. */}
+        {isCustomer && SHIPPING_ENABLED && (
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
             <h2 className="text-xl font-semibold text-[#2A4A52] mb-1">
               Shipping Addresses

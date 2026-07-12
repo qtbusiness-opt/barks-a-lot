@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { SHIPPING_ENABLED } from "@/lib/features";
 
 const nameSchema = z.object({ name: z.string().trim().min(1).max(100) });
 
@@ -24,16 +25,21 @@ export async function GET() {
 
   // Import any shipping addresses from order history that aren't in the
   // address book yet, so "addresses you've used" is always complete even
-  // for orders placed before the book existed.
+  // for orders placed before the book existed. While the store is
+  // pickup-only (SHIPPING_ENABLED off) no addresses are read or recorded.
   const [book, shippedOrders, statusGroups] = await Promise.all([
-    prisma.address.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.order.findMany({
-      where: { userId: user.id, fulfillmentType: "shipping", address: { not: null } },
-      select: { address: true, city: true, state: true, zip: true },
-    }),
+    SHIPPING_ENABLED
+      ? prisma.address.findMany({
+          where: { userId: user.id },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
+    SHIPPING_ENABLED
+      ? prisma.order.findMany({
+          where: { userId: user.id, fulfillmentType: "shipping", address: { not: null } },
+          select: { address: true, city: true, state: true, zip: true },
+        })
+      : Promise.resolve([]),
     prisma.order.groupBy({
       by: ["status"],
       where: { userId: user.id },

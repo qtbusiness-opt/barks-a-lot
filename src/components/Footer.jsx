@@ -7,7 +7,7 @@ export default function Footer() {
         <div>
           <h3 className="text-white font-bold text-lg mb-3">Barks-A-Lot Treats & More</h3>
           <p className="text-sm">
-            Premium treats and accessories for your furry friend. Made with love, delivered with care.
+            Premium treats and accessories for your furry friend. Made with love, handed over with care.
           </p>
         </div>
         <div>

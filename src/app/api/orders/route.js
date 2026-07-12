@@ -6,6 +6,7 @@ import { getAuthUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { isWithinWindow } from "@/lib/catalog";
 import { sendOrderConfirmationEmail } from "@/lib/order-emails";
+import { SHIPPING_ENABLED } from "@/lib/features";
 
 function generateConfirmationNumber() {
   return `BAL-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -22,7 +23,9 @@ const orderSchema = z
         })
       )
       .min(1),
-    fulfillmentType: z.enum(["shipping", "pickup"]).default("shipping"),
+    fulfillmentType: z
+      .enum(["shipping", "pickup"])
+      .default(SHIPPING_ENABLED ? "shipping" : "pickup"),
     address: z.string().trim().max(200).optional(),
     city: z.string().trim().max(100).optional(),
     state: z.string().trim().max(50).optional(),
@@ -87,6 +90,15 @@ export async function POST(req) {
       guestName,
       pickupEventId,
     } = parsed.data;
+
+    // Pickup-only launch: the shipping path stays in the codebase but is
+    // refused until SHIPPING_ENABLED is flipped back on.
+    if (!SHIPPING_ENABLED && fulfillmentType === "shipping") {
+      return NextResponse.json(
+        { error: "Shipping isn't available yet — please choose event pickup" },
+        { status: 400 }
+      );
+    }
 
     // Guest orders have no account, so an email is required to reference
     // the order later.
@@ -234,10 +246,12 @@ export async function POST(req) {
           fulfillmentType,
           pickupEventId: pickupEvent?.id ?? null,
           total,
-          address: address ?? null,
-          city: city ?? null,
-          state: state ?? null,
-          zip: zip ?? null,
+          // Only shipping orders record an address — pickup orders never
+          // need one, even if the client sends it.
+          address: fulfillmentType === "shipping" ? address : null,
+          city: fulfillmentType === "shipping" ? city : null,
+          state: fulfillmentType === "shipping" ? state : null,
+          zip: fulfillmentType === "shipping" ? zip : null,
           items: { create: orderItems },
         },
         include: {
@@ -248,8 +262,8 @@ export async function POST(req) {
     });
 
     // Remember this shipping address in the customer's address book
-    // (deduplicated; guests have no book).
-    if (auth && fulfillmentType === "shipping") {
+    // (deduplicated; guests have no book). Dormant while pickup-only.
+    if (SHIPPING_ENABLED && auth && fulfillmentType === "shipping") {
       const existing = await prisma.address.findFirst({
         where: { userId: auth.userId, address, city, state, zip },
       });

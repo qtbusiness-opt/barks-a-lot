@@ -226,16 +226,23 @@ test("guest pickup order succeeds without address and decrements stock", async (
   assert.equal(after.product.quantity, product.quantity - 2);
 });
 
-test("shipping order without an address is rejected", async () => {
+test("shipping orders are rejected while the store is pickup-only", async () => {
   const { data: products } = await api("GET", "/products");
+  // Even a complete, well-formed shipping order is refused: launch is
+  // pickup-only (SHIPPING_ENABLED is off).
   const res = await api("POST", "/orders", {
     body: {
       items: [{ productId: products.products[0].id, quantity: 1 }],
       fulfillmentType: "shipping",
+      address: "1 Test St",
+      city: "Boise",
+      state: "ID",
+      zip: "83701",
       guestEmail: "guest@test.local",
     },
   });
   assert.equal(res.status, 400);
+  assert.match(res.data.error, /pickup/i);
 });
 
 test("ordering more than available stock is rejected and nothing is written", async () => {
@@ -266,11 +273,8 @@ test("logged-in customer order is linked to the account", async () => {
   const created = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "shipping",
-      address: "1 Test St",
-      city: "Boise",
-      state: "ID",
-      zip: "83701",
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
     },
     cookie,
   });
@@ -974,7 +978,7 @@ test("admins can look up customers, send resets, and delete accounts", async () 
   assert.equal(kept.guestEmail, "lookup@test.local");
 });
 
-test("profile: name edit, order summary, and the address book lifecycle", async () => {
+test("profile: name edit, order summary; no addresses recorded while pickup-only", async () => {
   const anon = await api("GET", "/profile");
   assert.equal(anon.status, 401);
 
@@ -986,14 +990,16 @@ test("profile: name edit, order summary, and the address book lifecycle", async 
   await api("POST", "/auth/verify", { body: { token: verifyToken } });
   const cookie = await loginAs("profile@test.local", "secret123");
 
-  // A shipping order auto-captures its address into the book.
   const { data: products } = await api("GET", "/products");
   // Needs two units: this test places the same order twice.
   const product = products.products.find((p) => p.variants.length === 0 && p.quantity >= 2);
+  // Address fields sent alongside a pickup order must NOT be recorded —
+  // the store is pickup-only and collects no customer addresses.
   const order = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "shipping",
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
       address: "77 Book St",
       city: "Meridian",
       state: "ID",
@@ -1002,33 +1008,26 @@ test("profile: name edit, order summary, and the address book lifecycle", async 
     cookie,
   });
   assert.equal(order.status, 201);
+  assert.equal(order.data.order.address, null, "pickup order stores no address");
 
   const profile = await api("GET", "/profile", { cookie });
   assert.equal(profile.status, 200);
   assert.equal(profile.data.user.email, "profile@test.local");
   assert.equal(profile.data.orderSummary.pending, 1);
   assert.equal(profile.data.orderSummary.total, 1);
-  const captured = profile.data.addresses.find((a) => a.address === "77 Book St");
-  assert.ok(captured, "shipping address captured into the book");
+  assert.equal(profile.data.addresses.length, 0, "address book stays empty");
 
-  // Placing the same address again doesn't duplicate it.
   const repeat = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "shipping",
-      address: "77 Book St",
-      city: "Meridian",
-      state: "ID",
-      zip: "83646",
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
     },
     cookie,
   });
   assert.equal(repeat.status, 201);
   const again = await api("GET", "/profile", { cookie });
-  assert.equal(
-    again.data.addresses.filter((a) => a.address === "77 Book St").length,
-    1
-  );
+  assert.equal(again.data.addresses.length, 0);
   assert.equal(again.data.orderSummary.total, 2);
 
   // Name is editable.
@@ -1039,24 +1038,8 @@ test("profile: name edit, order summary, and the address book lifecycle", async 
   assert.equal(renamed.status, 200);
   assert.equal(renamed.data.user.name, "Renamed Tester");
 
-  // Addresses are editable and deletable — but only by their owner.
-  const edited = await api("PATCH", `/profile/addresses/${captured.id}`, {
-    body: { address: "78 Book St", city: "Meridian", state: "ID", zip: "83646" },
-    cookie,
-  });
-  assert.equal(edited.status, 200);
-  assert.equal(edited.data.address.address, "78 Book St");
-
-  const adminCookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
-  const foreign = await api("DELETE", `/profile/addresses/${captured.id}`, {
-    cookie: adminCookie,
-  });
+  // The dormant address routes still enforce auth + ownership: an id that
+  // doesn't belong to the caller (or doesn't exist) is a 404.
+  const foreign = await api("DELETE", "/profile/addresses/nonexistent", { cookie });
   assert.equal(foreign.status, 404);
-
-  const deleted = await api("DELETE", `/profile/addresses/${captured.id}`, { cookie });
-  assert.equal(deleted.status, 200);
-  const final = await api("GET", "/profile", { cookie });
-  // The book re-imports distinct order addresses; the edited "78 Book St"
-  // was deleted, but "77 Book St" from order history returns.
-  assert.ok(!final.data.addresses.some((a) => a.address === "78 Book St"));
 });
