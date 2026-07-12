@@ -1,10 +1,18 @@
 import { sendEmail } from "@/lib/mailer";
 
-const fmtEventDate = (event) =>
-  new Date(`${String(event.date).slice(0, 10)}T00:00:00`).toLocaleDateString(
-    "en-US",
-    { weekday: "long", month: "long", day: "numeric" }
-  );
+// event.date is a Date object when the order comes straight from Prisma
+// and an ISO string when it has been through JSON — handle both.
+const fmtEventDate = (event) => {
+  const day =
+    event.date instanceof Date
+      ? event.date.toISOString().slice(0, 10)
+      : String(event.date).slice(0, 10);
+  return new Date(`${day}T00:00:00`).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+};
 
 function deliveryLine(order) {
   if (order.fulfillmentType === "pickup") {

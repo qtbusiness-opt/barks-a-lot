@@ -257,6 +257,9 @@ export async function POST(req) {
         include: {
           items: { include: { product: true, variant: true } },
           pickupEvent: true,
+          // The confirmation email pulls the recipient from order.user
+          // for account holders (guests use guestEmail).
+          user: { select: { name: true, email: true } },
         },
       });
     });

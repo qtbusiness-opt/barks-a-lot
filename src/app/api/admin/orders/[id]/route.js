@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { sendOrderStatusEmail } from "@/lib/order-emails";
+import { restockOrderItems } from "@/lib/inventory";
 import { SHIPPING_ENABLED } from "@/lib/features";
 
 const statusSchema = z.object({
@@ -33,20 +34,46 @@ export async function PATCH(req, { params }) {
     }
     const { status } = parsed.data;
 
-    const order = await prisma.order.update({
-      where: { id },
-      data: { status },
-      include: {
-        items: { include: { product: true, variant: true } },
-        user: { select: { name: true, email: true } },
-        pickupEvent: true,
-      },
+    const fail = (code, message) =>
+      Object.assign(new Error(message), { code });
+
+    const { order, changed } = await prisma.$transaction(async (tx) => {
+      const existing = await tx.order.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+      if (!existing) throw fail(404, "Order not found");
+
+      // Cancelled is terminal: the items went back on the shelf and may
+      // have sold since, so resurrecting the order could oversell.
+      if (existing.status === "cancelled" && status !== "cancelled") {
+        throw fail(409, "Cancelled orders can't be reactivated");
+      }
+
+      // Cancelling an active order returns its items to stock. A
+      // picked-up order's items are gone, so cancelling one is a
+      // bookkeeping correction that leaves inventory alone.
+      if (status === "cancelled" && ["pending", "shipped"].includes(existing.status)) {
+        await restockOrderItems(tx, existing.items);
+      }
+
+      const updated = await tx.order.update({
+        where: { id },
+        data: { status },
+        include: {
+          items: { include: { product: true, variant: true } },
+          user: { select: { name: true, email: true } },
+          pickupEvent: true,
+        },
+      });
+      return { order: updated, changed: existing.status !== status };
     });
 
     // Record a customer notification tied to the order's email (account
-    // email for customers, guest email for guest checkouts).
+    // email for customers, guest email for guest checkouts). Re-saving
+    // the same status doesn't re-notify.
     const email = order.user?.email ?? order.guestEmail;
-    if (email) {
+    if (email && changed) {
       const message = `Your order ${order.confirmationNumber} ${STATUS_MESSAGES[status]}.`;
       await prisma.notification.create({
         data: { email, orderId: order.id, message },
@@ -57,7 +84,11 @@ export async function PATCH(req, { params }) {
     }
 
     return NextResponse.json({ order });
-  } catch {
+  } catch (err) {
+    if ([404, 409].includes(err.code)) {
+      return NextResponse.json({ error: err.message }, { status: err.code });
+    }
+    console.error("[admin] order status error:", err);
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 }

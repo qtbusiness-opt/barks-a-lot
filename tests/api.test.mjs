@@ -1044,3 +1044,128 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
   const foreign = await api("DELETE", "/profile/addresses/nonexistent", { cookie });
   assert.equal(foreign.status, 404);
 });
+
+test("customer can cancel an order until pickup; stock is restored", async () => {
+  const cookie = await loginAs("user@test.local", "secret123");
+  const { data: products } = await api("GET", "/products");
+  const product = products.products.find(
+    (p) => p.variants.length === 0 && p.quantity >= 2
+  );
+
+  const order = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 2 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+    },
+    cookie,
+  });
+  assert.equal(order.status, 201);
+  const orderId = order.data.order.id;
+
+  const { data: afterOrder } = await api("GET", `/products/${product.id}`);
+  assert.equal(afterOrder.product.quantity, product.quantity - 2);
+
+  // Anonymous callers can't cancel; another account's order id is a 404.
+  const anon = await api("POST", `/orders/${orderId}/cancel`);
+  assert.equal(anon.status, 401);
+  const adminCookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const foreign = await api("POST", `/orders/${orderId}/cancel`, {
+    cookie: adminCookie,
+  });
+  assert.equal(foreign.status, 404);
+
+  // The owner's cancellation restocks and records a notification.
+  const cancelled = await api("POST", `/orders/${orderId}/cancel`, { cookie });
+  assert.equal(cancelled.status, 200);
+  assert.equal(cancelled.data.order.status, "cancelled");
+
+  const { data: afterCancel } = await api("GET", `/products/${product.id}`);
+  assert.equal(afterCancel.product.quantity, product.quantity);
+
+  const notifications = await api("GET", "/admin/notifications", {
+    cookie: adminCookie,
+  });
+  assert.ok(
+    notifications.data.notifications.some(
+      (n) => n.orderId === orderId && n.message.includes("cancelled")
+    ),
+    "cancellation notification recorded"
+  );
+
+  // Cancelling twice is a conflict, and admins can't resurrect it.
+  const again = await api("POST", `/orders/${orderId}/cancel`, { cookie });
+  assert.equal(again.status, 409);
+  const resurrect = await api("PATCH", `/admin/orders/${orderId}`, {
+    body: { status: "pending" },
+    cookie: adminCookie,
+  });
+  assert.equal(resurrect.status, 409);
+});
+
+test("picked-up orders can't be cancelled by the customer", async () => {
+  const cookie = await loginAs("user@test.local", "secret123");
+  const { data: products } = await api("GET", "/products");
+  const product = products.products.find(
+    (p) => p.variants.length === 0 && p.quantity >= 1
+  );
+
+  const order = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+    },
+    cookie,
+  });
+  assert.equal(order.status, 201);
+  const orderId = order.data.order.id;
+
+  const adminCookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const delivered = await api("PATCH", `/admin/orders/${orderId}`, {
+    body: { status: "delivered" },
+    cookie: adminCookie,
+  });
+  assert.equal(delivered.status, 200);
+
+  const refused = await api("POST", `/orders/${orderId}/cancel`, { cookie });
+  assert.equal(refused.status, 409);
+
+  // An admin cancelling a picked-up order is bookkeeping only — the
+  // items already left the booth, so stock must not change.
+  const { data: before } = await api("GET", `/products/${product.id}`);
+  const adminCancel = await api("PATCH", `/admin/orders/${orderId}`, {
+    body: { status: "cancelled" },
+    cookie: adminCookie,
+  });
+  assert.equal(adminCancel.status, 200);
+  const { data: after } = await api("GET", `/products/${product.id}`);
+  assert.equal(after.product.quantity, before.product.quantity);
+});
+
+test("admin cancellation of an active order restores stock", async () => {
+  const { data: products } = await api("GET", "/products");
+  const product = products.products.find(
+    (p) => p.variants.length === 0 && p.quantity >= 1
+  );
+
+  const order = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "cancel-restock@test.local",
+    },
+  });
+  assert.equal(order.status, 201);
+
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const cancelled = await api("PATCH", `/admin/orders/${order.data.order.id}`, {
+    body: { status: "cancelled" },
+    cookie,
+  });
+  assert.equal(cancelled.status, 200);
+
+  const { data: after } = await api("GET", `/products/${product.id}`);
+  assert.equal(after.product.quantity, product.quantity);
+});
