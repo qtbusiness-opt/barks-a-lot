@@ -846,3 +846,126 @@ test("admins can create admin accounts with hardened passwords", async () => {
   });
   assert.equal(dupe.status, 409);
 });
+
+test("customers can reset a forgotten password end to end", async () => {
+  const reg = await api("POST", "/auth/register", {
+    body: { name: "Forgetful", email: "forgetful@test.local", password: "original6" },
+  });
+  assert.equal(reg.status, 201);
+  const verifyToken = new URL(reg.data.devVerificationUrl).searchParams.get("token");
+  await api("POST", "/auth/verify", { body: { token: verifyToken } });
+
+  // Unknown emails get the same answer — no account probing.
+  const unknown = await api("POST", "/auth/forgot-password", {
+    body: { email: "nobody@test.local" },
+  });
+  assert.equal(unknown.status, 200);
+  assert.ok(!unknown.data.devResetUrl);
+
+  const forgot = await api("POST", "/auth/forgot-password", {
+    body: { email: "forgetful@test.local" },
+  });
+  assert.equal(forgot.status, 200);
+  assert.ok(forgot.data.devResetUrl, "dev reset link returned");
+  const resetToken = new URL(forgot.data.devResetUrl).searchParams.get("token");
+
+  // Too-short password rejected; token survives the failed attempt.
+  const weak = await api("POST", "/auth/reset-password", {
+    body: { token: resetToken, password: "tiny" },
+  });
+  assert.equal(weak.status, 400);
+
+  const reset = await api("POST", "/auth/reset-password", {
+    body: { token: resetToken, password: "brandnew7" },
+  });
+  assert.equal(reset.status, 200);
+
+  // Token is single-use, the old password is dead, the new one works.
+  const reuse = await api("POST", "/auth/reset-password", {
+    body: { token: resetToken, password: "another99" },
+  });
+  assert.equal(reuse.status, 400);
+  assert.equal(await loginAs("forgetful@test.local", "original6"), "");
+  assert.match(
+    await loginAs("forgetful@test.local", "brandnew7"),
+    /authjs\.session-token=/
+  );
+});
+
+test("admin password resets enforce the hardened policy", async () => {
+  const forgot = await api("POST", "/auth/forgot-password", {
+    body: { email: ADMIN_EMAIL },
+  });
+  const resetToken = new URL(forgot.data.devResetUrl).searchParams.get("token");
+
+  // 8 chars but no digit — rejected for admins.
+  const weak = await api("POST", "/auth/reset-password", {
+    body: { token: resetToken, password: "lettersonly" },
+  });
+  assert.equal(weak.status, 400);
+
+  const reset = await api("POST", "/auth/reset-password", {
+    body: { token: resetToken, password: ADMIN_PASSWORD },
+  });
+  assert.equal(reset.status, 200);
+});
+
+test("admins can look up customers, send resets, and delete accounts", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  const reg = await api("POST", "/auth/register", {
+    body: { name: "Lookup Target", email: "lookup@test.local", password: "secret123" },
+  });
+  const verifyToken = new URL(reg.data.devVerificationUrl).searchParams.get("token");
+  await api("POST", "/auth/verify", { body: { token: verifyToken } });
+
+  // Give them an order so deletion has history to preserve.
+  const { data: products } = await api("GET", "/products");
+  const product = products.products.find((p) => p.variants.length === 0 && p.quantity >= 1);
+  const customerCookie = await loginAs("lookup@test.local", "secret123");
+  const order = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+    },
+    cookie: customerCookie,
+  });
+  assert.equal(order.status, 201);
+
+  // Anonymous lookups are forbidden; admin search finds the account.
+  const anon = await api("GET", "/admin/customers?q=lookup");
+  assert.equal(anon.status, 403);
+  const found = await api("GET", "/admin/customers?q=lookup", { cookie });
+  assert.equal(found.status, 200);
+  const target = found.data.customers.find((c) => c.email === "lookup@test.local");
+  assert.ok(target);
+  assert.equal(target._count.orders, 1);
+
+  // Admin-triggered reset answers with the customer's email.
+  const sent = await api("POST", `/admin/customers/${target.id}`, { cookie });
+  assert.equal(sent.status, 200);
+  assert.match(sent.data.message, /lookup@test\.local/);
+
+  // Admins can't be deleted through this endpoint.
+  const admins = await api("GET", "/admin/users", { cookie });
+  const adminDelete = await api(
+    "DELETE",
+    `/admin/customers/${admins.data.admins[0].id}`,
+    { cookie }
+  );
+  assert.equal(adminDelete.status, 404);
+
+  // Deleting the customer keeps their order as a guest record.
+  const deleted = await api("DELETE", `/admin/customers/${target.id}`, { cookie });
+  assert.equal(deleted.status, 200);
+  assert.equal(await loginAs("lookup@test.local", "secret123"), "");
+
+  const orders = await api("GET", "/admin/orders", { cookie });
+  const kept = orders.data.orders.find(
+    (o) => o.confirmationNumber === order.data.order.confirmationNumber
+  );
+  assert.ok(kept, "order survives customer deletion");
+  assert.equal(kept.user, null);
+  assert.equal(kept.guestEmail, "lookup@test.local");
+});
