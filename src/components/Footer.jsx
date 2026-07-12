@@ -16,6 +16,8 @@ export default function Footer() {
             <li><Link href="/" className="hover:text-white transition">Home</Link></li>
             <li><Link href="/products" className="hover:text-white transition">Shop</Link></li>
             <li><Link href="/cart" className="hover:text-white transition">Cart</Link></li>
+            <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
+            <li><Link href="/terms" className="hover:text-white transition">Terms of Service</Link></li>
           </ul>
         </div>
         <div>
@@ -27,8 +29,12 @@ export default function Footer() {
           </ul>
         </div>
       </div>
-      <div className="border-t border-[#4A7C8A] text-center py-4 text-sm safe-bottom">
-        &copy; {new Date().getFullYear()} Barks-A-Lot Treats & More. All rights reserved.
+      <div className="border-t border-[#4A7C8A] text-center py-4 text-sm safe-bottom space-x-3">
+        <span>
+          &copy; {new Date().getFullYear()} Barks-A-Lot Treats & More. All rights reserved.
+        </span>
+        <Link href="/privacy" className="underline hover:text-white transition">Privacy</Link>
+        <Link href="/terms" className="underline hover:text-white transition">Terms</Link>
       </div>
     </footer>
   );
