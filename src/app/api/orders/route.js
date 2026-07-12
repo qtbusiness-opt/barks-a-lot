@@ -247,6 +247,19 @@ export async function POST(req) {
       });
     });
 
+    // Remember this shipping address in the customer's address book
+    // (deduplicated; guests have no book).
+    if (auth && fulfillmentType === "shipping") {
+      const existing = await prisma.address.findFirst({
+        where: { userId: auth.userId, address, city, state, zip },
+      });
+      if (!existing) {
+        await prisma.address.create({
+          data: { userId: auth.userId, address, city, state, zip },
+        });
+      }
+    }
+
     // Fire-and-forget: a mail hiccup must never fail a placed order.
     await sendOrderConfirmationEmail(order);
 

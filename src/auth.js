@@ -75,11 +75,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.userId = user.id;
         token.role = user.role;
         token.issuedAt = Math.floor(Date.now() / 1000);
+      }
+      // useSession().update({ name }) after a profile edit lands here.
+      if (trigger === "update" && session?.name) {
+        token.name = session.name;
       }
       const age = Math.floor(Date.now() / 1000) - (token.issuedAt ?? 0);
       if (token.role === "admin" && age > SESSION_SECONDS.admin) {

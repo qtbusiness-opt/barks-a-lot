@@ -47,7 +47,12 @@ export default function Navbar() {
             </Link>
             {user ? (
               <div className="flex items-center gap-4">
-                <span className="text-[#E8DFC8] text-sm">Hi, {user.name}</span>
+                <Link
+                  href="/profile"
+                  className="text-[#E8DFC8] text-sm hover:text-white hover:underline transition"
+                >
+                  Hi, {user.name}
+                </Link>
                 <button
                   onClick={logout}
                   className="bg-[#E8DFC8] text-[#4A7C8A] px-3 py-1 rounded-md text-sm font-medium hover:bg-white transition"
@@ -114,7 +119,10 @@ export default function Navbar() {
               Cart {itemCount > 0 && `(${itemCount})`}
             </Link>
             {user ? (
-              <button onClick={() => { logout(); setMenuOpen(false); }} className="block w-full text-left py-3 active:text-[#E8DFC8]">Logout</button>
+              <>
+                <Link href="/profile" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Profile</Link>
+                <button onClick={() => { logout(); setMenuOpen(false); }} className="block w-full text-left py-3 active:text-[#E8DFC8]">Logout</button>
+              </>
             ) : (
               <Link href="/login" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Login</Link>
             )}

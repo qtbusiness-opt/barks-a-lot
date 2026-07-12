@@ -67,10 +67,14 @@ before(async () => {
 
   // stdio must be drained or ignored — an unread pipe fills up and blocks
   // the dev server mid-boot.
-  server = spawn("npx", ["next", "dev", "--port", String(PORT)], {
-    env,
-    stdio: "ignore",
-  });
+  // Spawn the next binary directly (not via npx) so server.pid is the
+  // real server process and the after() SIGTERM actually stops it —
+  // otherwise a leaked server on this port poisons the next run.
+  server = spawn(
+    "node",
+    ["node_modules/next/dist/bin/next", "dev", "--port", String(PORT)],
+    { env, stdio: "ignore" }
+  );
 
   // Wait for the health endpoint to confirm app + DB are up.
   const deadline = Date.now() + 90_000;
@@ -968,4 +972,91 @@ test("admins can look up customers, send resets, and delete accounts", async () 
   assert.ok(kept, "order survives customer deletion");
   assert.equal(kept.user, null);
   assert.equal(kept.guestEmail, "lookup@test.local");
+});
+
+test("profile: name edit, order summary, and the address book lifecycle", async () => {
+  const anon = await api("GET", "/profile");
+  assert.equal(anon.status, 401);
+
+  // Fresh verified customer.
+  const reg = await api("POST", "/auth/register", {
+    body: { name: "Profile Tester", email: "profile@test.local", password: "secret123" },
+  });
+  const verifyToken = new URL(reg.data.devVerificationUrl).searchParams.get("token");
+  await api("POST", "/auth/verify", { body: { token: verifyToken } });
+  const cookie = await loginAs("profile@test.local", "secret123");
+
+  // A shipping order auto-captures its address into the book.
+  const { data: products } = await api("GET", "/products");
+  // Needs two units: this test places the same order twice.
+  const product = products.products.find((p) => p.variants.length === 0 && p.quantity >= 2);
+  const order = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "shipping",
+      address: "77 Book St",
+      city: "Meridian",
+      state: "ID",
+      zip: "83646",
+    },
+    cookie,
+  });
+  assert.equal(order.status, 201);
+
+  const profile = await api("GET", "/profile", { cookie });
+  assert.equal(profile.status, 200);
+  assert.equal(profile.data.user.email, "profile@test.local");
+  assert.equal(profile.data.orderSummary.pending, 1);
+  assert.equal(profile.data.orderSummary.total, 1);
+  const captured = profile.data.addresses.find((a) => a.address === "77 Book St");
+  assert.ok(captured, "shipping address captured into the book");
+
+  // Placing the same address again doesn't duplicate it.
+  const repeat = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "shipping",
+      address: "77 Book St",
+      city: "Meridian",
+      state: "ID",
+      zip: "83646",
+    },
+    cookie,
+  });
+  assert.equal(repeat.status, 201);
+  const again = await api("GET", "/profile", { cookie });
+  assert.equal(
+    again.data.addresses.filter((a) => a.address === "77 Book St").length,
+    1
+  );
+  assert.equal(again.data.orderSummary.total, 2);
+
+  // Name is editable.
+  const renamed = await api("PATCH", "/profile", {
+    body: { name: "Renamed Tester" },
+    cookie,
+  });
+  assert.equal(renamed.status, 200);
+  assert.equal(renamed.data.user.name, "Renamed Tester");
+
+  // Addresses are editable and deletable — but only by their owner.
+  const edited = await api("PATCH", `/profile/addresses/${captured.id}`, {
+    body: { address: "78 Book St", city: "Meridian", state: "ID", zip: "83646" },
+    cookie,
+  });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.data.address.address, "78 Book St");
+
+  const adminCookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const foreign = await api("DELETE", `/profile/addresses/${captured.id}`, {
+    cookie: adminCookie,
+  });
+  assert.equal(foreign.status, 404);
+
+  const deleted = await api("DELETE", `/profile/addresses/${captured.id}`, { cookie });
+  assert.equal(deleted.status, 200);
+  const final = await api("GET", "/profile", { cookie });
+  // The book re-imports distinct order addresses; the edited "78 Book St"
+  // was deleted, but "77 Book St" from order history returns.
+  assert.ok(!final.data.addresses.some((a) => a.address === "78 Book St"));
 });

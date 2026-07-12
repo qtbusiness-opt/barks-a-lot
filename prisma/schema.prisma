@@ -20,6 +20,21 @@ model User {
   updatedAt     DateTime  @updatedAt
   orders        Order[]
   verificationTokens VerificationToken[]
+  addresses     Address[]
+}
+
+// A customer's address book. Entries are auto-captured from shipping
+// orders (deduplicated) and can be edited or deleted — order records
+// themselves keep their original address untouched.
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address   String
+  city      String
+  state     String
+  zip       String
+  createdAt DateTime @default(now())
 }
 
 model VerificationToken {
