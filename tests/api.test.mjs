@@ -500,7 +500,8 @@ test("status changes record a notification tied to the order email", async () =>
   assert.equal(notifications.status, 200);
   assert.ok(
     notifications.data.notifications.some(
-      (n) => n.email === email && n.message.includes("delivered")
+      // Pickup-only wording: "delivered" reads as "has been picked up".
+      (n) => n.email === email && n.message.includes("picked up")
     ),
     "notification recorded against the guest email"
   );

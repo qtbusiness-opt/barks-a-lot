@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { orderStatusLabel } from "@/lib/order-status";
 
 const STATUSES = ["pending", "shipped", "delivered", "cancelled"];
 
@@ -83,11 +84,11 @@ export default function AdminOrdersPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
                       STATUS_STYLES[order.status] || "bg-gray-100 text-gray-700"
                     }`}
                   >
-                    {order.status}
+                    {orderStatusLabel(order.status)}
                   </span>
                   <select
                     value={order.status}
@@ -97,7 +98,7 @@ export default function AdminOrdersPage() {
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
-                        {s}
+                        {orderStatusLabel(s)}
                       </option>
                     ))}
                   </select>

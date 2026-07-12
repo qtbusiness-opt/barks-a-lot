@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { SHIPPING_ENABLED } from "@/lib/features";
+import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -294,11 +295,15 @@ export default function ProfilePage() {
               </div>
               <div className="bg-blue-50 rounded-lg p-3">
                 <p className="text-2xl font-bold text-blue-700">{summary.shipped}</p>
-                <p className="text-xs font-medium text-blue-700">In Transit</p>
+                <p className="text-xs font-medium text-blue-700">
+                  {ORDER_STATUS_LABELS.shipped}
+                </p>
               </div>
               <div className="bg-green-50 rounded-lg p-3">
                 <p className="text-2xl font-bold text-green-700">{summary.delivered}</p>
-                <p className="text-xs font-medium text-green-700">Complete</p>
+                <p className="text-xs font-medium text-green-700">
+                  {ORDER_STATUS_LABELS.delivered}
+                </p>
               </div>
               <div className="bg-red-50 rounded-lg p-3">
                 <p className="text-2xl font-bold text-red-700">{summary.cancelled}</p>

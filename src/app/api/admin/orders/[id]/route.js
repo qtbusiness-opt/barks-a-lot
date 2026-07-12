@@ -3,15 +3,18 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { sendOrderStatusEmail } from "@/lib/order-emails";
+import { SHIPPING_ENABLED } from "@/lib/features";
 
 const statusSchema = z.object({
   status: z.enum(["pending", "shipped", "delivered", "cancelled"]),
 });
 
+// While pickup-only, the "shipped"/"delivered" statuses keep their raw
+// values but read as pickup milestones in customer notifications.
 const STATUS_MESSAGES = {
   pending: "is being prepared",
-  shipped: "has shipped",
-  delivered: "has been delivered",
+  shipped: SHIPPING_ENABLED ? "has shipped" : "is ready for pickup",
+  delivered: SHIPPING_ENABLED ? "has been delivered" : "has been picked up",
   cancelled: "has been cancelled",
 };
 

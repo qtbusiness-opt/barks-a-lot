@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
+import { orderStatusLabel } from "@/lib/order-status";
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
@@ -79,7 +80,7 @@ export default function OrdersPage() {
                   </p>
                 </div>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
                     order.status === "pending"
                       ? "bg-yellow-100 text-yellow-700"
                       : order.status === "shipped"
@@ -89,7 +90,7 @@ export default function OrdersPage() {
                       : "bg-gray-100 text-gray-700"
                   }`}
                 >
-                  {order.status}
+                  {orderStatusLabel(order.status)}
                 </span>
               </div>
               <div className="space-y-3">
