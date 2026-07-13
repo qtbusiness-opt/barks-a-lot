@@ -91,6 +91,50 @@ export async function GET() {
   });
 }
 
+// Self-service account deletion — same order-preserving shape as the
+// admin-side customer delete: order history is business data, so it's
+// re-labelled as guest records that keep the contact details.
+export async function DELETE() {
+  const auth = await getAuthUser();
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // Admin accounts are managed by other admins, never self-deleted —
+  // that could orphan the store with no admin at all.
+  if (auth.role !== "customer") {
+    return NextResponse.json(
+      { error: "Admin accounts can't be deleted from the profile page" },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: auth.userId } });
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await prisma.$transaction([
+      prisma.order.updateMany({
+        where: { userId: user.id },
+        data: {
+          userId: null,
+          guestEmail: user.email,
+          guestName: user.name,
+        },
+      }),
+      // Verification/reset tokens and addresses cascade with the user row.
+      prisma.user.delete({ where: { id: user.id } }),
+    ]);
+
+    console.info(`[profile] account self-deleted user=${user.id}`);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[profile] delete error:", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
 export async function PATCH(req) {
   const auth = await getAuthUser();
   if (!auth) {

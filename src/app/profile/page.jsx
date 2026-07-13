@@ -126,8 +126,9 @@ function AddressRow({ addr, onSaved, onDeleted, onError }) {
 }
 
 export default function ProfilePage() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const { update: updateSession } = useSession();
+  const [deleting, setDeleting] = useState(false);
   const [profile, setProfile] = useState(null);
   const [name, setName] = useState("");
   const [editingName, setEditingName] = useState(false);
@@ -202,6 +203,26 @@ export default function ProfilePage() {
       );
     } catch {
       setError("Couldn't send the reset email — please try again in a minute.");
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (
+      !window.confirm(
+        "Delete your account? This removes your profile and login permanently and can't be undone. Records of past orders are kept for our bookkeeping."
+      )
+    ) {
+      return;
+    }
+    setError("");
+    setDeleting(true);
+    try {
+      await api.delete("/profile");
+      // The account is gone — end the session and head home.
+      logout();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to delete your account.");
+      setDeleting(false);
     }
   };
 
@@ -354,6 +375,27 @@ export default function ProfilePage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Danger zone — customers can close their own account. */}
+        {isCustomer && (
+          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-red-200">
+            <h2 className="text-xl font-semibold text-red-600 mb-1">
+              Delete Account
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Permanently removes your profile and login. Past order records
+              are kept for our bookkeeping (required for taxes), but they
+              will no longer be linked to an account.
+            </p>
+            <button
+              onClick={deleteAccount}
+              disabled={deleting}
+              className="w-full sm:w-auto border-2 border-red-400 text-red-500 px-4 py-2.5 rounded-lg font-semibold hover:bg-red-500 hover:border-red-500 hover:text-white transition disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : "Delete My Account"}
+            </button>
           </div>
         )}
       </div>

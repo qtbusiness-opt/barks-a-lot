@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isWithinWindow } from "@/lib/catalog";
+import { isWithinWindow, publicProduct } from "@/lib/catalog";
 
 export async function GET(_req, { params }) {
   const { id } = await params;
@@ -14,8 +14,9 @@ export async function GET(_req, { params }) {
   }
 
   // Direct links to an expired/not-yet-open drop still resolve; the UI
-  // uses `available` to disable purchase.
+  // uses `available` to disable purchase. Stock counts are stripped to
+  // booleans on the way out.
   return NextResponse.json({
-    product: { ...product, available: isWithinWindow(product) },
+    product: { ...publicProduct(product), available: isWithinWindow(product) },
   });
 }

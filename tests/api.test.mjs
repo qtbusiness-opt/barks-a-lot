@@ -123,6 +123,19 @@ async function loginAs(email, password) {
   return sessionCookie ? `${csrfCookies}; ${sessionCookie}` : "";
 }
 
+// Exact stock counts are stripped from the public catalog, so tests read
+// them through the admin endpoint.
+async function adminCatalog() {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const res = await api("GET", "/admin/products", { cookie });
+  return res.data.products;
+}
+
+async function adminStock(productId) {
+  const products = await adminCatalog();
+  return products.find((p) => p.id === productId);
+}
+
 test("register creates an unverified account; login is blocked until verified", async () => {
   const res = await api("POST", "/auth/register", {
     body: { name: "Test User", email: "user@test.local", password: "secret123" },
@@ -207,8 +220,8 @@ test("guest checkout requires an email", async () => {
 });
 
 test("guest pickup order succeeds without address and decrements stock", async () => {
-  const { data: before } = await api("GET", "/products");
-  const product = before.products.find((p) => p.quantity >= 2);
+  const catalog = await adminCatalog();
+  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 2);
 
   const res = await api("POST", "/orders", {
     body: {
@@ -222,8 +235,8 @@ test("guest pickup order succeeds without address and decrements stock", async (
   assert.match(res.data.order.confirmationNumber, /^BAL-/);
   assert.equal(res.data.order.userId, null);
 
-  const { data: after } = await api("GET", `/products/${product.id}`);
-  assert.equal(after.product.quantity, product.quantity - 2);
+  const after = await adminStock(product.id);
+  assert.equal(after.quantity, product.quantity - 2);
 });
 
 test("shipping orders are rejected while the store is pickup-only", async () => {
@@ -246,8 +259,8 @@ test("shipping orders are rejected while the store is pickup-only", async () => 
 });
 
 test("ordering more than available stock is rejected and nothing is written", async () => {
-  const { data: products } = await api("GET", "/products");
-  const product = products.products[0];
+  const catalog = await adminCatalog();
+  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 1);
 
   const res = await api("POST", "/orders", {
     body: {
@@ -259,8 +272,8 @@ test("ordering more than available stock is rejected and nothing is written", as
   });
   assert.equal(res.status, 409);
 
-  const { data: after } = await api("GET", `/products/${product.id}`);
-  assert.equal(after.product.quantity, product.quantity);
+  const after = await adminStock(product.id);
+  assert.equal(after.quantity, product.quantity);
 });
 
 test("logged-in customer order is linked to the account", async () => {
@@ -268,7 +281,9 @@ test("logged-in customer order is linked to the account", async () => {
   assert.notEqual(cookie, "");
 
   const { data: products } = await api("GET", "/products");
-  const product = products.products.find((p) => p.quantity >= 1);
+  const product = products.products.find(
+    (p) => p.variants.length === 0 && p.inStock
+  );
 
   const created = await api("POST", "/orders", {
     body: {
@@ -321,8 +336,8 @@ test("admin can list orders and update status", async () => {
 });
 
 test("variant products require an option and track per-variant stock", async () => {
-  const { data } = await api("GET", "/products");
-  const product = data.products.find((p) => p.variants.length > 0);
+  const catalog = await adminCatalog();
+  const product = catalog.find((p) => p.variants.length > 0);
   assert.ok(product, "seeded variant product exists");
 
   // Ordering a variant product without choosing an option is rejected.
@@ -351,8 +366,8 @@ test("variant products require an option and track per-variant stock", async () 
   assert.equal(line.price, variant.price ?? product.price);
 
   // Only the chosen variant's stock is decremented.
-  const detail = await api("GET", `/products/${product.id}`);
-  const afterVariant = detail.data.product.variants.find((v) => v.id === variant.id);
+  const after = await adminStock(product.id);
+  const afterVariant = after.variants.find((v) => v.id === variant.id);
   assert.equal(afterVariant.quantity, variant.quantity - 2);
 
   // Overselling a single variant is rejected.
@@ -369,11 +384,24 @@ test("variant products require an option and track per-variant stock", async () 
   assert.equal(oversell.status, 409);
 });
 
-test("limited drops report remaining stock in listings", async () => {
+test("public catalog exposes availability booleans, never stock counts", async () => {
   const { data } = await api("GET", "/products");
+
   const drop = data.products.find((p) => p.limitedQuantity != null);
   assert.ok(drop, "seeded limited drop is visible while in its window");
-  assert.ok(drop.quantity <= drop.limitedQuantity);
+
+  for (const p of data.products) {
+    assert.equal(p.quantity, undefined, `${p.name} leaks its stock count`);
+    assert.equal(typeof p.inStock, "boolean");
+    for (const v of p.variants) {
+      assert.equal(v.quantity, undefined, `${p.name} variant leaks stock`);
+      assert.equal(typeof v.inStock, "boolean");
+    }
+  }
+
+  // The detail endpoint is sanitized the same way.
+  const detail = await api("GET", `/products/${data.products[0].id}`);
+  assert.equal(detail.data.product.quantity, undefined);
 });
 
 test("expired limited drops are hidden and cannot be purchased", async () => {
@@ -473,7 +501,7 @@ test("admins can create products that appear on the storefront", async () => {
 test("status changes record a notification tied to the order email", async () => {
   const email = "notify-me@test.local";
   const { data: products } = await api("GET", "/products");
-  const product = products.products.find((p) => p.variants.length === 0 && p.quantity >= 1);
+  const product = products.products.find((p) => p.variants.length === 0 && p.inStock);
 
   const order = await api("POST", "/orders", {
     body: {
@@ -704,8 +732,8 @@ test("events: admin CRUD, public read-only calendar queries", async () => {
 });
 
 test("pickup orders require an event; Next Event resolves to the nearest not-today", async () => {
-  const { data: products } = await api("GET", "/products");
-  const product = products.products.find((p) => p.variants.length === 0 && p.quantity >= 2);
+  const catalog = await adminCatalog();
+  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 2);
 
   // Upcoming endpoint lists the seeded events for the dropdown.
   const upcoming = await api("GET", "/events?upcoming=true");
@@ -930,7 +958,7 @@ test("admins can look up customers, send resets, and delete accounts", async () 
 
   // Give them an order so deletion has history to preserve.
   const { data: products } = await api("GET", "/products");
-  const product = products.products.find((p) => p.variants.length === 0 && p.quantity >= 1);
+  const product = products.products.find((p) => p.variants.length === 0 && p.inStock);
   const customerCookie = await loginAs("lookup@test.local", "secret123");
   const order = await api("POST", "/orders", {
     body: {
@@ -991,9 +1019,9 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
   await api("POST", "/auth/verify", { body: { token: verifyToken } });
   const cookie = await loginAs("profile@test.local", "secret123");
 
-  const { data: products } = await api("GET", "/products");
   // Needs two units: this test places the same order twice.
-  const product = products.products.find((p) => p.variants.length === 0 && p.quantity >= 2);
+  const catalog = await adminCatalog();
+  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 2);
   // Address fields sent alongside a pickup order must NOT be recorded —
   // the store is pickup-only and collects no customer addresses.
   const order = await api("POST", "/orders", {
@@ -1047,10 +1075,8 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
 
 test("customer can cancel an order until pickup; stock is restored", async () => {
   const cookie = await loginAs("user@test.local", "secret123");
-  const { data: products } = await api("GET", "/products");
-  const product = products.products.find(
-    (p) => p.variants.length === 0 && p.quantity >= 2
-  );
+  const catalog = await adminCatalog();
+  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 2);
 
   const order = await api("POST", "/orders", {
     body: {
@@ -1063,8 +1089,8 @@ test("customer can cancel an order until pickup; stock is restored", async () =>
   assert.equal(order.status, 201);
   const orderId = order.data.order.id;
 
-  const { data: afterOrder } = await api("GET", `/products/${product.id}`);
-  assert.equal(afterOrder.product.quantity, product.quantity - 2);
+  const afterOrder = await adminStock(product.id);
+  assert.equal(afterOrder.quantity, product.quantity - 2);
 
   // Anonymous callers can't cancel; another account's order id is a 404.
   const anon = await api("POST", `/orders/${orderId}/cancel`);
@@ -1080,8 +1106,8 @@ test("customer can cancel an order until pickup; stock is restored", async () =>
   assert.equal(cancelled.status, 200);
   assert.equal(cancelled.data.order.status, "cancelled");
 
-  const { data: afterCancel } = await api("GET", `/products/${product.id}`);
-  assert.equal(afterCancel.product.quantity, product.quantity);
+  const afterCancel = await adminStock(product.id);
+  assert.equal(afterCancel.quantity, product.quantity);
 
   const notifications = await api("GET", "/admin/notifications", {
     cookie: adminCookie,
@@ -1107,7 +1133,7 @@ test("picked-up orders can't be cancelled by the customer", async () => {
   const cookie = await loginAs("user@test.local", "secret123");
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.quantity >= 1
+    (p) => p.variants.length === 0 && p.inStock
   );
 
   const order = await api("POST", "/orders", {
@@ -1133,21 +1159,19 @@ test("picked-up orders can't be cancelled by the customer", async () => {
 
   // An admin cancelling a picked-up order is bookkeeping only — the
   // items already left the booth, so stock must not change.
-  const { data: before } = await api("GET", `/products/${product.id}`);
+  const before = await adminStock(product.id);
   const adminCancel = await api("PATCH", `/admin/orders/${orderId}`, {
     body: { status: "cancelled" },
     cookie: adminCookie,
   });
   assert.equal(adminCancel.status, 200);
-  const { data: after } = await api("GET", `/products/${product.id}`);
-  assert.equal(after.product.quantity, before.product.quantity);
+  const after = await adminStock(product.id);
+  assert.equal(after.quantity, before.quantity);
 });
 
 test("admin cancellation of an active order restores stock", async () => {
-  const { data: products } = await api("GET", "/products");
-  const product = products.products.find(
-    (p) => p.variants.length === 0 && p.quantity >= 1
-  );
+  const catalog = await adminCatalog();
+  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 1);
 
   const order = await api("POST", "/orders", {
     body: {
@@ -1166,6 +1190,50 @@ test("admin cancellation of an active order restores stock", async () => {
   });
   assert.equal(cancelled.status, 200);
 
-  const { data: after } = await api("GET", `/products/${product.id}`);
-  assert.equal(after.product.quantity, product.quantity);
+  const after = await adminStock(product.id);
+  assert.equal(after.quantity, product.quantity);
+});
+
+test("customers can delete their own account; orders survive as guest records", async () => {
+  const reg = await api("POST", "/auth/register", {
+    body: { name: "Self Delete", email: "selfdelete@test.local", password: "secret123" },
+  });
+  const token = new URL(reg.data.devVerificationUrl).searchParams.get("token");
+  await api("POST", "/auth/verify", { body: { token } });
+  const cookie = await loginAs("selfdelete@test.local", "secret123");
+
+  const { data: products } = await api("GET", "/products");
+  const product = products.products.find(
+    (p) => p.variants.length === 0 && p.inStock
+  );
+  const order = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+    },
+    cookie,
+  });
+  assert.equal(order.status, 201);
+
+  // Anonymous callers get 401; admins can't self-delete through this route.
+  const anon = await api("DELETE", "/profile");
+  assert.equal(anon.status, 401);
+  const adminCookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const asAdmin = await api("DELETE", "/profile", { cookie: adminCookie });
+  assert.equal(asAdmin.status, 403);
+
+  // Self-deletion kills the login...
+  const deleted = await api("DELETE", "/profile", { cookie });
+  assert.equal(deleted.status, 200);
+  assert.equal(await loginAs("selfdelete@test.local", "secret123"), "");
+
+  // ...but the order survives as a guest record for bookkeeping.
+  const orders = await api("GET", "/admin/orders", { cookie: adminCookie });
+  const kept = orders.data.orders.find(
+    (o) => o.confirmationNumber === order.data.order.confirmationNumber
+  );
+  assert.ok(kept, "order survives account deletion");
+  assert.equal(kept.user, null);
+  assert.equal(kept.guestEmail, "selfdelete@test.local");
 });

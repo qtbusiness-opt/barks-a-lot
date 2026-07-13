@@ -134,6 +134,10 @@ export default function CheckoutPage() {
   // "off" (Square not configured) | "loading" | "ready" | "error"
   const [cardStatus, setCardStatus] = useState(SQUARE_APP_ID ? "loading" : "off");
   const cardRef = useRef(null);
+  // One-time Square token + display details ("Visa ending in 1111"),
+  // captured when the customer continues to review.
+  const [payment, setPayment] = useState(null);
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     api
@@ -142,10 +146,10 @@ export default function CheckoutPage() {
       .catch(() => setUpcomingEvents([]));
   }, []);
 
-  // Mount the Square card form when the review step opens; the iframe
-  // keeps card details inside Square — they never touch our servers.
+  // Mount the Square card form on the info step; the iframe keeps card
+  // details inside Square — they never touch our servers.
   useEffect(() => {
-    if (step !== 1 || !SQUARE_APP_ID) return undefined;
+    if (step !== 0 || !SQUARE_APP_ID) return undefined;
     let cancelled = false;
     let cardInstance;
     (async () => {
@@ -226,27 +230,18 @@ export default function CheckoutPage() {
   const update = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
-  // Step 1 submit only advances to review — nothing is charged or saved.
-  const handleContinue = (e) => {
+  // Continuing to review tokenizes the card (nothing is charged yet) so
+  // the review step can show which card will be used.
+  const handleContinue = async (e) => {
     e.preventDefault();
     setError("");
-    setStep(1);
-    window.scrollTo({ top: 0 });
-  };
 
-  // Tokenize the card with Square, then send the one-time token with the
-  // order payload; the server charges the verified total.
-  const handleProcessPayment = async () => {
-    setError("");
-    setSubmitting(true);
-
-    let paymentToken;
     if (SQUARE_APP_ID) {
       if (!cardRef.current) {
         setError("The payment form isn't ready yet — give it a second and try again.");
-        setSubmitting(false);
         return;
       }
+      setSubmitting(true);
       try {
         const result = await cardRef.current.tokenize();
         if (result.status !== "OK") {
@@ -254,16 +249,39 @@ export default function CheckoutPage() {
             result.errors?.[0]?.message ||
               "Please check your card details and try again."
           );
-          setSubmitting(false);
           return;
         }
-        paymentToken = result.token;
+        setPayment({
+          token: result.token,
+          card: result.details?.card ?? null,
+        });
       } catch {
         setError("Please check your card details and try again.");
-        setSubmitting(false);
         return;
+      } finally {
+        setSubmitting(false);
       }
     }
+
+    setStep(1);
+    window.scrollTo({ top: 0 });
+  };
+
+  // Back to the info step: Square tokens are single-use, so drop the old
+  // one — continuing again re-tokenizes the card.
+  const handleBack = () => {
+    setPayment(null);
+    if (SQUARE_APP_ID) setCardStatus("loading");
+    setStep(0);
+    window.scrollTo({ top: 0 });
+  };
+
+  // Send the stored one-time token with the order payload; the server
+  // charges the verified total.
+  const handleProcessPayment = async () => {
+    setError("");
+    setSubmitting(true);
+    const paymentToken = payment?.token;
 
     try {
       const res = await api.post("/orders", {
@@ -298,6 +316,14 @@ export default function CheckoutPage() {
         err.response?.data?.error || "Failed to place order. Please try again."
       );
       setSubmitting(false);
+      // A declined charge consumes the one-time token — back to the info
+      // step so the customer can re-enter or change the card.
+      if (err.response?.status === 402) {
+        setPayment(null);
+        if (SQUARE_APP_ID) setCardStatus("loading");
+        setStep(0);
+        window.scrollTo({ top: 0 });
+      }
     }
   };
 
@@ -516,12 +542,73 @@ export default function CheckoutPage() {
               </div>
             ) : null}
 
+            {SQUARE_APP_ID && (
+              <div>
+                <h2 className="text-xl font-semibold text-[#2A4A52] mb-2">
+                  Payment
+                </h2>
+                {cardStatus === "error" ? (
+                  <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                    The payment form couldn&apos;t be loaded. Please refresh
+                    the page and try again.
+                  </p>
+                ) : (
+                  <>
+                    {cardStatus === "loading" && (
+                      <p className="text-sm text-gray-500 mb-2">
+                        Loading secure payment form...
+                      </p>
+                    )}
+                    <div id="card-container" />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Payments are processed securely by Square — your card
+                      details never touch our servers. Nothing is charged
+                      until you confirm on the next step.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
+            <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                required
+                className="mt-1 h-4 w-4 shrink-0 accent-[#4A7C8A]"
+              />
+              <span>
+                I have read and agree to the{" "}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+                >
+                  Privacy Policy
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+                >
+                  Terms of Service
+                </Link>
+                .
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={fulfillmentType === "pickup" && !hasEvents}
+              disabled={
+                submitting ||
+                (fulfillmentType === "pickup" && !hasEvents) ||
+                (SQUARE_APP_ID && cardStatus !== "ready")
+              }
               className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Continue to Review
+              {submitting ? "Checking card..." : "Continue to Review"}
             </button>
           </form>
 
@@ -579,36 +666,24 @@ export default function CheckoutPage() {
                 <p className="text-red-500 mt-1">No pickup event selected.</p>
               )}
             </div>
-          </div>
 
-          {SQUARE_APP_ID && (
-            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
-              <h2 className="text-xl font-semibold text-[#2A4A52] mb-3">Payment</h2>
-              {cardStatus === "error" ? (
-                <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
-                  The payment form couldn&apos;t be loaded. Please refresh the
-                  page and try again.
+            {payment && (
+              <div>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                  Payment
+                </h3>
+                <p className="text-[#2A4A52] mt-1">
+                  {payment.card
+                    ? `${payment.card.brand ?? "Card"} ending in ${payment.card.last4 ?? "····"}`
+                    : "Card ready — charged when you confirm below"}
                 </p>
-              ) : (
-                <>
-                  {cardStatus === "loading" && (
-                    <p className="text-sm text-gray-500 mb-2">
-                      Loading secure payment form...
-                    </p>
-                  )}
-                  <div id="card-container" />
-                  <p className="text-xs text-gray-500 mt-2">
-                    Payments are processed securely by Square — your card
-                    details never touch our servers.
-                  </p>
-                </>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => setStep(0)}
+              onClick={handleBack}
               className="sm:flex-1 border-2 border-[#4A7C8A] text-[#4A7C8A] py-3 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
             >
               Back
@@ -618,7 +693,7 @@ export default function CheckoutPage() {
               disabled={
                 submitting ||
                 (fulfillmentType === "pickup" && !chosenEvent) ||
-                (SQUARE_APP_ID && cardStatus !== "ready")
+                (SQUARE_APP_ID && !payment)
               }
               className="sm:flex-[2] bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
             >

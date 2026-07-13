@@ -138,11 +138,21 @@ export default function TermsOfServicePage() {
 
       <Section title="5. Returns, Refunds, and Cancellations">
         <p>
-          <strong>Returns:</strong> Due to the handmade and perishable nature
-          of our products, we do not accept product returns.
+          <strong>Returns:</strong> Due to their perishable nature, our
+          treats and other edible products cannot be returned. All other
+          items (such as bandanas and accessories) may be returned within
+          thirty (30) days of pickup in unused condition — contact us at{" "}
+          <a
+            href="mailto:info@barks-a-lot.com"
+            className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+          >
+            info@barks-a-lot.com
+          </a>{" "}
+          with your order number to arrange a return.
         </p>
         <p>
-          <strong>Refunds:</strong> All sales are final. We do not offer
+          <strong>Refunds:</strong> Approved returns are refunded to your
+          original payment method. Perishable items are not eligible for
           refunds once an order has been picked up.
         </p>
         <p>
