@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
+import { SHIPPING_ENABLED } from "@/lib/features";
 
 export default function HomePage() {
   const [featured, setFeatured] = useState([]);
@@ -39,7 +40,7 @@ export default function HomePage() {
           </h1>
           <p className="text-base sm:text-xl text-[#E8DFC8] max-w-2xl mb-8">
             Premium, tail-wagging treats and accessories for your furry friend.
-            Made with love, delivered with care.
+            Made with love, handed over with care.
           </p>
           <Link
             href="/products"
@@ -107,13 +108,23 @@ export default function HomePage() {
               Only the finest, natural ingredients for your pup
             </p>
           </div>
-          <div>
-            <div className="text-3xl mb-2">🚚</div>
-            <h3 className="font-semibold text-[#2A4A52] text-lg">Free Shipping</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Orders over $50 ship at no cost
-            </p>
-          </div>
+          {SHIPPING_ENABLED ? (
+            <div>
+              <div className="text-3xl mb-2">🚚</div>
+              <h3 className="font-semibold text-[#2A4A52] text-lg">Free Shipping</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Orders over $50 ship at no cost
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div className="text-3xl mb-2">🎪</div>
+              <h3 className="font-semibold text-[#2A4A52] text-lg">Easy Local Pickup</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Order online, pick up at our next market or event
+              </p>
+            </div>
+          )}
           <div>
             <div className="text-3xl mb-2">❤️</div>
             <h3 className="font-semibold text-[#2A4A52] text-lg">Made with Love</h3>

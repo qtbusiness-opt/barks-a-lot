@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -9,6 +9,13 @@ const credentialsSchema = z.object({
   email: z.email(),
   password: z.string().min(1),
 });
+
+// Distinguishable from a bad password so the login page can offer to
+// resend the verification email. Only thrown AFTER the password checks
+// out, so it doesn't leak whether an email has an account.
+class EmailUnverified extends CredentialsSignin {
+  code = "email-unverified";
+}
 
 // Admin sessions are kept short (CLAUDE.md §1); customers get a longer
 // "remember me" window. The global maxAge covers customers; admin expiry
@@ -52,6 +59,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        if (user.role !== "admin" && !user.emailVerified) {
+          console.warn(`[auth] login blocked (unverified) user=${user.id}`);
+          throw new EmailUnverified();
+        }
+
         console.info(`[auth] login success user=${user.id} role=${user.role}`);
         return {
           id: user.id,
@@ -63,11 +75,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.userId = user.id;
         token.role = user.role;
         token.issuedAt = Math.floor(Date.now() / 1000);
+      }
+      // useSession().update({ name }) after a profile edit lands here.
+      if (trigger === "update" && session?.name) {
+        token.name = session.name;
       }
       const age = Math.floor(Date.now() / 1000) - (token.issuedAt ?? 0);
       if (token.role === "admin" && age > SESSION_SECONDS.admin) {

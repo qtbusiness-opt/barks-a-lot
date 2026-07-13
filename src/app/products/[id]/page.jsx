@@ -43,13 +43,15 @@ export default function ProductDetailPage() {
     ? product.variants.find((v) => v.id === variantId) ?? null
     : null;
   const price = variant ? variant.price ?? product.price : product.price;
-  const stock = hasVariants
+  // Availability is boolean-only on the storefront; exact counts live on
+  // the admin side.
+  const inStock = hasVariants
     ? variant
-      ? variant.quantity
-      : product.variants.reduce((sum, v) => sum + v.quantity, 0)
-    : product.quantity;
+      ? variant.inStock
+      : product.variants.some((v) => v.inStock)
+    : product.inStock;
   const purchasable =
-    product.available && stock > 0 && (!hasVariants || variant !== null);
+    product.available && inStock && (!hasVariants || variant !== null);
 
   // The added-to-cart notice (drawer/bottom sheet) provides the feedback.
   const handleAdd = () => {
@@ -88,19 +90,19 @@ export default function ProductDetailPage() {
 
           {product.limitedQuantity != null && (
             <p className="inline-block bg-[#C8722A] text-white text-sm font-semibold px-3 py-1 rounded-full mt-2">
-              {stock > 0
-                ? `Limited drop — ${stock} of ${product.limitedQuantity} left`
+              {inStock
+                ? "Limited edition drop — get yours before it's gone"
                 : "This limited drop has sold out"}
             </p>
           )}
 
           <p className="text-xl sm:text-2xl font-bold mt-4 justify-between flex items-center gap-4">
             <span className="text-[#C8722A]">${price.toFixed(2)}</span>
-            <span className={stock > 0 ? "text-green-600" : "text-red-600"}>
+            <span className={inStock ? "text-green-600" : "text-red-600"}>
               {!product.available
                 ? "Not currently available"
-                : stock > 0
-                ? `${stock} In Stock`
+                : inStock
+                ? "In Stock"
                 : "Out of Stock"}
             </span>
           </p>
@@ -119,7 +121,7 @@ export default function ProductDetailPage() {
                       variantId === v.id
                         ? "border-[#4A7C8A] bg-[#F5F0E8]"
                         : "border-gray-300"
-                    } ${v.quantity <= 0 ? "opacity-50" : ""}`}
+                    } ${!v.inStock ? "opacity-50" : ""}`}
                   >
                     <span className="flex items-center gap-2">
                       <input
@@ -128,13 +130,13 @@ export default function ProductDetailPage() {
                         value={v.id}
                         checked={variantId === v.id}
                         onChange={() => setVariantId(v.id)}
-                        disabled={v.quantity <= 0}
+                        disabled={!v.inStock}
                       />
                       <span className="text-sm font-medium">{variantLabel(v)}</span>
                     </span>
                     <span className="text-sm text-gray-600">
                       ${(v.price ?? product.price).toFixed(2)}
-                      {v.quantity <= 0 && " · Sold out"}
+                      {!v.inStock && " · Sold out"}
                     </span>
                   </label>
                 ))}
@@ -169,7 +171,7 @@ export default function ProductDetailPage() {
           >
             {!product.available
               ? "Not Available"
-              : stock <= 0
+              : !inStock
               ? "Out of Stock"
               : hasVariants && !variant
               ? "Choose an Option"

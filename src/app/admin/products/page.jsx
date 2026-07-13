@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import ImageUpload from "@/components/ImageUpload";
 
 const CATEGORIES = ["treats", "toys", "accessories", "food"];
 
@@ -100,18 +101,7 @@ function ProductFields({ form, update, variantProduct }) {
           ))}
         </select>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Image path
-        </label>
-        <input
-          type="text"
-          value={form.image}
-          onChange={(e) => update("image", e.target.value)}
-          required
-          className={inputClass}
-        />
-      </div>
+      <ImageUpload value={form.image} onChange={(url) => update("image", url)} />
       <label className="flex items-center gap-3 min-h-11 cursor-pointer">
         <input
           type="checkbox"
@@ -320,7 +310,7 @@ export default function AdminProductsPage() {
           <ProductFields form={form} update={update} variantProduct={false} />
           <p className="text-xs text-gray-500">
             Stock status is set automatically: products with quantity 0 show
-            as out of stock. Place image files under public/images/products/.
+            as out of stock.
           </p>
           <button
             type="submit"

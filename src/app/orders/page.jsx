@@ -4,16 +4,41 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
+import { orderStatusLabel } from "@/lib/order-status";
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState(null);
+  const [error, setError] = useState("");
+  const [cancelling, setCancelling] = useState(null);
 
   useEffect(() => {
     if (user) {
       api.get("/orders").then((res) => setOrders(res.data.orders));
     }
   }, [user]);
+
+  const cancelOrder = async (orderId) => {
+    if (
+      !window.confirm(
+        "Cancel this order? Your items will go back on the shelf and this can't be undone."
+      )
+    ) {
+      return;
+    }
+    setError("");
+    setCancelling(orderId);
+    try {
+      const res = await api.post(`/orders/${orderId}/cancel`);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? res.data.order : o))
+      );
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to cancel the order.");
+    } finally {
+      setCancelling(null);
+    }
+  };
 
   const loading = authLoading || (!!user && orders === null);
 
@@ -46,6 +71,10 @@ export default function OrdersPage() {
     <div className="max-w-4xl mx-auto safe-x py-6 sm:py-10">
       <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">My Orders</h1>
 
+      {error && (
+        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+      )}
+
       {orderList.length === 0 ? (
         <div className="text-center py-10">
           <p className="text-gray-500 mb-6">You haven&apos;t placed any orders yet.</p>
@@ -70,12 +99,16 @@ export default function OrdersPage() {
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
-                      ? "Pickup at market/event"
+                      ? order.pickupEvent
+                        ? `Pickup at ${order.pickupEvent.title} — ${new Date(
+                            `${String(order.pickupEvent.date).slice(0, 10)}T00:00:00`
+                          ).toLocaleDateString()}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
+                        : "Pickup at market/event"
                       : "Ships to your address"}
                   </p>
                 </div>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
                     order.status === "pending"
                       ? "bg-yellow-100 text-yellow-700"
                       : order.status === "shipped"
@@ -85,7 +118,7 @@ export default function OrdersPage() {
                       : "bg-gray-100 text-gray-700"
                   }`}
                 >
-                  {order.status}
+                  {orderStatusLabel(order.status)}
                 </span>
               </div>
               <div className="space-y-3">
@@ -110,7 +143,19 @@ export default function OrdersPage() {
                 ))}
               </div>
               <hr className="my-4 border-gray-100" />
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Cancellable until picked up ("delivered"). */}
+                {["pending", "shipped"].includes(order.status) ? (
+                  <button
+                    onClick={() => cancelOrder(order.id)}
+                    disabled={cancelling === order.id}
+                    className="min-h-11 px-4 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition disabled:opacity-50"
+                  >
+                    {cancelling === order.id ? "Cancelling..." : "Cancel Order"}
+                  </button>
+                ) : (
+                  <span />
+                )}
                 <p className="font-bold text-[#C8722A]">Total: ${order.total.toFixed(2)}</p>
               </div>
             </div>

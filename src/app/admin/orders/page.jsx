@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { orderStatusLabel } from "@/lib/order-status";
 
 const STATUSES = ["pending", "shipped", "delivered", "cancelled"];
 
@@ -72,18 +73,22 @@ export default function AdminOrdersPage() {
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
-                      ? "Pickup at market/event"
+                      ? order.pickupEvent
+                        ? `Pickup at ${order.pickupEvent.title} — ${new Date(
+                            `${String(order.pickupEvent.date).slice(0, 10)}T00:00:00`
+                          ).toLocaleDateString()}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
+                        : "Pickup at market/event"
                       : `Ship to: ${order.address}, ${order.city}, ${order.state} ${order.zip}`}
                     {order.channel === "market" && " · Market sale"}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
                       STATUS_STYLES[order.status] || "bg-gray-100 text-gray-700"
                     }`}
                   >
-                    {order.status}
+                    {orderStatusLabel(order.status)}
                   </span>
                   <select
                     value={order.status}
@@ -93,7 +98,7 @@ export default function AdminOrdersPage() {
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
-                        {s}
+                        {orderStatusLabel(s)}
                       </option>
                     ))}
                   </select>

@@ -12,6 +12,7 @@ export async function GET() {
     include: {
       items: { include: { product: true, variant: true } },
       user: { select: { name: true, email: true } },
+      pickupEvent: true,
     },
     orderBy: { createdAt: "desc" },
   });

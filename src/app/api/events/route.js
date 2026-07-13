@@ -6,14 +6,20 @@ const monthParam = z.string().regex(/^\d{4}-\d{2}$/);
 const dateParam = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 // Public, read-only. ?month=YYYY-MM returns a month of events for the
-// calendar; ?date=YYYY-MM-DD returns one day for the details page.
+// calendar; ?date=YYYY-MM-DD returns one day for the details page;
+// ?upcoming=true returns today-onward events for pickup selection.
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const month = searchParams.get("month");
   const date = searchParams.get("date");
+  const upcoming = searchParams.get("upcoming");
 
   let where = {};
-  if (date && dateParam.safeParse(date).success) {
+  if (upcoming === "true") {
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    where = { date: { gte: startOfToday } };
+  } else if (date && dateParam.safeParse(date).success) {
     const start = new Date(`${date}T00:00:00.000Z`);
     const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
     where = { date: { gte: start, lt: end } };

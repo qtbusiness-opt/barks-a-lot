@@ -21,6 +21,8 @@ export async function GET() {
     announcements,
     notifications,
     upcomingEvents,
+    adminUsers,
+    customers,
   ] = await Promise.all([
     prisma.order.count(),
     prisma.order.count({ where: { status: "pending" } }),
@@ -30,6 +32,8 @@ export async function GET() {
     prisma.announcement.count(),
     prisma.notification.count(),
     prisma.event.count({ where: { date: { gte: startOfToday } } }),
+    prisma.user.count({ where: { role: "admin" } }),
+    prisma.user.count({ where: { role: "customer" } }),
   ]);
 
   return NextResponse.json({
@@ -42,6 +46,8 @@ export async function GET() {
       announcements,
       notifications,
       upcomingEvents,
+      adminUsers,
+      customers,
     },
   });
 }

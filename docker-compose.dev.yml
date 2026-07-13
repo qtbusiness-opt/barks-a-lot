@@ -13,6 +13,14 @@ services:
       - JWT_SECRET=${JWT_SECRET:-dev-secret-not-for-production}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@barks-a-lot.com}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - NEXT_PUBLIC_SQUARE_APP_ID=${NEXT_PUBLIC_SQUARE_APP_ID:-}
+      - NEXT_PUBLIC_SQUARE_LOCATION_ID=${NEXT_PUBLIC_SQUARE_LOCATION_ID:-}
+      - SQUARE_ACCESS_TOKEN=${SQUARE_ACCESS_TOKEN:-}
+      - SQUARE_ENV=${SQUARE_ENV:-sandbox}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - APP_URL=${APP_URL:-}
       - WATCHPACK_POLLING=true
     volumes:
       - ./src:/app/src

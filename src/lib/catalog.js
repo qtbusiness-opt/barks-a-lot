@@ -21,3 +21,18 @@ export function visibleInListing(product, now = new Date()) {
   if (product.limitedQuantity != null && totalStock(product) <= 0) return false;
   return true;
 }
+
+// Customer-facing product shape: exact stock counts are business data and
+// stay on the admin API — the storefront gets booleans. inStock on the
+// product row is already maintained by checkout/cancel/admin writes;
+// variants get a derived flag here.
+export function publicProduct(product) {
+  const { quantity: _quantity, variants, ...rest } = product;
+  return {
+    ...rest,
+    variants: (variants ?? []).map(({ quantity, ...v }) => ({
+      ...v,
+      inStock: quantity > 0,
+    })),
+  };
+}

@@ -6,19 +6,21 @@ import { useCart } from "@/context/CartContext";
 export default function ProductCard({
   id,
   name,
-  quantity,
   price,
   image,
   category,
+  inStock: productInStock = true,
   variants = [],
   limitedQuantity = null,
 }) {
   const { addItem } = useCart();
 
+  // The public API exposes availability as booleans only — exact stock
+  // counts are admin-side business data.
   const hasVariants = variants.length > 0;
-  const stock = hasVariants
-    ? variants.reduce((sum, v) => sum + v.quantity, 0)
-    : quantity;
+  const inStock = hasVariants
+    ? variants.some((v) => v.inStock)
+    : productInStock;
   const prices = hasVariants
     ? variants.map((v) => v.price ?? price)
     : [price];
@@ -34,9 +36,9 @@ export default function ProductCard({
             alt={name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          {limitedQuantity != null && stock > 0 && (
+          {limitedQuantity != null && inStock && (
             <span className="absolute top-2 left-2 bg-[#C8722A] text-white text-xs font-semibold px-2 py-1 rounded-full">
-              Limited: {stock} of {limitedQuantity} left
+              Limited Edition
             </span>
           )}
         </div>
@@ -50,8 +52,8 @@ export default function ProductCard({
             {name}
           </h3>
         </Link>
-        {stock > 0 ? (
-          <p className="font-semibold text-sm text-green-600 mt-1">{stock} In Stock</p>
+        {inStock ? (
+          <p className="font-semibold text-sm text-green-600 mt-1">In Stock</p>
         ) : (
           <p className="font-semibold text-sm text-red-600 mt-1">Out of Stock</p>
         )}
@@ -73,7 +75,7 @@ export default function ProductCard({
           ) : (
             <button
               onClick={() => addItem({ productId: id, name, price, image })}
-              disabled={stock <= 0}
+              disabled={!inStock}
               className="bg-[#4A7C8A] text-white px-3 py-2.5 sm:py-1.5 rounded-lg text-sm font-medium hover:bg-[#3A6270] active:bg-[#2A4A52] transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add to Cart
