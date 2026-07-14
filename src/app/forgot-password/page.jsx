@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
           new password.
         </p>
         {error && (
-          <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+          <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

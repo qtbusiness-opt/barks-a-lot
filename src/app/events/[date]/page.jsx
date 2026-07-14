@@ -101,12 +101,12 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
       <h2 className="text-xl font-bold text-[#2A4A52] mt-3">{event.title}</h2>
       {formatTimeRange(event) && (
         <p className="text-sm text-[#4A7C8A] font-medium mt-1">
-          🕒 {formatTimeRange(event)}
+          <span aria-hidden="true">🕒 </span>{formatTimeRange(event)}
         </p>
       )}
       {event.location && (
         <p className="text-sm text-[#4A7C8A] font-medium mt-1">
-          📍 {event.location}
+          <span aria-hidden="true">📍 </span>{event.location}
         </p>
       )}
       <p className="text-gray-600 mt-3 leading-relaxed">{event.description}</p>
@@ -267,7 +267,7 @@ export default function EventDayPage() {
       </h1>
 
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
       )}
 
       {events === null ? (

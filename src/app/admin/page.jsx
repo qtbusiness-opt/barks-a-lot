@@ -13,6 +13,7 @@ function StatPanel({ href, icon, label, value, detail, accent }) {
       className="bg-white rounded-xl shadow-md p-5 sm:p-6 flex items-start gap-4 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all"
     >
       <span
+        aria-hidden="true"
         className={`flex items-center justify-center w-12 h-12 rounded-xl text-2xl shrink-0 ${accent}`}
       >
         {icon}
@@ -48,7 +49,7 @@ export default function AdminDashboardPage() {
   return (
     <AdminShell title="Admin Dashboard">
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

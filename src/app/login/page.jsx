@@ -53,7 +53,7 @@ export default function LoginPage() {
           Welcome Back
         </h1>
         {error && (
-          <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+          <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
         )}
         {unverified && (
           <button
@@ -65,7 +65,7 @@ export default function LoginPage() {
           </button>
         )}
         {resent && (
-          <p className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4">
+          <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4">
             A new verification link is on its way — check your inbox.
           </p>
         )}

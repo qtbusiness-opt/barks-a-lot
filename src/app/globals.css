@@ -25,6 +25,51 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* WCAG 2.4.7/2.4.11: a clearly visible, unobscured focus indicator on
+   every interactive element, without flashing outlines at mouse users. */
+:focus-visible {
+  outline: 3px solid #C8722A;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Focused elements scroll clear of the sticky navbar (2.4.11 focus not
+   obscured). */
+:target,
+:focus-visible {
+  scroll-margin-top: 5rem;
+}
+
+/* Keyboard users get a way past the navigation (WCAG 2.4.1). Visually
+   hidden until focused. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: #2A4A52;
+  color: #fff;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+/* WCAG 2.3.3: honor the OS-level reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Keep content and the sticky navbar clear of the iPhone notch and home
    indicator (viewport-fit=cover extends the page under them). */
 .safe-x {
