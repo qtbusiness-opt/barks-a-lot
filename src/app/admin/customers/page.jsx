@@ -83,10 +83,10 @@ export default function AdminCustomersPage() {
       </form>
 
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
       )}
       {notice && (
-        <p className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4">{notice}</p>
+        <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4">{notice}</p>
       )}
 
       {customers === null && !error ? (
@@ -112,7 +112,7 @@ export default function AdminCustomersPage() {
                   )}
                 </p>
                 <p className="text-sm text-gray-500 truncate">{c.email}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-500 mt-0.5">
                   {c._count.orders} {c._count.orders === 1 ? "order" : "orders"} ·
                   joined {new Date(c.createdAt).toLocaleDateString()}
                 </p>

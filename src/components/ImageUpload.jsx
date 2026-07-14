@@ -94,7 +94,7 @@ export default function ImageUpload({ value, onChange }) {
         }}
       />
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-2 rounded-lg mt-2">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-2 rounded-lg mt-2">{error}</p>
       )}
     </div>
   );

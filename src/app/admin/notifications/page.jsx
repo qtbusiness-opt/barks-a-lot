@@ -27,7 +27,7 @@ export default function AdminNotificationsPage() {
         notification is created every time an order&apos;s status changes.
       </p>
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
       )}
 
       {notifications === null && !error ? (
@@ -47,7 +47,7 @@ export default function AdminNotificationsPage() {
                 <p className="font-semibold text-[#2A4A52]">{n.email}</p>
                 <p className="text-sm text-gray-600 mt-1">{n.message}</p>
               </div>
-              <p className="text-xs text-gray-400 shrink-0">
+              <p className="text-xs text-gray-500 shrink-0">
                 {new Date(n.createdAt).toLocaleString()}
               </p>
             </div>

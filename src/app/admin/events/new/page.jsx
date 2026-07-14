@@ -56,7 +56,7 @@ function NewEventForm() {
       className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4 max-w-xl"
     >
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>
       )}
       <div>
         <label htmlFor="e-title" className="block text-sm font-medium text-gray-700 mb-1">

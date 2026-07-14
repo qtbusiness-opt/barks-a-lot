@@ -72,7 +72,7 @@ export default function OrdersPage() {
       <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">My Orders</h1>
 
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
       )}
 
       {orderList.length === 0 ? (
@@ -94,7 +94,7 @@ export default function OrdersPage() {
                   <p className="text-sm text-gray-500">
                     Order placed {new Date(order.createdAt).toLocaleDateString()}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-gray-500 mt-1">
                     Confirmation #: {order.confirmationNumber}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">

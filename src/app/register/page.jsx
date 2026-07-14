@@ -70,12 +70,12 @@ export default function RegisterPage() {
             </p>
           )}
           {resent && (
-            <p className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mt-4">
+            <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mt-4">
               A new verification link is on its way.
             </p>
           )}
           {error && (
-            <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mt-4">{error}</p>
+            <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mt-4">{error}</p>
           )}
           <div className="mt-6 space-y-3">
             <button
@@ -103,7 +103,7 @@ export default function RegisterPage() {
           Create Account
         </h1>
         {error && (
-          <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+          <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

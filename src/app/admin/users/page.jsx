@@ -64,10 +64,10 @@ export default function AdminUsersPage() {
             they can log in immediately.
           </p>
           {error && (
-            <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>
+            <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>
           )}
           {success && (
-            <p className="text-green-700 text-sm bg-green-50 p-3 rounded-lg">{success}</p>
+            <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg">{success}</p>
           )}
           <div>
             <label htmlFor="u-name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -145,7 +145,7 @@ export default function AdminUsersPage() {
                     </p>
                     <p className="text-sm text-gray-500 truncate">{a.email}</p>
                   </div>
-                  <p className="text-xs text-gray-400 shrink-0">
+                  <p className="text-xs text-gray-500 shrink-0">
                     Since {new Date(a.createdAt).toLocaleDateString()}
                   </p>
                 </div>

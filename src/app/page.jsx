@@ -65,7 +65,7 @@ export default function HomePage() {
               href={`/products?category=${cat.slug}`}
               className="w-[calc(50%-0.375rem)] sm:w-56 bg-white rounded-xl shadow-md p-5 sm:p-8 text-center hover:shadow-lg hover:-translate-y-1 active:translate-y-0 transition-all"
             >
-              <span className="text-4xl mb-3 block">{cat.icon}</span>
+              <span aria-hidden="true" className="text-4xl mb-3 block">{cat.icon}</span>
               <h3 className="text-lg font-semibold text-[#2A4A52]">{cat.name}</h3>
             </Link>
           ))}
@@ -100,7 +100,7 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto safe-x py-10 sm:py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
           <div>
-            <div className="text-3xl mb-2">🐾</div>
+            <div aria-hidden="true" className="text-3xl mb-2">🐾</div>
             <h3 className="font-semibold text-[#2A4A52] text-lg">All Natural</h3>
             <p className="text-sm text-gray-600 mt-1">
               Only the finest, natural ingredients for your pup
@@ -108,7 +108,7 @@ export default function HomePage() {
           </div>
           {SHIPPING_ENABLED ? (
             <div>
-              <div className="text-3xl mb-2">🚚</div>
+              <div aria-hidden="true" className="text-3xl mb-2">🚚</div>
               <h3 className="font-semibold text-[#2A4A52] text-lg">Free Shipping</h3>
               <p className="text-sm text-gray-600 mt-1">
                 Orders over $50 ship at no cost
@@ -116,7 +116,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div>
-              <div className="text-3xl mb-2">🎪</div>
+              <div aria-hidden="true" className="text-3xl mb-2">🎪</div>
               <h3 className="font-semibold text-[#2A4A52] text-lg">Easy Local Pickup</h3>
               <p className="text-sm text-gray-600 mt-1">
                 Order online, pick up at our next market or event
@@ -124,7 +124,7 @@ export default function HomePage() {
             </div>
           )}
           <div>
-            <div className="text-3xl mb-2">❤️</div>
+            <div aria-hidden="true" className="text-3xl mb-2">❤️</div>
             <h3 className="font-semibold text-[#2A4A52] text-lg">Made with Love</h3>
             <p className="text-sm text-gray-600 mt-1">
               Every product crafted with your pet&apos;s happiness in mind

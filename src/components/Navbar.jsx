@@ -13,7 +13,7 @@ export default function Navbar() {
   const isQual = process.env.NODE_ENV === "qual";
 
   return (
-    <nav className="bg-[#4A7C8A] text-white shadow-lg sticky top-0 z-50 safe-top">
+    <nav aria-label="Main" className="bg-[#4A7C8A] text-white shadow-lg sticky top-0 z-50 safe-top">
       <div className="max-w-7xl mx-auto safe-x sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
@@ -37,10 +37,17 @@ export default function Navbar() {
             {user?.role === "admin" && (
               <Link href="/admin" className="hover:text-[#E8DFC8] transition">Admin</Link>
             )}
-            <Link href="/cart" className="relative hover:text-[#E8DFC8] transition">
+            <Link
+              href="/cart"
+              aria-label={`Cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`}
+              className="relative hover:text-[#E8DFC8] transition"
+            >
               Cart
               {itemCount > 0 && (
-                <span className="absolute -top-2 -right-4 bg-[#C8722A] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-2 -right-4 bg-[#C8722A] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
+                >
                   {itemCount}
                 </span>
               )}
@@ -49,7 +56,7 @@ export default function Navbar() {
               <div className="flex items-center gap-4">
                 <Link
                   href="/profile"
-                  className="text-[#E8DFC8] text-sm hover:text-white hover:underline transition"
+                  className="text-white text-sm font-medium hover:underline transition"
                 >
                   Hi, {user.name}
                 </Link>
@@ -78,7 +85,7 @@ export default function Navbar() {
               aria-label={`Cart, ${itemCount} items`}
               className="relative flex items-center justify-center h-11 w-11 active:bg-white/10 rounded-lg"
             >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg aria-hidden="true" focusable="false" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.3 4.6a1 1 0 00.9 1.4h12M10 21a1 1 0 11-2 0 1 1 0 012 0zm8 0a1 1 0 11-2 0 1 1 0 012 0z" />
               </svg>
               {itemCount > 0 && (
@@ -93,7 +100,7 @@ export default function Navbar() {
               aria-expanded={menuOpen}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
             >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg aria-hidden="true" focusable="false" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {menuOpen ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 ) : (

@@ -49,26 +49,32 @@ const formatEventDate = (event) =>
 
 function Stepper({ step }) {
   return (
-    <ol className="flex items-center gap-2 text-sm font-medium mb-6">
+    <ol aria-label="Checkout progress" className="flex items-center gap-2 text-sm font-medium mb-6">
       {["Your Info", "Review & Pay"].map((label, i) => {
         const active = step === i;
         const done = step > i;
         return (
-          <li key={label} className="flex items-center gap-2">
-            {i > 0 && <span className="w-6 sm:w-10 h-px bg-gray-300" />}
+          <li
+            key={label}
+            aria-current={active ? "step" : undefined}
+            className="flex items-center gap-2"
+          >
+            {i > 0 && <span aria-hidden="true" className="w-6 sm:w-10 h-px bg-gray-300" />}
             <span
+              aria-hidden="true"
               className={`flex items-center justify-center w-6 h-6 rounded-full text-xs ${
                 done
-                  ? "bg-green-600 text-white"
+                  ? "bg-green-700 text-white"
                   : active
                   ? "bg-[#4A7C8A] text-white"
-                  : "bg-gray-200 text-gray-500"
+                  : "bg-gray-200 text-gray-600"
               }`}
             >
               {done ? "✓" : i + 1}
             </span>
-            <span className={active ? "text-[#2A4A52]" : "text-gray-400"}>
+            <span className={active ? "text-[#2A4A52]" : "text-gray-500"}>
               {label}
+              {done && <span className="sr-only"> (completed)</span>}
             </span>
           </li>
         );
@@ -112,6 +118,9 @@ export default function CheckoutPage() {
   const [fulfillmentType, setFulfillmentType] = useState(
     SHIPPING_ENABLED ? "shipping" : "pickup"
   );
+  // "next" (nearest open event) or "choose" (pick from the list).
+  const [pickupMode, setPickupMode] = useState("next");
+  // Event id when pickupMode is "choose".
   const [pickupChoice, setPickupChoice] = useState("");
   const [upcomingEvents, setUpcomingEvents] = useState(null);
   const [form, setForm] = useState({
@@ -179,7 +188,9 @@ export default function CheckoutPage() {
   const hasEvents = events.length > 0;
   const nextEvent = events[0] ?? null;
   const chosenEvent =
-    pickupChoice === "next" ? nextEvent : events.find((e) => e.id === pickupChoice);
+    pickupMode === "next"
+      ? nextEvent
+      : events.find((e) => e.id === pickupChoice);
 
   // Guest orders finish here (guests have no orders page), so show the
   // confirmation inline after the cart has been cleared.
@@ -294,7 +305,7 @@ export default function CheckoutPage() {
               state: form.state,
               zip: form.zip,
             }
-          : { pickupEventId: pickupChoice }),
+          : { pickupEventId: pickupMode === "next" ? "next" : pickupChoice }),
         ...(user ? {} : { guestEmail: form.guestEmail, guestName: form.guestName }),
         ...(paymentToken ? { paymentToken } : {}),
       });
@@ -331,7 +342,7 @@ export default function CheckoutPage() {
       <Stepper step={step} />
 
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
       )}
 
       {step === 0 ? (
@@ -501,43 +512,64 @@ export default function CheckoutPage() {
                 </div>
               </>
             ) : hasEvents ? (
-              <div>
-                <label htmlFor="pickup-event" className="block text-xl font-semibold text-[#2A4A52] mb-2">
+              <fieldset>
+                <legend className="block text-xl font-semibold text-[#2A4A52] mb-2">
                   Pickup Event
-                </label>
-                <select
-                  id="pickup-event"
-                  value={pickupChoice}
-                  onChange={(e) => setPickupChoice(e.target.value)}
-                  required
-                  className={inputClass}
-                >
-                  <option value="" disabled>
-                    Choose an event...
-                  </option>
-                  <option value="next" disabled={!nextEvent}>
-                    Next Event
-                    {nextEvent
-                      ? ` (${nextEvent.title} — ${formatEventDate(nextEvent)})`
-                      : " (none currently open for pickup)"}
-                  </option>
-                  {events.map((event) => (
-                    <option key={event.id} value={event.id}>
-                      {event.title} — {formatEventDate(event)}
-                      {formatTimeRange(event) ? `, ${formatTimeRange(event)}` : ""}
-                      {event.location ? ` · ${event.location}` : ""}
-                    </option>
-                  ))}
-                </select>
-                {chosenEvent && (
-                  <p className="text-sm text-gray-600 bg-[#F5F0E8] p-3 rounded-lg mt-2">
-                    Pick up at <strong>{chosenEvent.title}</strong> on{" "}
-                    {formatEventDate(chosenEvent)}
-                    {formatTimeRange(chosenEvent) && <>, {formatTimeRange(chosenEvent)}</>}
-                    {chosenEvent.location && <> — {chosenEvent.location}</>}.
-                  </p>
+                </legend>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                  <label className="flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
+                    <input
+                      type="radio"
+                      name="pickup-mode"
+                      value="next"
+                      checked={pickupMode === "next"}
+                      onChange={() => setPickupMode("next")}
+                    />
+                    <span className="text-sm font-medium">Next Event</span>
+                  </label>
+                  <label className="flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
+                    <input
+                      type="radio"
+                      name="pickup-mode"
+                      value="choose"
+                      checked={pickupMode === "choose"}
+                      onChange={() => setPickupMode("choose")}
+                    />
+                    <span className="text-sm font-medium">Choose Event</span>
+                  </label>
+                </div>
+
+                {pickupMode === "next" ? (
+                  nextEvent && (
+                    <p className="text-sm text-gray-700 bg-[#F5F0E8] p-3 rounded-lg mt-3">
+                      <strong>{nextEvent.title}</strong> —{" "}
+                      {formatEventDate(nextEvent)}
+                    </p>
+                  )
+                ) : (
+                  <div className="mt-3">
+                    <label htmlFor="pickup-event" className="sr-only">
+                      Pickup event
+                    </label>
+                    <select
+                      id="pickup-event"
+                      value={pickupChoice}
+                      onChange={(e) => setPickupChoice(e.target.value)}
+                      required
+                      className={inputClass}
+                    >
+                      <option value="" disabled>
+                        Choose an event...
+                      </option>
+                      {events.map((event) => (
+                        <option key={event.id} value={event.id}>
+                          {event.title} — {formatEventDate(event)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
-              </div>
+              </fieldset>
             ) : null}
 
             {SQUARE_APP_ID && (
@@ -546,7 +578,7 @@ export default function CheckoutPage() {
                   Payment
                 </h2>
                 {cardStatus === "error" ? (
-                  <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                  <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
                     The payment form couldn&apos;t be loaded. Please refresh
                     the page and try again.
                   </p>
@@ -653,7 +685,7 @@ export default function CheckoutPage() {
                 <div className="text-[#2A4A52] mt-1">
                   <p className="font-medium">
                     Pickup at {chosenEvent.title}
-                    {pickupChoice === "next" && " (Next Event)"}
+                    {pickupMode === "next" && " (Next Event)"}
                   </p>
                   <p className="text-sm text-gray-600">
                     {formatEventDate(chosenEvent)}

@@ -303,7 +303,7 @@ export default function AdminProductsPage() {
   return (
     <AdminShell title="Products" backTo="/admin">
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Creation form: the fields that make up a product card. */}
@@ -313,7 +313,7 @@ export default function AdminProductsPage() {
         >
           <h2 className="text-xl font-semibold text-[#2A4A52]">New Product</h2>
           {success && (
-            <p className="text-green-700 text-sm bg-green-50 p-3 rounded-lg">{success}</p>
+            <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg">{success}</p>
           )}
           <ProductFields
             form={form}

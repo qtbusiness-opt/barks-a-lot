@@ -47,7 +47,7 @@ export default function AdminOrdersPage() {
   return (
     <AdminShell title="Orders" backTo="/admin">
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
       )}
 
       {orders === null && !error ? (
