@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { isWithinWindow } from "@/lib/catalog";
+import { isPickupSelectable } from "@/lib/pickup-window";
 import { sendOrderConfirmationEmail } from "@/lib/order-emails";
 import { SHIPPING_ENABLED } from "@/lib/features";
 import { restockOrderItems } from "@/lib/inventory";
@@ -127,8 +128,10 @@ export async function POST(req) {
       );
     }
 
-    // Pickup orders are tied to a specific market/expo. "next" resolves
-    // to the nearest upcoming event that is not today.
+    // Pickup orders are tied to a specific market/expo. Same-day pickup
+    // is allowed until two hours before the event ends (shared rule in
+    // src/lib/pickup-window.js); "next" resolves to the nearest event
+    // that's still selectable — which can be today's.
     let pickupEvent = null;
     if (fulfillmentType === "pickup") {
       if (!pickupEventId) {
@@ -137,16 +140,14 @@ export async function POST(req) {
           { status: 400 }
         );
       }
-      const startOfToday = new Date();
-      startOfToday.setUTCHours(0, 0, 0, 0);
       if (pickupEventId === "next") {
-        const startOfTomorrow = new Date(
-          startOfToday.getTime() + 24 * 60 * 60 * 1000
-        );
-        pickupEvent = await prisma.event.findFirst({
-          where: { date: { gte: startOfTomorrow } },
+        // The 48h lookback covers timezone skew around midnight; the
+        // selectability filter does the real gating.
+        const candidates = await prisma.event.findMany({
+          where: { date: { gte: new Date(Date.now() - 48 * 60 * 60 * 1000) } },
           orderBy: { date: "asc" },
         });
+        pickupEvent = candidates.find((e) => isPickupSelectable(e)) ?? null;
         if (!pickupEvent) {
           return NextResponse.json(
             {
@@ -160,7 +161,7 @@ export async function POST(req) {
         pickupEvent = await prisma.event.findUnique({
           where: { id: pickupEventId },
         });
-        if (!pickupEvent || pickupEvent.date < startOfToday) {
+        if (!pickupEvent || !isPickupSelectable(pickupEvent)) {
           return NextResponse.json(
             { error: "That event isn't available for pickup" },
             { status: 409 }

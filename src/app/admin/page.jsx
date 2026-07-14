@@ -75,6 +75,14 @@ export default function AdminDashboardPage() {
           }
         />
         <StatPanel
+          href="/admin/categories"
+          icon="🏷️"
+          accent="bg-teal-500/10"
+          label="Categories"
+          value={stats?.categories}
+          detail="Create, rename, and remove product categories"
+        />
+        <StatPanel
           href="/admin/announcements"
           icon="📣"
           accent="bg-yellow-400/10"

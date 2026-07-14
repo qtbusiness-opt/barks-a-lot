@@ -27,6 +27,8 @@ function NewEventForm() {
     description: "",
     location: "",
     date: /^\d{4}-\d{2}-\d{2}$/.test(prefill ?? "") ? prefill : todayKey(),
+    startTime: "",
+    endTime: "",
     color: "teal",
   });
   const [error, setError] = useState("");
@@ -106,6 +108,35 @@ function NewEventForm() {
             required
             className={inputClass}
           />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="e-start" className="block text-sm font-medium text-gray-700 mb-1">
+            Start time
+          </label>
+          <input
+            id="e-start"
+            type="time"
+            value={form.startTime}
+            onChange={(e) => update("startTime", e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label htmlFor="e-end" className="block text-sm font-medium text-gray-700 mb-1">
+            End time
+          </label>
+          <input
+            id="e-end"
+            type="time"
+            value={form.endTime}
+            onChange={(e) => update("endTime", e.target.value)}
+            className={inputClass}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Online pickup for this event closes 2 hours before the end time.
+          </p>
         </div>
       </div>
       <fieldset>

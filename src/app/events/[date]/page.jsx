@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { EVENT_COLORS, EVENT_COLOR_KEYS, badgeClass } from "@/lib/event-colors";
+import { formatTimeRange } from "@/lib/pickup-window";
 import LocationInput from "@/components/LocationInput";
 import EventMap from "@/components/EventMap";
 
@@ -54,6 +55,8 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
       description: event.description,
       location: event.location ?? "",
       date: String(event.date).slice(0, 10),
+      startTime: event.startTime ?? "",
+      endTime: event.endTime ?? "",
       color: event.color,
     });
     setEditing(true);
@@ -96,6 +99,11 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
         {event.title}
       </span>
       <h2 className="text-xl font-bold text-[#2A4A52] mt-3">{event.title}</h2>
+      {formatTimeRange(event) && (
+        <p className="text-sm text-[#4A7C8A] font-medium mt-1">
+          🕒 {formatTimeRange(event)}
+        </p>
+      )}
       {event.location && (
         <p className="text-sm text-[#4A7C8A] font-medium mt-1">
           📍 {event.location}
@@ -169,6 +177,33 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
                     required
                     className={inputClass}
                   />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Start time
+                  </label>
+                  <input
+                    type="time"
+                    value={form.startTime}
+                    onChange={(e) => update("startTime", e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    End time
+                  </label>
+                  <input
+                    type="time"
+                    value={form.endTime}
+                    onChange={(e) => update("endTime", e.target.value)}
+                    className={inputClass}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Online pickup closes 2 hours before the end time.
+                  </p>
                 </div>
               </div>
               <ColorPicker value={form.color} onChange={(c) => update("color", c)} />

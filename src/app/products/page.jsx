@@ -5,20 +5,32 @@ import { useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 
-const CATEGORIES = ["all", "treats", "toys", "accessories", "food"];
-
 function ProductsContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") || "all";
   const [category, setCategory] = useState(initialCategory);
   const [result, setResult] = useState(null);
+  // Admin-managed category chips; "all" is a fixed pseudo-filter.
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
-    const params = category !== "all" ? `?category=${category}` : "";
+    api
+      .get("/categories")
+      .then((res) => setCategories(res.data.categories))
+      .catch(() => setCategories([]));
+  }, []);
+
+  useEffect(() => {
+    const params = category !== "all" ? `?category=${encodeURIComponent(category)}` : "";
     api
       .get(`/products${params}`)
       .then((res) => setResult({ category, products: res.data.products }));
   }, [category]);
+
+  const chips = [
+    { slug: "all", name: "All" },
+    ...categories.map((c) => ({ slug: c.slug, name: c.name })),
+  ];
 
   const loading = result?.category !== category;
   const products = result?.products ?? [];
@@ -28,17 +40,17 @@ function ProductsContent() {
       <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">Our Products</h1>
 
       <div className="flex sm:flex-wrap gap-2 mb-6 sm:mb-8 overflow-x-auto pb-2 -mx-1 px-1">
-        {CATEGORIES.map((cat) => (
+        {chips.map((cat) => (
           <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`shrink-0 min-h-11 px-4 py-2 rounded-full text-sm font-medium capitalize transition ${
-              category === cat
+            key={cat.slug}
+            onClick={() => setCategory(cat.slug)}
+            className={`shrink-0 min-h-11 px-4 py-2 rounded-full text-sm font-medium transition ${
+              category === cat.slug
                 ? "bg-[#4A7C8A] text-white"
                 : "bg-white text-[#4A7C8A] border border-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white"
             }`}
           >
-            {cat}
+            {cat.name}
           </button>
         ))}
       </div>

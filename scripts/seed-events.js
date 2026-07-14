@@ -18,6 +18,8 @@ async function seedEvents(prisma) {
         "Find our booth at the downtown farmers market! Fresh-baked treats, bandanas, and free samples for your pup.",
       location: "Downtown Farmers Market, Meridian, ID",
       date: atMidnightUTC(Date.now() + 3 * day),
+      startTime: "09:00",
+      endTime: "14:00",
       color: "teal",
     },
     {
@@ -26,6 +28,8 @@ async function seedEvents(prisma) {
         "We're at the regional pet expo all day — stop by booth 42 for expo-only bundle deals and plushie adoptions.",
       location: "Expo Idaho, Garden City, ID",
       date: atMidnightUTC(Date.now() + 12 * day),
+      startTime: "10:00",
+      endTime: "18:00",
       color: "orange",
     },
   ];

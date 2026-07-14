@@ -4,13 +4,27 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { EVENT_COLOR_KEYS } from "@/lib/event-colors";
 
-const eventSchema = z.object({
-  title: z.string().trim().min(1).max(120),
-  description: z.string().trim().min(1).max(2000),
-  location: z.string().trim().max(200).optional(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  color: z.enum(EVENT_COLOR_KEYS).default("teal"),
-});
+// "" from an untouched <input type="time"> means "not set".
+const timeField = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+  .or(z.literal(""))
+  .optional()
+  .transform((v) => v || null);
+
+const eventSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+    description: z.string().trim().min(1).max(2000),
+    location: z.string().trim().max(200).optional(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    startTime: timeField,
+    endTime: timeField,
+    color: z.enum(EVENT_COLOR_KEYS).default("teal"),
+  })
+  .refine((e) => !e.startTime || !e.endTime || e.startTime < e.endTime, {
+    message: "The event must end after it starts",
+  });
 
 export async function POST(req) {
   const auth = await getAuthUser();
@@ -30,7 +44,7 @@ export async function POST(req) {
 
     const event = await prisma.event.create({
       data: {
-        ...rest,
+        ...rest, // includes startTime/endTime, already null-normalized
         location: location || null,
         date: new Date(`${date}T00:00:00.000Z`),
       },

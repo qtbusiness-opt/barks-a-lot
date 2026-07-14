@@ -3,17 +3,16 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 
-const CATEGORIES = ["treats", "toys", "accessories", "food"];
-
 // All card fields optional — PATCH applies only what was sent. inStock
 // unchecked wipes the stock: quantity goes to 0 (all variant quantities
-// for variant products).
+// for variant products). Categories are admin-managed rows now, so the
+// slug is validated against the table below rather than a fixed enum.
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().min(1).max(2000).optional(),
   price: z.number().positive().max(10000).optional(),
   image: z.string().trim().min(1).max(300).optional(),
-  category: z.enum(CATEGORIES).optional(),
+  category: z.string().trim().min(1).max(60).optional(),
   quantity: z.number().int().min(0).max(100000).optional(),
   featured: z.boolean().optional(),
   inStock: z.boolean().optional(),
@@ -36,6 +35,18 @@ export async function PATCH(req, { params }) {
       );
     }
     const { inStock, ...fields } = parsed.data;
+
+    if (fields.category) {
+      const known = await prisma.category.findUnique({
+        where: { slug: fields.category },
+      });
+      if (!known) {
+        return NextResponse.json(
+          { error: "Please choose a valid category" },
+          { status: 400 }
+        );
+      }
+    }
 
     const existing = await prisma.product.findUnique({
       where: { id },
