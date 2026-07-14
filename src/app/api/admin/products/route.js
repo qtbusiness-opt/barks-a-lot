@@ -3,16 +3,15 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 
-const CATEGORIES = ["treats", "toys", "accessories", "food"];
-
 // The fields that make up a product card. inStock is derived from
-// quantity rather than trusted from the client.
+// quantity rather than trusted from the client. Categories are
+// admin-managed rows, so the slug is checked against the table in POST.
 const productSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().min(1).max(2000),
   price: z.number().positive().max(10000),
   image: z.string().trim().min(1).max(300),
-  category: z.enum(CATEGORIES),
+  category: z.string().trim().min(1).max(60),
   quantity: z.number().int().min(0).max(100000),
   featured: z.boolean().default(false),
 });
@@ -49,6 +48,16 @@ export async function POST(req) {
     }
 
     const data = parsed.data;
+    const known = await prisma.category.findUnique({
+      where: { slug: data.category },
+    });
+    if (!known) {
+      return NextResponse.json(
+        { error: "Please choose a valid category" },
+        { status: 400 }
+      );
+    }
+
     const product = await prisma.product.create({
       data: { ...data, inStock: data.quantity > 0 },
       include: { variants: true },

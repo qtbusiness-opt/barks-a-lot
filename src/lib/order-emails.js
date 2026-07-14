@@ -1,4 +1,5 @@
 import { sendEmail } from "@/lib/mailer";
+import { formatTimeRange } from "@/lib/pickup-window";
 
 // event.date is a Date object when the order comes straight from Prisma
 // and an ISO string when it has been through JSON — handle both.
@@ -16,9 +17,9 @@ const fmtEventDate = (event) => {
 
 function deliveryLine(order) {
   if (order.fulfillmentType === "pickup") {
-    return order.pickupEvent
-      ? `Pickup at ${order.pickupEvent.title} on ${fmtEventDate(order.pickupEvent)}${order.pickupEvent.location ? ` (${order.pickupEvent.location})` : ""}`
-      : "Pickup at our next market/event";
+    if (!order.pickupEvent) return "Pickup at our next market/event";
+    const times = formatTimeRange(order.pickupEvent);
+    return `Pickup at ${order.pickupEvent.title} on ${fmtEventDate(order.pickupEvent)}${times ? `, ${times}` : ""}${order.pickupEvent.location ? ` (${order.pickupEvent.location})` : ""}`;
   }
   return `Shipping to ${order.address}, ${order.city}, ${order.state} ${order.zip}`;
 }

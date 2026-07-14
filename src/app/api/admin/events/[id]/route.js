@@ -4,13 +4,27 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { EVENT_COLOR_KEYS } from "@/lib/event-colors";
 
-const updateSchema = z.object({
-  title: z.string().trim().min(1).max(120).optional(),
-  description: z.string().trim().min(1).max(2000).optional(),
-  location: z.string().trim().max(200).optional(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  color: z.enum(EVENT_COLOR_KEYS).optional(),
-});
+// "" from a cleared <input type="time"> means "remove the time".
+const timeField = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+  .or(z.literal(""))
+  .optional()
+  .transform((v) => (v === undefined ? undefined : v || null));
+
+const updateSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120).optional(),
+    description: z.string().trim().min(1).max(2000).optional(),
+    location: z.string().trim().max(200).optional(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    startTime: timeField,
+    endTime: timeField,
+    color: z.enum(EVENT_COLOR_KEYS).optional(),
+  })
+  .refine((e) => !e.startTime || !e.endTime || e.startTime < e.endTime, {
+    message: "The event must end after it starts",
+  });
 
 export async function PATCH(req, { params }) {
   const auth = await getAuthUser();
@@ -28,13 +42,15 @@ export async function PATCH(req, { params }) {
         { status: 400 }
       );
     }
-    const { date, location, ...rest } = parsed.data;
+    const { date, location, startTime, endTime, ...rest } = parsed.data;
 
     const event = await prisma.event.update({
       where: { id },
       data: {
         ...rest,
         ...(location !== undefined ? { location: location || null } : {}),
+        ...(startTime !== undefined ? { startTime } : {}),
+        ...(endTime !== undefined ? { endTime } : {}),
         ...(date ? { date: new Date(`${date}T00:00:00.000Z`) } : {}),
       },
     });

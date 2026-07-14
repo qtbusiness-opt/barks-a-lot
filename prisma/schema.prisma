@@ -133,6 +133,18 @@ model OrderItem {
   price     Float
 }
 
+// Product categories, managed by admins. Products reference the slug as
+// a plain string (Product.category) — deletion is blocked while any
+// product still uses the slug, and slug renames cascade to products.
+model Category {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  // Emoji shown on the homepage tile.
+  icon      String   @default("🐾")
+  createdAt DateTime @default(now())
+}
+
 model Announcement {
   id        String   @id @default(cuid())
   title     String
@@ -159,6 +171,10 @@ model Event {
   // Calendar day of the event, stored as midnight UTC and compared by
   // YYYY-MM-DD key so it renders the same in every timezone.
   date        DateTime
+  // Wall-clock hours at the event ("HH:MM", 24h, store-local time).
+  // endTime drives the same-day pickup cutoff (2 hours before close).
+  startTime   String?
+  endTime     String?
   // Badge color key from the fixed palette, chosen by the admin.
   color       String   @default("teal")
   createdAt   DateTime @default(now())

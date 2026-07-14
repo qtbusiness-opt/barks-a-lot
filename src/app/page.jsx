@@ -9,10 +9,12 @@ import { SHIPPING_ENABLED } from "@/lib/features";
 export default function HomePage() {
   const [featured, setFeatured] = useState([]);
   const [announcement, setAnnouncement] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     api.get("/products?featured=true").then((res) => setFeatured(res.data.products));
     api.get("/announcements").then((res) => setAnnouncement(res.data.announcement));
+    api.get("/categories").then((res) => setCategories(res.data.categories));
   }, []);
 
   return (
@@ -57,11 +59,7 @@ export default function HomePage() {
           Shop by Category
         </h2>
         <div className="flex flex-wrap justify-center gap-3 sm:gap-6">
-          {[
-            { name: "Treats", icon: "🦴", slug: "treats" },
-            { name: "Toys", icon: "🧸", slug: "toys" },
-            { name: "Accessories", icon: "🎀", slug: "accessories" },
-          ].map((cat) => (
+          {categories.map((cat) => (
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}

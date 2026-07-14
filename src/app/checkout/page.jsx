@@ -7,6 +7,7 @@ import { useCart } from "@/context/CartContext";
 import api from "@/lib/api";
 import Link from "next/link";
 import { SHIPPING_ENABLED } from "@/lib/features";
+import { isPickupSelectable, formatTimeRange } from "@/lib/pickup-window";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -45,13 +46,6 @@ const formatEventDate = (event) =>
     month: "short",
     day: "numeric",
   });
-
-const pad = (n) => String(n).padStart(2, "0");
-
-function todayKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
 
 function Stepper({ step }) {
   return (
@@ -178,10 +172,12 @@ export default function CheckoutPage() {
     };
   }, [step]);
 
-  const events = upcomingEvents ?? [];
+  // Same-day events stay selectable until two hours before they end
+  // (shared rule with the orders API). "Next Event" is simply the
+  // nearest event still open for pickup — today's included.
+  const events = (upcomingEvents ?? []).filter((e) => isPickupSelectable(e));
   const hasEvents = events.length > 0;
-  // "Next Event" means the nearest upcoming event that is NOT today.
-  const nextEvent = events.find((e) => eventDay(e) > todayKey()) ?? null;
+  const nextEvent = events[0] ?? null;
   const chosenEvent =
     pickupChoice === "next" ? nextEvent : events.find((e) => e.id === pickupChoice);
 
@@ -523,11 +519,12 @@ export default function CheckoutPage() {
                     Next Event
                     {nextEvent
                       ? ` (${nextEvent.title} — ${formatEventDate(nextEvent)})`
-                      : " (none scheduled after today)"}
+                      : " (none currently open for pickup)"}
                   </option>
                   {events.map((event) => (
                     <option key={event.id} value={event.id}>
                       {event.title} — {formatEventDate(event)}
+                      {formatTimeRange(event) ? `, ${formatTimeRange(event)}` : ""}
                       {event.location ? ` · ${event.location}` : ""}
                     </option>
                   ))}
@@ -536,6 +533,7 @@ export default function CheckoutPage() {
                   <p className="text-sm text-gray-600 bg-[#F5F0E8] p-3 rounded-lg mt-2">
                     Pick up at <strong>{chosenEvent.title}</strong> on{" "}
                     {formatEventDate(chosenEvent)}
+                    {formatTimeRange(chosenEvent) && <>, {formatTimeRange(chosenEvent)}</>}
                     {chosenEvent.location && <> — {chosenEvent.location}</>}.
                   </p>
                 )}
@@ -659,6 +657,7 @@ export default function CheckoutPage() {
                   </p>
                   <p className="text-sm text-gray-600">
                     {formatEventDate(chosenEvent)}
+                    {formatTimeRange(chosenEvent) && <> · {formatTimeRange(chosenEvent)}</>}
                     {chosenEvent.location && <> · {chosenEvent.location}</>}
                   </p>
                 </div>

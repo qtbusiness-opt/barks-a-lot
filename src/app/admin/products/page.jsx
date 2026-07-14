@@ -6,8 +6,6 @@ import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
 import ImageUpload from "@/components/ImageUpload";
 
-const CATEGORIES = ["treats", "toys", "accessories", "food"];
-
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
 
@@ -26,7 +24,7 @@ const stockOf = (p) =>
     ? p.variants.reduce((sum, v) => sum + v.quantity, 0)
     : p.quantity;
 
-function ProductFields({ form, update, variantProduct }) {
+function ProductFields({ form, update, variantProduct, categories }) {
   return (
     <>
       <div>
@@ -92,11 +90,11 @@ function ProductFields({ form, update, variantProduct }) {
         <select
           value={form.category}
           onChange={(e) => update("category", e.target.value)}
-          className={`${inputClass} capitalize`}
+          className={inputClass}
         >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c} className="capitalize">
-              {c}
+          {categories.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.name}
             </option>
           ))}
         </select>
@@ -116,7 +114,7 @@ function ProductFields({ form, update, variantProduct }) {
   );
 }
 
-function EditProductRow({ product, onSaved, onDeleted, onError }) {
+function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
@@ -220,7 +218,12 @@ function EditProductRow({ product, onSaved, onDeleted, onError }) {
 
       {editing && form && (
         <form onSubmit={save} className="mt-4 pt-4 border-t border-gray-100 space-y-4">
-          <ProductFields form={form} update={update} variantProduct={variantProduct} />
+          <ProductFields
+            form={form}
+            update={update}
+            variantProduct={variantProduct}
+            categories={categories}
+          />
           <label className="flex items-center gap-3 min-h-11 cursor-pointer">
             <input
               type="checkbox"
@@ -250,6 +253,7 @@ export default function AdminProductsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [products, setProducts] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -261,6 +265,10 @@ export default function AdminProductsPage() {
         .get("/admin/products")
         .then((res) => setProducts(res.data.products))
         .catch(() => setError("Failed to load products."));
+      api
+        .get("/categories")
+        .then((res) => setCategories(res.data.categories))
+        .catch(() => setCategories([]));
     }
   }, [isAdmin]);
 
@@ -307,7 +315,12 @@ export default function AdminProductsPage() {
           {success && (
             <p className="text-green-700 text-sm bg-green-50 p-3 rounded-lg">{success}</p>
           )}
-          <ProductFields form={form} update={update} variantProduct={false} />
+          <ProductFields
+            form={form}
+            update={update}
+            variantProduct={false}
+            categories={categories}
+          />
           <p className="text-xs text-gray-500">
             Stock status is set automatically: products with quantity 0 show
             as out of stock.
@@ -332,6 +345,7 @@ export default function AdminProductsPage() {
             <div className="space-y-3">
               {products.map((p) => (
                 <EditProductRow
+                  categories={categories}
                   key={p.id}
                   product={p}
                   onSaved={(updated) =>

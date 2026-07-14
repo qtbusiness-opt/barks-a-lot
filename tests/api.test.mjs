@@ -731,7 +731,7 @@ test("events: admin CRUD, public read-only calendar queries", async () => {
   assert.equal(gone.data.events.length, 0);
 });
 
-test("pickup orders require an event; Next Event resolves to the nearest not-today", async () => {
+test("pickup orders require an event; Next Event resolves to the nearest selectable event", async () => {
   const catalog = await adminCatalog();
   const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 2);
 
@@ -750,8 +750,8 @@ test("pickup orders require an event; Next Event resolves to the nearest not-tod
   });
   assert.equal(noEvent.status, 400);
 
-  // "next" resolves server-side to the nearest upcoming event (not today):
-  // the seeded Farmers Market, 3 days out.
+  // "next" resolves server-side to the nearest event still open for
+  // pickup: the seeded Farmers Market, 3 days out.
   const nextOrder = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
@@ -1236,4 +1236,200 @@ test("customers can delete their own account; orders survive as guest records", 
   assert.ok(kept, "order survives account deletion");
   assert.equal(kept.user, null);
   assert.equal(kept.guestEmail, "selfdelete@test.local");
+});
+
+test("same-day pickup respects the two-hour cutoff before the event ends", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const hhmm = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const now = new Date();
+  const today = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+
+  // The event must end after it starts.
+  const badTimes = await api("POST", "/admin/events", {
+    body: {
+      title: "Backwards Event",
+      description: "end before start",
+      date: today,
+      startTime: "14:00",
+      endTime: "09:00",
+    },
+    cookie,
+  });
+  assert.equal(badTimes.status, 400);
+
+  // Needs several units — this test places up to three orders. The admin
+  // catalog also lists expired drops, so stick to always-available items.
+  const catalog = await adminCatalog();
+  const product = catalog.find(
+    (p) =>
+      p.variants.length === 0 &&
+      p.quantity >= 5 &&
+      !p.limitedQuantity &&
+      !p.availableFrom &&
+      !p.availableUntil
+  );
+
+  // A same-day event already inside the two-hour cutoff can't be chosen.
+  const closingSoon = new Date(now.getTime() + 30 * 60 * 1000);
+  const closed = await api("POST", "/admin/events", {
+    body: {
+      title: "Closing Soon Market",
+      description: "wraps up in half an hour",
+      date: today,
+      startTime: "00:00",
+      endTime: hhmm(closingSoon),
+    },
+    cookie,
+  });
+  assert.equal(closed.status, 201);
+  assert.equal(closed.data.event.endTime, hhmm(closingSoon));
+
+  const refused = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: closed.data.event.id,
+      guestEmail: "cutoff@test.local",
+    },
+  });
+  assert.equal(refused.status, 409);
+
+  // "next" skips it and lands on a still-open event.
+  const viaNextClosed = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "cutoff@test.local",
+    },
+  });
+  assert.equal(viaNextClosed.status, 201, JSON.stringify(viaNextClosed.data));
+  assert.notEqual(viaNextClosed.data.order.pickupEvent.id, closed.data.event.id);
+
+  // A same-day event more than two hours from closing can be chosen
+  // manually AND becomes the "next" event. (Skipped when the test runs
+  // within 4h of midnight — such an event can't exist today.)
+  const openEnd = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+  if (openEnd.getDate() === now.getDate()) {
+    const open = await api("POST", "/admin/events", {
+      body: {
+        title: "Open Today Market",
+        description: "plenty of time left",
+        date: today,
+        startTime: "00:01",
+        endTime: hhmm(openEnd),
+      },
+      cookie,
+    });
+    assert.equal(open.status, 201);
+
+    const manual = await api("POST", "/orders", {
+      body: {
+        items: [{ productId: product.id, quantity: 1 }],
+        fulfillmentType: "pickup",
+        pickupEventId: open.data.event.id,
+        guestEmail: "cutoff@test.local",
+      },
+    });
+    assert.equal(manual.status, 201);
+
+    const viaNext = await api("POST", "/orders", {
+      body: {
+        items: [{ productId: product.id, quantity: 1 }],
+        fulfillmentType: "pickup",
+        pickupEventId: "next",
+        guestEmail: "cutoff@test.local",
+      },
+    });
+    assert.equal(viaNext.status, 201);
+    assert.equal(viaNext.data.order.pickupEvent.id, open.data.event.id);
+
+    // Clean up so later tests' "next" stays deterministic.
+    await api("DELETE", `/admin/events/${open.data.event.id}`, { cookie });
+  }
+  await api("DELETE", `/admin/events/${closed.data.event.id}`, { cookie });
+});
+
+test("admin manages categories; storefront lists and products follow", async () => {
+  const pub = await api("GET", "/categories");
+  assert.equal(pub.status, 200);
+  assert.ok(pub.data.categories.some((c) => c.slug === "treats"));
+
+  const anon = await api("POST", "/admin/categories", {
+    body: { name: "Bandanas" },
+  });
+  assert.equal(anon.status, 403);
+
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const created = await api("POST", "/admin/categories", {
+    body: { name: "Bandanas", icon: "🧣" },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  assert.equal(created.data.category.slug, "bandanas");
+
+  // Duplicate names (same slug) are rejected.
+  const dupe = await api("POST", "/admin/categories", {
+    body: { name: "bandanas" },
+    cookie,
+  });
+  assert.equal(dupe.status, 409);
+
+  // Products must use a real category slug.
+  const badProduct = await api("POST", "/admin/products", {
+    body: {
+      name: "Orphan Product",
+      description: "no such category",
+      price: 5,
+      image: "/images/products/squeaky-bone.svg",
+      category: "no-such-category",
+      quantity: 1,
+    },
+    cookie,
+  });
+  assert.equal(badProduct.status, 400);
+
+  const product = await api("POST", "/admin/products", {
+    body: {
+      name: "Test Bandana",
+      description: "created in the new category",
+      price: 12,
+      image: "/images/products/squeaky-bone.svg",
+      category: "bandanas",
+      quantity: 3,
+    },
+    cookie,
+  });
+  assert.equal(product.status, 201);
+
+  // A category with products can't be deleted.
+  const blocked = await api(
+    "DELETE",
+    `/admin/categories/${created.data.category.id}`,
+    { cookie }
+  );
+  assert.equal(blocked.status, 409);
+
+  // Renaming cascades the new slug to the category's products.
+  const renamed = await api(
+    "PATCH",
+    `/admin/categories/${created.data.category.id}`,
+    { body: { name: "Neckwear", icon: "🧣" }, cookie }
+  );
+  assert.equal(renamed.status, 200);
+  assert.equal(renamed.data.category.slug, "neckwear");
+  const after = await adminStock(product.data.product.id);
+  assert.equal(after.category, "neckwear");
+
+  // Freeing the category allows deletion, and the public list follows.
+  await api("DELETE", `/admin/products/${product.data.product.id}`, { cookie });
+  const gone = await api(
+    "DELETE",
+    `/admin/categories/${created.data.category.id}`,
+    { cookie }
+  );
+  assert.equal(gone.status, 200);
+  const finalPub = await api("GET", "/categories");
+  assert.ok(!finalPub.data.categories.some((c) => c.slug === "neckwear"));
 });
