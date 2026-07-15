@@ -58,7 +58,12 @@ export async function POST(req) {
     }
 
     const category = await prisma.category.create({
-      data: { name: parsed.data.name, icon: parsed.data.icon, slug },
+      data: {
+        name: parsed.data.name,
+        icon: parsed.data.icon,
+        showsIngredients: parsed.data.showsIngredients,
+        slug,
+      },
     });
     console.info(`[admin] category created slug=${slug} by=${auth.userId}`);
     return NextResponse.json({ category }, { status: 201 });
