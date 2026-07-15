@@ -252,8 +252,12 @@ export default function CheckoutPage() {
       try {
         const result = await cardRef.current.tokenize();
         if (result.status !== "OK") {
+          // Surface Square's own message — config problems (wrong
+          // environment, mismatched location id) are only diagnosable
+          // from it.
+          console.error("[checkout] tokenize failed:", result.errors);
           setError(
-            result.errors?.[0]?.message ||
+            result.errors?.map((e) => e.message).join(" ") ||
               "Please check your card details and try again."
           );
           return;
@@ -262,8 +266,13 @@ export default function CheckoutPage() {
           token: result.token,
           card: result.details?.card ?? null,
         });
-      } catch {
-        setError("Please check your card details and try again.");
+      } catch (err) {
+        console.error("[checkout] tokenize threw:", err);
+        setError(
+          err?.message
+            ? `Payment form error: ${err.message}`
+            : "Please check your card details and try again."
+        );
         return;
       } finally {
         setSubmitting(false);

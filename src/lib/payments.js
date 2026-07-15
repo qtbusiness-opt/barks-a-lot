@@ -13,6 +13,11 @@ export function isPaymentConfigured() {
   return Boolean(process.env.SQUARE_ACCESS_TOKEN);
 }
 
+// One location id serves both halves: the browser passes it to the Web
+// Payments SDK (NEXT_PUBLIC_), and the server reuses it for CreatePayment.
+const locationId = () =>
+  process.env.SQUARE_LOCATION_ID || process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID;
+
 // Thrown with a customer-safe message; details go to server logs only.
 export class PaymentError extends Error {
   constructor(message, details) {
@@ -61,8 +66,8 @@ export async function chargePayment({ sourceId, amountCents, note }) {
     amount_money: { amount: amountCents, currency: "USD" },
     note,
   };
-  if (process.env.SQUARE_LOCATION_ID) {
-    body.location_id = process.env.SQUARE_LOCATION_ID;
+  if (locationId()) {
+    body.location_id = locationId();
   }
   const data = await squareRequest("/v2/payments", body);
   console.info(
