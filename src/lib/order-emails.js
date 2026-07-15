@@ -43,7 +43,7 @@ export async function sendOrderConfirmationEmail(order) {
     await sendEmail({
       to,
       subject: `Order confirmed — ${order.confirmationNumber}`,
-      text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\nTotal: $${order.total.toFixed(2)}\n${deliveryLine(order)}\n\nWe'll email you when your order's status changes.`,
+      text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\nTotal: $${order.total.toFixed(2)}\n${deliveryLine(order)}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
     });
   } catch (err) {
     console.error(`[mail] order confirmation failed order=${order.id}:`, err);
@@ -59,7 +59,7 @@ export async function sendOrderStatusEmail(order, message) {
     await sendEmail({
       to,
       subject: `Order update — ${order.confirmationNumber}`,
-      text: `${message}\n\n${deliveryLine(order)}\n\nQuestions? Reply to this email or reach us at info@barks-a-lot.com.`,
+      text: `${message}\n\n${deliveryLine(order)}\n\nQuestions? You can reach us at info@barks-a-lot.com.`,
     });
   } catch (err) {
     console.error(`[mail] status email failed order=${order.id}:`, err);
