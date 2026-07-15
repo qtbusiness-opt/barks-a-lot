@@ -6,6 +6,12 @@ module.exports = [
     quantity: 0,
     price: 12.99,
     image: "/images/products/peanut-butter-biscuits.svg",
+    images: JSON.stringify([
+      "/images/products/sweet-potato-chews.svg",
+      "/images/products/chicken-jerky.svg",
+    ]),
+    itemDetails:
+      "Whole wheat flour, natural peanut butter (no xylitol), eggs, honey, baking powder. Grain-free variant: chickpea flour instead of wheat.",
     category: "treats",
     featured: true,
     variants: [
@@ -93,6 +99,7 @@ module.exports = [
     quantity: 40,
     price: 11.99,
     image: "/images/products/plush-duck.svg",
+    images: JSON.stringify(["/images/products/squeaky-bone.svg"]),
     category: "toys",
     featured: false,
   },
@@ -111,6 +118,8 @@ module.exports = [
     quantity: 0,
     price: 15.99,
     image: "/images/products/bandana-set.svg",
+    itemDetails:
+      "100% cotton, machine washable (cold, gentle). Snap closure — measure your pup's neck and add two finger-widths for the right size.",
     category: "accessories",
     featured: false,
     variants: [

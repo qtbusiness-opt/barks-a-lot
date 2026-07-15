@@ -6,6 +6,69 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 
+// Categories whose details section reads as "Ingredients"; everything
+// else gets a generic "Item Details" heading.
+const INGREDIENT_CATEGORIES = ["treats", "food"];
+
+// Cover image plus any gallery extras. Clicking the photo advances to
+// the next one; thumbnails jump straight to an image.
+function GalleryColumn({ product, imageIndex, setImageIndex }) {
+  const gallery = [product.image, ...(product.images ?? [])];
+  const current = gallery[imageIndex] ?? gallery[0];
+  const advance = () =>
+    setImageIndex((i) => (i + 1) % gallery.length);
+
+  if (gallery.length <= 1) {
+    return (
+      <div className="bg-[#F5F0E8] rounded-xl overflow-hidden self-start">
+        <img
+          src={product.image}
+          alt={product.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="self-start">
+      <button
+        type="button"
+        onClick={advance}
+        aria-label={`${product.name} photo ${imageIndex + 1} of ${gallery.length} — show next photo`}
+        className="block w-full bg-[#F5F0E8] rounded-xl overflow-hidden cursor-pointer"
+      >
+        <img
+          src={current}
+          alt={`${product.name} — photo ${imageIndex + 1} of ${gallery.length}`}
+          className="w-full aspect-square object-cover"
+        />
+      </button>
+      <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+        {gallery.map((src, i) => (
+          <button
+            key={`${src}-${i}`}
+            type="button"
+            onClick={() => setImageIndex(i)}
+            aria-label={`Show photo ${i + 1} of ${gallery.length}`}
+            aria-current={imageIndex === i ? "true" : undefined}
+            className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition ${
+              imageIndex === i
+                ? "border-[#4A7C8A]"
+                : "border-transparent opacity-70 hover:opacity-100"
+            }`}
+          >
+            <img src={src} alt="" className="w-full h-full object-cover" />
+          </button>
+        ))}
+      </div>
+      <p className="text-center text-xs text-gray-500 mt-2">
+        Click the photo to see the next one
+      </p>
+    </div>
+  );
+}
+
 function variantLabel(variant) {
   // attributes is a JSON string of tags, e.g. {"size":"small","pattern":"plaid"}
   try {
@@ -23,10 +86,14 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [variantId, setVariantId] = useState(null);
   const [qty, setQuantity] = useState(1);
+  const [imageIndex, setImageIndex] = useState(0);
 
   useEffect(() => {
     if (id) {
-      api.get(`/products/${id}`).then((res) => setProduct(res.data.product));
+      api.get(`/products/${id}`).then((res) => {
+        setProduct(res.data.product);
+        setImageIndex(0);
+      });
     }
   }, [id]);
 
@@ -74,13 +141,11 @@ export default function ProductDetailPage() {
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        <div className="bg-[#F5F0E8] rounded-xl overflow-hidden">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-        </div>
+        <GalleryColumn
+          product={product}
+          imageIndex={imageIndex}
+          setImageIndex={setImageIndex}
+        />
 
         <div>
           <span className="text-sm text-[#4A7C8A] font-medium uppercase tracking-wide">
@@ -177,6 +242,30 @@ export default function ProductDetailPage() {
               ? "Choose an Option"
               : "Add to Cart"}
           </button>
+
+          {/* Ingredients for treats/food (always shown for those
+              categories); Item Details for everything else, only when
+              the admin filled it in. */}
+          {(INGREDIENT_CATEGORIES.includes(product.category) ||
+            product.itemDetails) && (
+            <div className="mt-8 bg-white rounded-xl shadow-sm p-4 sm:p-6">
+              <h2 className="text-lg font-semibold text-[#2A4A52] mb-2">
+                {INGREDIENT_CATEGORIES.includes(product.category)
+                  ? "Ingredients"
+                  : "Item Details"}
+              </h2>
+              {product.itemDetails ? (
+                <p className="text-gray-600 leading-relaxed whitespace-pre-line">
+                  {product.itemDetails}
+                </p>
+              ) : (
+                <p className="text-gray-500 text-sm">
+                  Full ingredient list coming soon — ask us at the booth or
+                  email info@barks-a-lot.com.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

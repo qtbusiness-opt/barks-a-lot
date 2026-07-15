@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { parseImages } from "@/lib/catalog";
 
 // All card fields optional — PATCH applies only what was sent. inStock
 // unchecked wipes the stock: quantity goes to 0 (all variant quantities
@@ -12,6 +13,9 @@ const updateSchema = z.object({
   description: z.string().trim().min(1).max(2000).optional(),
   price: z.number().positive().max(10000).optional(),
   image: z.string().trim().min(1).max(300).optional(),
+  images: z.array(z.string().trim().min(1).max(300)).max(8).optional(),
+  // "" clears the field.
+  itemDetails: z.string().trim().max(5000).optional(),
   category: z.string().trim().min(1).max(60).optional(),
   quantity: z.number().int().min(0).max(100000).optional(),
   featured: z.boolean().optional(),
@@ -60,6 +64,13 @@ export async function PATCH(req, { params }) {
 
     const product = await prisma.$transaction(async (tx) => {
       const data = { ...fields };
+      // Arrays/blank strings map to the stored representation.
+      if (fields.images !== undefined) {
+        data.images = fields.images.length > 0 ? JSON.stringify(fields.images) : null;
+      }
+      if (fields.itemDetails !== undefined) {
+        data.itemDetails = fields.itemDetails || null;
+      }
 
       if (inStock === false) {
         // Unchecking In Stock wipes the stock everywhere.
@@ -88,7 +99,9 @@ export async function PATCH(req, { params }) {
     });
 
     console.info(`[admin] product updated id=${id} by=${auth.userId}`);
-    return NextResponse.json({ product });
+    return NextResponse.json({
+      product: { ...product, images: parseImages(product) },
+    });
   } catch (err) {
     console.error("[admin] product update error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

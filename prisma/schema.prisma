@@ -57,7 +57,14 @@ model Product {
   // stock lives on each variant and this stays 0.
   quantity    Int
   price       Float
+  // Cover image, shown on cards/cart/orders. Additional gallery images
+  // live in `images` as a JSON-encoded array of URLs (SQLite has no
+  // native arrays); the detail page shows [image, ...images].
   image       String
+  images      String?
+  // Ingredients for treats/food, general item details for everything
+  // else — the label is chosen by category in the UI.
+  itemDetails String?
   category    String
   inStock     Boolean     @default(true)
   featured    Boolean     @default(false)

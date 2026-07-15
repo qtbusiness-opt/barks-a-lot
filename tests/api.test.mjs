@@ -1433,3 +1433,48 @@ test("admin manages categories; storefront lists and products follow", async () 
   const finalPub = await api("GET", "/categories");
   assert.ok(!finalPub.data.categories.some((c) => c.slug === "neckwear"));
 });
+
+test("product gallery images and item details round-trip through the APIs", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Gallery Biscuit",
+      description: "has extra photos and ingredients",
+      price: 6,
+      image: "/images/products/squeaky-bone.svg",
+      images: [
+        "/images/products/plush-duck.svg",
+        "/images/products/chicken-jerky.svg",
+      ],
+      itemDetails: "Oats, pumpkin, cinnamon",
+      category: "treats",
+      quantity: 3,
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const id = created.data.product.id;
+  assert.deepEqual(created.data.product.images, [
+    "/images/products/plush-duck.svg",
+    "/images/products/chicken-jerky.svg",
+  ]);
+
+  // The public detail endpoint returns the parsed array and the details.
+  const pub = await api("GET", `/products/${id}`);
+  assert.deepEqual(pub.data.product.images, [
+    "/images/products/plush-duck.svg",
+    "/images/products/chicken-jerky.svg",
+  ]);
+  assert.equal(pub.data.product.itemDetails, "Oats, pumpkin, cinnamon");
+
+  // Clearing both via PATCH works ("" and [] mean "unset").
+  const cleared = await api("PATCH", `/admin/products/${id}`, {
+    body: { images: [], itemDetails: "" },
+    cookie,
+  });
+  assert.equal(cleared.status, 200);
+  assert.deepEqual(cleared.data.product.images, []);
+  assert.equal(cleared.data.product.itemDetails, null);
+
+  await api("DELETE", `/admin/products/${id}`, { cookie });
+});

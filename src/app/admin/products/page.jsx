@@ -14,10 +14,15 @@ const EMPTY_FORM = {
   description: "",
   price: "",
   image: "/images/products/squeaky-bone.svg",
+  images: [],
+  itemDetails: "",
   category: "treats",
   quantity: "",
   featured: false,
 };
+
+// Categories whose details field is an ingredient list.
+const INGREDIENT_CATEGORIES = ["treats", "food"];
 
 const stockOf = (p) =>
   p.variants.length > 0
@@ -100,6 +105,76 @@ function ProductFields({ form, update, variantProduct, categories }) {
         </select>
       </div>
       <ImageUpload value={form.image} onChange={(url) => update("image", url)} />
+
+      <div>
+        <span className="block text-sm font-medium text-gray-700 mb-1">
+          Additional photos ({form.images.length}/8)
+        </span>
+        {form.images.length > 0 && (
+          <div className="flex flex-wrap gap-3 mb-2">
+            {form.images.map((src, i) => (
+              <div key={`${src}-${i}`} className="relative">
+                <img
+                  src={src}
+                  alt={`Additional photo ${i + 1}`}
+                  className="w-16 h-16 rounded-lg object-cover bg-[#F5F0E8]"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    update("images", form.images.filter((_, j) => j !== i))
+                  }
+                  aria-label={`Remove additional photo ${i + 1}`}
+                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center hover:bg-red-600"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {form.images.length < 8 && (
+          <ImageUpload
+            value=""
+            label="Add another photo"
+            onChange={(url) => update("images", [...form.images, url])}
+          />
+        )}
+        <p className="text-xs text-gray-500 mt-1">
+          Customers click through these on the product page.
+        </p>
+      </div>
+
+      <div>
+        <label
+          htmlFor={`item-details-${variantProduct ? "edit" : "new"}`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          {INGREDIENT_CATEGORIES.includes(form.category)
+            ? "Ingredients"
+            : "Item Details"}{" "}
+          (optional)
+        </label>
+        <textarea
+          id={`item-details-${variantProduct ? "edit" : "new"}`}
+          value={form.itemDetails}
+          onChange={(e) => update("itemDetails", e.target.value)}
+          rows={3}
+          placeholder={
+            INGREDIENT_CATEGORIES.includes(form.category)
+              ? "e.g. Organic peanut butter, oat flour, eggs, honey"
+              : "Materials, sizing, care instructions..."
+          }
+          className={inputClass}
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Shown on the product page under Add to Cart
+          {INGREDIENT_CATEGORIES.includes(form.category)
+            ? " — treats and food always show an Ingredients section."
+            : ", only when filled in."}
+        </p>
+      </div>
+
       <label className="flex items-center gap-3 min-h-11 cursor-pointer">
         <input
           type="checkbox"
@@ -127,6 +202,8 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
       description: product.description,
       price: String(product.price),
       image: product.image,
+      images: product.images ?? [],
+      itemDetails: product.itemDetails ?? "",
       category: product.category,
       quantity: String(product.quantity),
       featured: product.featured,
@@ -148,6 +225,8 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
         description: form.description,
         price: Number(form.price),
         image: form.image,
+        images: form.images,
+        itemDetails: form.itemDetails,
         category: form.category,
         ...(variantProduct ? {} : { quantity: Number(form.quantity) }),
         featured: form.featured,
@@ -286,6 +365,8 @@ export default function AdminProductsPage() {
         description: form.description,
         price: Number(form.price),
         image: form.image,
+        images: form.images,
+        itemDetails: form.itemDetails,
         category: form.category,
         quantity: Number(form.quantity),
         featured: form.featured,

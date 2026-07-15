@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { parseImages } from "@/lib/catalog";
 
 // The fields that make up a product card. inStock is derived from
 // quantity rather than trusted from the client. Categories are
@@ -11,6 +12,10 @@ const productSchema = z.object({
   description: z.string().trim().min(1).max(2000),
   price: z.number().positive().max(10000),
   image: z.string().trim().min(1).max(300),
+  // Additional gallery images beyond the cover.
+  images: z.array(z.string().trim().min(1).max(300)).max(8).default([]),
+  // Ingredients (treats/food) or item details (everything else).
+  itemDetails: z.string().trim().max(5000).optional(),
   category: z.string().trim().min(1).max(60),
   quantity: z.number().int().min(0).max(100000),
   featured: z.boolean().default(false),
@@ -29,7 +34,9 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ products });
+  return NextResponse.json({
+    products: products.map((p) => ({ ...p, images: parseImages(p) })),
+  });
 }
 
 export async function POST(req) {
@@ -58,13 +65,22 @@ export async function POST(req) {
       );
     }
 
+    const { images, itemDetails, ...rest } = data;
     const product = await prisma.product.create({
-      data: { ...data, inStock: data.quantity > 0 },
+      data: {
+        ...rest,
+        images: images.length > 0 ? JSON.stringify(images) : null,
+        itemDetails: itemDetails || null,
+        inStock: data.quantity > 0,
+      },
       include: { variants: true },
     });
 
     console.info(`[admin] product created id=${product.id} by=${auth.userId}`);
-    return NextResponse.json({ product }, { status: 201 });
+    return NextResponse.json(
+      { product: { ...product, images: parseImages(product) } },
+      { status: 201 }
+    );
   } catch (err) {
     console.error("[admin] product create error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
