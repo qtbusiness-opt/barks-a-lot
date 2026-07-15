@@ -1361,6 +1361,12 @@ test("admin manages categories; storefront lists and products follow", async () 
   });
   assert.equal(anon.status, 403);
 
+  // Seeded edible categories default to showing ingredients; others don't.
+  const treats = pub.data.categories.find((c) => c.slug === "treats");
+  assert.equal(treats.showsIngredients, true);
+  const toys = pub.data.categories.find((c) => c.slug === "toys");
+  assert.equal(toys.showsIngredients, false);
+
   const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
   const created = await api("POST", "/admin/categories", {
     body: { name: "Bandanas", icon: "🧣" },
@@ -1368,6 +1374,7 @@ test("admin manages categories; storefront lists and products follow", async () 
   });
   assert.equal(created.status, 201);
   assert.equal(created.data.category.slug, "bandanas");
+  assert.equal(created.data.category.showsIngredients, false);
 
   // Duplicate names (same slug) are rejected.
   const dupe = await api("POST", "/admin/categories", {
@@ -1411,7 +1418,23 @@ test("admin manages categories; storefront lists and products follow", async () 
   );
   assert.equal(blocked.status, 409);
 
-  // Renaming cascades the new slug to the category's products.
+  // The product's detail page reflects its category's ingredients flag.
+  const beforeToggle = await api("GET", `/products/${product.data.product.id}`);
+  assert.equal(beforeToggle.data.product.categoryShowsIngredients, false);
+
+  // Flipping the toggle on the category flows through to its products.
+  const toggled = await api(
+    "PATCH",
+    `/admin/categories/${created.data.category.id}`,
+    { body: { name: "Bandanas", icon: "🧣", showsIngredients: true }, cookie }
+  );
+  assert.equal(toggled.status, 200);
+  assert.equal(toggled.data.category.showsIngredients, true);
+  const afterToggle = await api("GET", `/products/${product.data.product.id}`);
+  assert.equal(afterToggle.data.product.categoryShowsIngredients, true);
+
+  // Renaming cascades the new slug to the category's products (and an
+  // omitted showsIngredients on PATCH leaves the flag untouched).
   const renamed = await api(
     "PATCH",
     `/admin/categories/${created.data.category.id}`,
@@ -1419,6 +1442,7 @@ test("admin manages categories; storefront lists and products follow", async () 
   );
   assert.equal(renamed.status, 200);
   assert.equal(renamed.data.category.slug, "neckwear");
+  assert.equal(renamed.data.category.showsIngredients, true);
   const after = await adminStock(product.data.product.id);
   assert.equal(after.category, "neckwear");
 

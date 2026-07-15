@@ -6,10 +6,6 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 
-// Categories whose details section reads as "Ingredients"; everything
-// else gets a generic "Item Details" heading.
-const INGREDIENT_CATEGORIES = ["treats", "food"];
-
 // Cover image plus any gallery extras. Clicking the photo advances to
 // the next one; thumbnails jump straight to an image.
 function GalleryColumn({ product, imageIndex, setImageIndex }) {
@@ -243,14 +239,13 @@ export default function ProductDetailPage() {
               : "Add to Cart"}
           </button>
 
-          {/* Ingredients for treats/food (always shown for those
-              categories); Item Details for everything else, only when
-              the admin filled it in. */}
-          {(INGREDIENT_CATEGORIES.includes(product.category) ||
-            product.itemDetails) && (
+          {/* The category's admin-set toggle decides the flavor: an
+              always-visible Ingredients section, or an Item Details
+              section that only appears when filled in. */}
+          {(product.categoryShowsIngredients || product.itemDetails) && (
             <div className="mt-8 bg-white rounded-xl shadow-sm p-4 sm:p-6">
               <h2 className="text-lg font-semibold text-[#2A4A52] mb-2">
-                {INGREDIENT_CATEGORIES.includes(product.category)
+                {product.categoryShowsIngredients
                   ? "Ingredients"
                   : "Item Details"}
               </h2>

@@ -149,6 +149,10 @@ model Category {
   name      String
   // Emoji shown on the homepage tile.
   icon      String   @default("🐾")
+  // When true, products in this category show an "Ingredients" section
+  // on their detail page (always visible); otherwise the section is
+  // labeled "Item Details" and only appears when filled in.
+  showsIngredients Boolean @default(false)
   createdAt DateTime @default(now())
 }
 

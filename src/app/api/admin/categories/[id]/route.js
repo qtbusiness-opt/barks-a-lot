@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { categorySchema, slugify } from "@/lib/categories";
+
+// PATCH must not silently reset the toggle when a client omits it.
+const patchSchema = categorySchema.extend({
+  showsIngredients: z.boolean().optional(),
+});
 
 export async function PATCH(req, { params }) {
   const auth = await getAuthUser();
@@ -12,7 +18,7 @@ export async function PATCH(req, { params }) {
   const { id } = await params;
 
   try {
-    const parsed = categorySchema.safeParse(await req.json());
+    const parsed = patchSchema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Please enter a category name (and optional emoji)" },
@@ -47,7 +53,14 @@ export async function PATCH(req, { params }) {
     const [category] = await prisma.$transaction([
       prisma.category.update({
         where: { id },
-        data: { name: parsed.data.name, icon: parsed.data.icon, slug },
+        data: {
+          name: parsed.data.name,
+          icon: parsed.data.icon,
+          ...(parsed.data.showsIngredients !== undefined
+            ? { showsIngredients: parsed.data.showsIngredients }
+            : {}),
+          slug,
+        },
       }),
       prisma.product.updateMany({
         where: { category: existing.slug },

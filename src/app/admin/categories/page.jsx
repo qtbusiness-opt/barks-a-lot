@@ -11,7 +11,11 @@ const inputClass =
 function CategoryRow({ category, onSaved, onDeleted, onError }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: category.name, icon: category.icon });
+  const [form, setForm] = useState({
+    name: category.name,
+    icon: category.icon,
+    showsIngredients: category.showsIngredients,
+  });
 
   const save = async (e) => {
     e.preventDefault();
@@ -49,6 +53,11 @@ function CategoryRow({ category, onSaved, onDeleted, onError }) {
             <p className="text-xs text-gray-500">
               /{category.slug} · {category.productCount} product
               {category.productCount === 1 ? "" : "s"}
+              {category.showsIngredients && (
+                <span className="ml-2 inline-block bg-green-100 text-green-800 rounded-full px-2 py-0.5 font-medium">
+                  Ingredients
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -104,6 +113,16 @@ function CategoryRow({ category, onSaved, onDeleted, onError }) {
           >
             {saving ? "..." : "Save"}
           </button>
+          <label className="col-span-3 flex items-center gap-3 min-h-11 cursor-pointer text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={form.showsIngredients}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, showsIngredients: e.target.checked }))
+              }
+            />
+            Products in this category show an &quot;Ingredients&quot; section
+          </label>
           {form.name.trim() && (
             <p className="col-span-3 text-xs text-gray-500">
               Renaming updates every product in this category automatically.
@@ -119,7 +138,7 @@ export default function AdminCategoriesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [categories, setCategories] = useState(null);
-  const [form, setForm] = useState({ name: "", icon: "🐾" });
+  const [form, setForm] = useState({ name: "", icon: "🐾", showsIngredients: false });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
@@ -142,7 +161,7 @@ export default function AdminCategoriesPage() {
         ...(prev ?? []),
         { ...res.data.category, productCount: 0 },
       ]);
-      setForm({ name: "", icon: "🐾" });
+      setForm({ name: "", icon: "🐾", showsIngredients: false });
     } catch (err) {
       setError(err.response?.data?.error || "Failed to create the category.");
     } finally {
@@ -191,6 +210,17 @@ export default function AdminCategoriesPage() {
             {creating ? "..." : "Add"}
           </button>
         </div>
+        <label className="flex items-center gap-3 min-h-11 cursor-pointer text-sm text-gray-700 mt-2">
+          <input
+            type="checkbox"
+            checked={form.showsIngredients}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, showsIngredients: e.target.checked }))
+            }
+          />
+          Products in this category show an &quot;Ingredients&quot; section
+          (for edibles like treats)
+        </label>
         <p className="text-xs text-gray-500 mt-2">
           The emoji shows on the homepage tile; the shop filter uses the name.
         </p>

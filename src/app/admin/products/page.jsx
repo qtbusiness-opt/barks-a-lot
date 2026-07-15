@@ -21,8 +21,6 @@ const EMPTY_FORM = {
   featured: false,
 };
 
-// Categories whose details field is an ingredient list.
-const INGREDIENT_CATEGORIES = ["treats", "food"];
 
 const stockOf = (p) =>
   p.variants.length > 0
@@ -30,6 +28,8 @@ const stockOf = (p) =>
     : p.quantity;
 
 function ProductFields({ form, update, variantProduct, categories }) {
+  const showsIngredients =
+    categories.find((c) => c.slug === form.category)?.showsIngredients ?? false;
   return (
     <>
       <div>
@@ -150,7 +150,7 @@ function ProductFields({ form, update, variantProduct, categories }) {
           htmlFor={`item-details-${variantProduct ? "edit" : "new"}`}
           className="block text-sm font-medium text-gray-700 mb-1"
         >
-          {INGREDIENT_CATEGORIES.includes(form.category)
+          {showsIngredients
             ? "Ingredients"
             : "Item Details"}{" "}
           (optional)
@@ -161,7 +161,7 @@ function ProductFields({ form, update, variantProduct, categories }) {
           onChange={(e) => update("itemDetails", e.target.value)}
           rows={3}
           placeholder={
-            INGREDIENT_CATEGORIES.includes(form.category)
+            showsIngredients
               ? "e.g. Organic peanut butter, oat flour, eggs, honey"
               : "Materials, sizing, care instructions..."
           }
@@ -169,8 +169,8 @@ function ProductFields({ form, update, variantProduct, categories }) {
         />
         <p className="text-xs text-gray-500 mt-1">
           Shown on the product page under Add to Cart
-          {INGREDIENT_CATEGORIES.includes(form.category)
-            ? " — treats and food always show an Ingredients section."
+          {showsIngredients
+            ? " — this category always shows an Ingredients section."
             : ", only when filled in."}
         </p>
       </div>
