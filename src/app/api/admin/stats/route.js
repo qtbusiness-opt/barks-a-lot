@@ -24,6 +24,7 @@ export async function GET() {
     adminUsers,
     customers,
     categories,
+    unreadMessages,
   ] = await Promise.all([
     prisma.order.count(),
     prisma.order.count({ where: { status: "pending" } }),
@@ -36,6 +37,7 @@ export async function GET() {
     prisma.user.count({ where: { role: "admin" } }),
     prisma.user.count({ where: { role: "customer" } }),
     prisma.category.count(),
+    prisma.contactMessage.count({ where: { readAt: null } }),
   ]);
 
   return NextResponse.json({
@@ -51,6 +53,7 @@ export async function GET() {
       adminUsers,
       customers,
       categories,
+      unreadMessages,
     },
   });
 }

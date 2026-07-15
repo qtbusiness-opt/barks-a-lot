@@ -1502,3 +1502,48 @@ test("product gallery images and item details round-trip through the APIs", asyn
 
   await api("DELETE", `/admin/products/${id}`, { cookie });
 });
+
+test("contact form stores a message, emails admins, and admins manage it", async () => {
+  // Public submission validates input.
+  const bad = await api("POST", "/contact", {
+    body: { name: "", email: "not-an-email", message: "" },
+  });
+  assert.equal(bad.status, 400);
+
+  const sent = await api("POST", "/contact", {
+    body: {
+      name: "Casey Customer",
+      email: "casey@test.local",
+      message: "Do the peanut butter biscuits contain xylitol?",
+    },
+  });
+  assert.equal(sent.status, 201);
+
+  // Listing is admin-only.
+  const anon = await api("GET", "/admin/messages");
+  assert.equal(anon.status, 403);
+
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const list = await api("GET", "/admin/messages", { cookie });
+  assert.equal(list.status, 200);
+  const msg = list.data.messages.find((m) => m.email === "casey@test.local");
+  assert.ok(msg, "message stored and listed");
+  assert.equal(msg.readAt, null);
+
+  // Unread messages surface in the dashboard stats.
+  const stats = await api("GET", "/admin/stats", { cookie });
+  assert.ok(stats.data.stats.unreadMessages >= 1);
+
+  // Mark read, then unread, then delete.
+  const read = await api("PATCH", `/admin/messages/${msg.id}`, {
+    body: { read: true },
+    cookie,
+  });
+  assert.equal(read.status, 200);
+  assert.ok(read.data.message.readAt);
+
+  const deleted = await api("DELETE", `/admin/messages/${msg.id}`, { cookie });
+  assert.equal(deleted.status, 200);
+  const after = await api("GET", "/admin/messages", { cookie });
+  assert.ok(!after.data.messages.some((m) => m.id === msg.id));
+});

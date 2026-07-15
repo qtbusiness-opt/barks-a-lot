@@ -6,7 +6,10 @@ import { getAuthUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { isWithinWindow } from "@/lib/catalog";
 import { isPickupSelectable } from "@/lib/pickup-window";
-import { sendOrderConfirmationEmail } from "@/lib/order-emails";
+import {
+  sendOrderConfirmationEmail,
+  sendAdminOrderAlert,
+} from "@/lib/order-emails";
 import { SHIPPING_ENABLED } from "@/lib/features";
 import { restockOrderItems } from "@/lib/inventory";
 import {
@@ -326,7 +329,11 @@ export async function POST(req) {
     }
 
     // Fire-and-forget: a mail hiccup must never fail a placed order.
-    await sendOrderConfirmationEmail(order);
+    // Customer confirmation + a heads-up to every admin.
+    await Promise.all([
+      sendOrderConfirmationEmail(order),
+      sendAdminOrderAlert(order),
+    ]);
 
     return NextResponse.json({ order }, { status: 201 });
   } catch (err) {

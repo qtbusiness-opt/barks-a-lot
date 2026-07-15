@@ -260,8 +260,6 @@ export default function TermsOfServicePage() {
           >
             info@barks-a-lot.com
           </a>
-          <br />
-          Mail: 1150 N New Creek Dr, Meridian, ID 83642
         </p>
       </Section>
     </div>
