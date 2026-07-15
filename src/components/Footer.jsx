@@ -16,6 +16,7 @@ export default function Footer() {
             <li><Link href="/" className="hover:text-white transition">Home</Link></li>
             <li><Link href="/products" className="hover:text-white transition">Shop</Link></li>
             <li><Link href="/cart" className="hover:text-white transition">Cart</Link></li>
+            <li><Link href="/contact" className="hover:text-white transition">Contact Us</Link></li>
             <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
             <li><Link href="/terms" className="hover:text-white transition">Terms of Service</Link></li>
           </ul>
@@ -23,9 +24,8 @@ export default function Footer() {
         <div>
           <h4 className="text-white font-semibold mb-3">Contact</h4>
           <ul className="space-y-2 text-sm">
-            <li><Link href="mailto:info@barks-a-lot.com">info@barks-a-lot.com</Link></li>
-            <li><Link href="tel:(805) 800-6896">(805) 800-6896</Link></li>
-            <li>1150 N New Creek Dr, Meridian, ID, USA</li>
+            <li><Link href="mailto:info@barks-a-lot.com" className="hover:text-white transition">info@barks-a-lot.com</Link></li>
+            <li><Link href="/contact" className="hover:text-white transition">Send us a message</Link></li>
           </ul>
         </div>
       </div>

@@ -100,6 +100,18 @@ export default function AdminDashboardPage() {
           detail="Order updates sent to customer emails"
         />
         <StatPanel
+          href="/admin/messages"
+          icon="💬"
+          accent="bg-orange-500/10"
+          label="Messages"
+          value={stats?.unreadMessages}
+          detail={
+            stats
+              ? `${stats.unreadMessages} unread from the contact form`
+              : "Contact form messages"
+          }
+        />
+        <StatPanel
           href="/events"
           icon="📅"
           accent="bg-purple-500/10"

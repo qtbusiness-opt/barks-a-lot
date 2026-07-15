@@ -1,4 +1,4 @@
-import { sendEmail } from "@/lib/mailer";
+import { sendEmail, adminEmails } from "@/lib/mailer";
 import { formatTimeRange } from "@/lib/pickup-window";
 
 // event.date is a Date object when the order comes straight from Prisma
@@ -44,9 +44,31 @@ export async function sendOrderConfirmationEmail(order) {
       to,
       subject: `Order confirmed — ${order.confirmationNumber}`,
       text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\nTotal: $${order.total.toFixed(2)}\n${deliveryLine(order)}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
+      branded: true,
     });
   } catch (err) {
     console.error(`[mail] order confirmation failed order=${order.id}:`, err);
+  }
+}
+
+// Internal heads-up to every admin whenever an order is placed. Failures
+// are logged only — a mail hiccup must never fail a completed order.
+export async function sendAdminOrderAlert(order) {
+  try {
+    const to = await adminEmails();
+    if (to.length === 0) return;
+
+    const customer = order.user
+      ? `${order.user.name} (${order.user.email})`
+      : `${order.guestName ? `${order.guestName} — ` : ""}${order.guestEmail} (guest)`;
+
+    await sendEmail({
+      to,
+      subject: `New order ${order.confirmationNumber} — $${order.total.toFixed(2)}`,
+      text: `A new order just came in.\n\nConfirmation number: ${order.confirmationNumber}\nCustomer: ${customer}\n\nItems:\n${itemLines(order)}\n\nTotal: $${order.total.toFixed(2)}\n${deliveryLine(order)}\n\nManage it in the admin dashboard under Orders.`,
+    });
+  } catch (err) {
+    console.error(`[mail] admin order alert failed order=${order.id}:`, err);
   }
 }
 
@@ -60,6 +82,7 @@ export async function sendOrderStatusEmail(order, message) {
       to,
       subject: `Order update — ${order.confirmationNumber}`,
       text: `${message}\n\n${deliveryLine(order)}\n\nQuestions? You can reach us at info@barks-a-lot.com.`,
+      branded: true,
     });
   } catch (err) {
     console.error(`[mail] status email failed order=${order.id}:`, err);
