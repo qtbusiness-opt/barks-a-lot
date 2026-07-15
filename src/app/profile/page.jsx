@@ -142,7 +142,6 @@ export default function ProfilePage() {
         .get("/profile")
         .then((res) => {
           setProfile(res.data);
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setName(res.data.user.name);
         })
         .catch(() => setError("Failed to load your profile."));

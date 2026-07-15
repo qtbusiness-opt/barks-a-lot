@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 // Product image picker: click to browse or drag & drop. Uploads to the
 // admin uploads API and hands the served URL back to the form.
-export default function ImageUpload({ value, onChange }) {
+export default function ImageUpload({ value, onChange, label = "Product image" }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -39,7 +39,7 @@ export default function ImageUpload({ value, onChange }) {
   return (
     <div>
       <span className="block text-sm font-medium text-gray-700 mb-1">
-        Product image
+        {label}
       </span>
       <button
         type="button"
@@ -50,7 +50,7 @@ export default function ImageUpload({ value, onChange }) {
         }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
-        aria-label="Upload product image"
+        aria-label={`Upload — ${label}`}
         className={`w-full flex items-center gap-4 rounded-xl border-2 border-dashed p-4 text-left transition ${
           dragging
             ? "border-[#C8722A] bg-[#C8722A]/5"

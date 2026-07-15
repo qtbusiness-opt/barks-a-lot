@@ -22,6 +22,17 @@ export function visibleInListing(product, now = new Date()) {
   return true;
 }
 
+// Gallery images are stored as a JSON string (SQLite has no arrays);
+// every API response hands the client a real array instead.
+export function parseImages(product) {
+  try {
+    const parsed = JSON.parse(product.images ?? "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 // Customer-facing product shape: exact stock counts are business data and
 // stay on the admin API — the storefront gets booleans. inStock on the
 // product row is already maintained by checkout/cancel/admin writes;
@@ -30,6 +41,7 @@ export function publicProduct(product) {
   const { quantity: _quantity, variants, ...rest } = product;
   return {
     ...rest,
+    images: parseImages(product),
     variants: (variants ?? []).map(({ quantity, ...v }) => ({
       ...v,
       inStock: quantity > 0,
