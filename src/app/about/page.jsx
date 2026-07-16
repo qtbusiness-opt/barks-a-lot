@@ -1,12 +1,27 @@
+import { getSettings, ABOUT_IMAGE_KEYS } from "@/lib/site-settings";
+
 export const metadata = {
   title: "About Us — Barks-A-Lot Treats & More",
   description:
     "Meet Quinn, Nabil, Meeko, and Evee — the family behind Barks-A-Lot Treats & More.",
 };
 
-// A placeholder for artwork we don't have yet. Swap the inner content for
-// an <img> once photos are available.
-function ImagePlaceholder({ label }) {
+// Photos are admin-editable (Admin → About Page), so render at request
+// time rather than statically.
+export const dynamic = "force-dynamic";
+
+// Shows the admin-uploaded photo, or a labeled placeholder until one is set.
+function SectionImage({ src, label }) {
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={label}
+        className="w-full aspect-[4/3] rounded-2xl object-cover bg-[#F5F0E8]"
+      />
+    );
+  }
   return (
     <div
       className="w-full aspect-[4/3] rounded-2xl bg-[#F5F0E8] border-2 border-dashed border-[#4A7C8A]/30 flex flex-col items-center justify-center text-center p-6"
@@ -22,7 +37,7 @@ function ImagePlaceholder({ label }) {
 
 // One story section. `flip` puts the image on the left (text on the
 // right); default is image-right. Stacks image-first on mobile.
-function Section({ title, imageLabel, flip = false, children }) {
+function Section({ title, imageLabel, imageSrc, flip = false, children }) {
   return (
     <section className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
       <div className={flip ? "md:order-2" : "md:order-1"}>
@@ -32,13 +47,14 @@ function Section({ title, imageLabel, flip = false, children }) {
         <div className="space-y-4 text-gray-700 leading-relaxed">{children}</div>
       </div>
       <div className={flip ? "md:order-1" : "md:order-2"}>
-        <ImagePlaceholder label={imageLabel} />
+        <SectionImage src={imageSrc} label={imageLabel} />
       </div>
     </section>
   );
 }
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const images = await getSettings(ABOUT_IMAGE_KEYS.map((k) => k.key));
   return (
     <div className="max-w-5xl mx-auto safe-x py-8 sm:py-12">
       <header className="text-center mb-12">
@@ -47,7 +63,11 @@ export default function AboutPage() {
 
       <div className="space-y-16">
         {/* Section 1 — image right */}
-        <Section title="Meet the Family" imageLabel="Quinn & Nabil">
+        <Section
+          title="Meet the Family"
+          imageLabel="Quinn & Nabil"
+          imageSrc={images.about_image_family}
+        >
           <p>
             We&apos;re Quinn and Nabil, the humans behind Barks-A-Lot Treats
             &amp; More. In the summer of 2024, we decided to move to the
@@ -58,7 +78,12 @@ export default function AboutPage() {
         </Section>
 
         {/* Section 2 — image left */}
-        <Section title="The Inspiration" imageLabel="Meeko & Evee" flip>
+        <Section
+          title="The Inspiration"
+          imageLabel="Meeko & Evee"
+          imageSrc={images.about_image_dogs}
+          flip
+        >
           <p>Everything we do here traces back to two very good dogs.</p>
           <p>
             <strong>Meeko</strong>{" "}
@@ -84,7 +109,11 @@ export default function AboutPage() {
         </Section>
 
         {/* Section 3 — image right */}
-        <Section title="How Barks-A-Lot Began" imageLabel="Home-baked treats">
+        <Section
+          title="How Barks-A-Lot Began"
+          imageLabel="Home-baked treats"
+          imageSrc={images.about_image_treats}
+        >
           <p>
             Nabil set out with one simple goal: find a treat Meeko would
             actually enjoy, made with all-natural ingredients. Meeko, our

@@ -1871,3 +1871,37 @@ test("activity log records logins and errors; admin can view the breakdown", asy
   const errorsOnly = await api("GET", "/admin/logs?category=error", { cookie });
   assert.ok(errorsOnly.data.events.every((e) => e.category === "error"));
 });
+
+test("About page photos: admin-only settings with a key whitelist", async () => {
+  const anon = await api("GET", "/admin/site-settings");
+  assert.equal(anon.status, 403);
+
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const initial = await api("GET", "/admin/site-settings", { cookie });
+  assert.equal(initial.status, 200);
+
+  // A whitelisted key upserts.
+  const set = await api("PATCH", "/admin/site-settings", {
+    body: { key: "about_image_family", value: "/uploads/family.png" },
+    cookie,
+  });
+  assert.equal(set.status, 200);
+  const after = await api("GET", "/admin/site-settings", { cookie });
+  assert.equal(after.data.settings.about_image_family, "/uploads/family.png");
+
+  // An empty value clears it (revert to placeholder).
+  const clear = await api("PATCH", "/admin/site-settings", {
+    body: { key: "about_image_family", value: "" },
+    cookie,
+  });
+  assert.equal(clear.status, 200);
+  const gone = await api("GET", "/admin/site-settings", { cookie });
+  assert.equal(gone.data.settings.about_image_family, undefined);
+
+  // An arbitrary key is rejected — no writing outside the whitelist.
+  const bad = await api("PATCH", "/admin/site-settings", {
+    body: { key: "admin_password", value: "hax" },
+    cookie,
+  });
+  assert.equal(bad.status, 400);
+});

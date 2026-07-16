@@ -19,9 +19,11 @@ function StatPanel({ href, icon, label, value, detail, accent }) {
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="block text-3xl font-bold text-[#2A4A52]">
-          {value ?? "—"}
-        </span>
+        {value !== "" && (
+          <span className="block text-3xl font-bold text-[#2A4A52]">
+            {value ?? "—"}
+          </span>
+        )}
         <span className="block font-semibold text-[#4A7C8A] mt-0.5">{label}</span>
         {detail && (
           <span className="block text-sm text-gray-500 mt-1">{detail}</span>
@@ -146,6 +148,14 @@ export default function AdminDashboardPage() {
           label="Customers"
           value={stats?.customers}
           detail="Look up accounts, send password resets"
+        />
+        <StatPanel
+          href="/admin/about"
+          icon="🖼️"
+          accent="bg-amber-500/10"
+          label="About Page"
+          value=""
+          detail="Manage the About Us photos"
         />
         <StatPanel
           href="/admin/logs"

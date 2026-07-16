@@ -207,6 +207,14 @@ model Promotion {
   updatedAt      DateTime @updatedAt
 }
 
+// Small key/value store for admin-editable site content (e.g. the About
+// page photos). Keys are whitelisted server-side.
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 // Structured application events for the admin activity log: user logins
 // (success/failure) and server errors. Written best-effort and also
 // mirrored to stdout, so Docker logs and the in-app breakdown stay in
