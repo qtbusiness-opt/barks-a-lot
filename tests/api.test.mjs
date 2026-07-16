@@ -526,13 +526,36 @@ test("status changes record a notification tied to the order email", async () =>
 
   const notifications = await api("GET", "/admin/notifications", { cookie });
   assert.equal(notifications.status, 200);
-  assert.ok(
-    notifications.data.notifications.some(
-      // Pickup-only wording: "delivered" reads as "has been picked up".
-      (n) => n.email === email && n.message.includes("picked up")
-    ),
-    "notification recorded against the guest email"
+  const note = notifications.data.notifications.find(
+    // Pickup-only wording: "delivered" reads as "has been picked up".
+    (n) => n.email === email && n.message.includes("picked up")
   );
+  assert.ok(note, "notification recorded against the guest email");
+
+  // Archiving moves it off the active list and onto the archived list.
+  const archived = await api("PATCH", `/admin/notifications/${note.id}`, {
+    body: { archived: true },
+    cookie,
+  });
+  assert.equal(archived.status, 200);
+  assert.ok(archived.data.notification.archivedAt);
+
+  const active = await api("GET", "/admin/notifications", { cookie });
+  assert.ok(!active.data.notifications.some((n) => n.id === note.id));
+  const archivedList = await api("GET", "/admin/notifications?archived=true", {
+    cookie,
+  });
+  assert.ok(archivedList.data.notifications.some((n) => n.id === note.id));
+
+  // Restoring brings it back to the active list.
+  const restored = await api("PATCH", `/admin/notifications/${note.id}`, {
+    body: { archived: false },
+    cookie,
+  });
+  assert.equal(restored.status, 200);
+  assert.equal(restored.data.notification.archivedAt, null);
+  const activeAgain = await api("GET", "/admin/notifications", { cookie });
+  assert.ok(activeAgain.data.notifications.some((n) => n.id === note.id));
 });
 
 test("announcements: admin creates, storefront shows the latest", async () => {
