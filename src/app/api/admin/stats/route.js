@@ -26,6 +26,7 @@ export async function GET() {
     categories,
     unreadMessages,
     activePromotions,
+    errorsToday,
   ] = await Promise.all([
     prisma.order.count(),
     prisma.order.count({ where: { status: "pending" } }),
@@ -40,6 +41,12 @@ export async function GET() {
     prisma.category.count(),
     prisma.contactMessage.count({ where: { readAt: null } }),
     prisma.promotion.count({ where: { active: true } }),
+    prisma.logEvent.count({
+      where: {
+        category: "error",
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    }),
   ]);
 
   return NextResponse.json({
@@ -57,6 +64,7 @@ export async function GET() {
       categories,
       unreadMessages,
       activePromotions,
+      errorsToday,
     },
   });
 }

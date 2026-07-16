@@ -147,6 +147,18 @@ export default function AdminDashboardPage() {
           value={stats?.customers}
           detail="Look up accounts, send password resets"
         />
+        <StatPanel
+          href="/admin/logs"
+          icon="📊"
+          accent="bg-slate-500/10"
+          label="Activity Log"
+          value={stats?.errorsToday}
+          detail={
+            stats
+              ? `${stats.errorsToday} error${stats.errorsToday === 1 ? "" : "s"} in the last 24h · logins & errors`
+              : "Logins and errors"
+          }
+        />
       </div>
     </AdminShell>
   );
