@@ -32,7 +32,7 @@ export async function GET() {
     prisma.product.aggregate({ _sum: { quantity: true } }),
     prisma.productVariant.aggregate({ _sum: { quantity: true } }),
     prisma.announcement.count(),
-    prisma.notification.count(),
+    prisma.notification.count({ where: { archivedAt: null } }),
     prisma.event.count({ where: { date: { gte: startOfToday } } }),
     prisma.user.count({ where: { role: "admin" } }),
     prisma.user.count({ where: { role: "customer" } }),

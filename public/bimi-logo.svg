@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg version="1.2" baseProfile="tiny-ps" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <title>Barks-A-Lot Treats &amp; More</title>
+  <rect width="200" height="200" fill="#4A7C8A"/>
+  <circle cx="100" cy="100" r="86" fill="#E8DFC8"/>
+  <circle cx="72" cy="86" r="24" fill="#F5E6C8"/>
+  <circle cx="54" cy="74" r="9" fill="#EDD9B5"/>
+  <circle cx="90" cy="74" r="9" fill="#EDD9B5"/>
+  <circle cx="66" cy="88" r="3.5" fill="#333333"/>
+  <circle cx="80" cy="88" r="3.5" fill="#333333"/>
+  <ellipse cx="73" cy="95" rx="4.5" ry="3.5" fill="#333333"/>
+  <circle cx="128" cy="86" r="24" fill="#D4A04A"/>
+  <circle cx="110" cy="74" r="9" fill="#C89040"/>
+  <circle cx="146" cy="74" r="9" fill="#C89040"/>
+  <circle cx="122" cy="88" r="3.5" fill="#333333"/>
+  <circle cx="136" cy="88" r="3.5" fill="#333333"/>
+  <ellipse cx="129" cy="95" rx="4.5" ry="3.5" fill="#333333"/>
+  <rect x="52" y="128" width="96" height="34" rx="6" fill="#8B6842"/>
+  <rect x="55" y="131" width="90" height="28" rx="5" fill="#A07850"/>
+</svg>

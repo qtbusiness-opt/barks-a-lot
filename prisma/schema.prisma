@@ -171,6 +171,8 @@ model Notification {
   email     String
   message   String
   orderId   String?
+  // Set when an admin archives it off the active notifications list.
+  archivedAt DateTime?
   createdAt DateTime @default(now())
 }
 
