@@ -18,7 +18,7 @@ export default function EventMap({ location }) {
         rel="noopener noreferrer"
         className="mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#4A7C8A]/40 bg-[#F5F0E8] py-6 text-[#4A7C8A] font-medium hover:border-[#4A7C8A] transition"
       >
-        🗺️ Open &quot;{location}&quot; in Google Maps
+        🗺️ Open &ldquo;{location}&rdquo; in Google Maps
       </a>
     );
   }

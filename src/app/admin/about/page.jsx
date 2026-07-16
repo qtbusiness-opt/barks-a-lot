@@ -58,7 +58,7 @@ export default function AdminAboutPage() {
       )}
 
       {settings === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading...</p>
+        <p className="text-gray-500 text-center py-10">Loading…</p>
       ) : (
         <div className="space-y-6 max-w-xl">
           {ABOUT_IMAGE_KEYS.map((slot) => {

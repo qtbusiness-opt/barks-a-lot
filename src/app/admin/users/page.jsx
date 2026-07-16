@@ -117,7 +117,7 @@ export default function AdminUsersPage() {
             disabled={submitting}
             className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {submitting ? "Creating..." : "Create Admin Account"}
+            {submitting ? "Creating…" : "Create Admin Account"}
           </button>
         </form>
 
@@ -126,7 +126,7 @@ export default function AdminUsersPage() {
             Current Admins ({admins?.length ?? "…"})
           </h2>
           {admins === null ? (
-            <p className="text-gray-500">Loading admin accounts...</p>
+            <p className="text-gray-500">Loading admin accounts…</p>
           ) : (
             <div className="space-y-3">
               {admins.map((a) => (

@@ -117,7 +117,7 @@ function AddressRow({ addr, onSaved, onDeleted, onError }) {
             disabled={saving}
             className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] text-white py-2.5 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Address"}
+            {saving ? "Saving…" : "Save Address"}
           </button>
         </form>
       )}
@@ -276,7 +276,7 @@ export default function ProfilePage() {
                 disabled={savingName}
                 className="shrink-0 bg-[#4A7C8A] hover:bg-[#3A6270] text-white px-4 rounded-lg font-semibold transition disabled:opacity-50"
               >
-                {savingName ? "..." : "Save"}
+                {savingName ? "…" : "Save"}
               </button>
             </form>
           )}
@@ -298,7 +298,7 @@ export default function ProfilePage() {
         {isCustomer && summary && (
           <Link
             href="/orders"
-            className="block bg-white rounded-xl shadow-sm p-4 sm:p-6 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all"
+            className="block bg-white rounded-xl shadow-sm p-4 sm:p-6 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-[#2A4A52]">
@@ -341,12 +341,12 @@ export default function ProfilePage() {
               Shipping Addresses
             </h2>
             <p className="text-sm text-gray-500 mb-4">
-              Addresses you&apos;ve shipped orders to. Removing one here
-              doesn&apos;t change past orders.
+              Addresses you&rsquo;ve shipped orders to. Removing one here
+              doesn&rsquo;t change past orders.
             </p>
             {profile.addresses.length === 0 ? (
               <p className="text-gray-500 text-sm">
-                No addresses yet — they&apos;re saved automatically when you
+                No addresses yet — they&rsquo;re saved automatically when you
                 place a shipping order.
               </p>
             ) : (
@@ -393,7 +393,7 @@ export default function ProfilePage() {
               disabled={deleting}
               className="w-full sm:w-auto border-2 border-red-400 text-red-500 px-4 py-2.5 rounded-lg font-semibold hover:bg-red-500 hover:border-red-500 hover:text-white transition disabled:opacity-50"
             >
-              {deleting ? "Deleting..." : "Delete My Account"}
+              {deleting ? "Deleting…" : "Delete My Account"}
             </button>
           </div>
         )}

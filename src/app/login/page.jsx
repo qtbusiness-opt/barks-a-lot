@@ -109,11 +109,11 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {loading ? "Logging in..." : "Log In"}
+            {loading ? "Logging in…" : "Log In"}
           </button>
         </form>
         <p className="text-center text-sm text-gray-500 mt-6">
-          Don&apos;t have an account?{" "}
+          Don&rsquo;t have an account?{" "}
           <Link href="/register" className="text-[#4A7C8A] font-medium hover:underline">
             Sign Up
           </Link>

@@ -40,7 +40,7 @@ export default function ContactPage() {
           Thanks for reaching out!
         </h1>
         <p className="text-gray-600">
-          We&apos;ve got your message and will get back to you at{" "}
+          We&rsquo;ve got your message and will get back to you at{" "}
           <span className="font-medium">{form.email}</span> as soon as we can.
         </p>
       </div>
@@ -52,7 +52,7 @@ export default function ContactPage() {
       <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52]">Contact Us</h1>
       <p className="text-gray-600 mt-2 mb-6">
         Questions about an order, an ingredient, or a custom bandana? Send us a
-        note and we&apos;ll reply by email. You can also reach us directly at{" "}
+        note and we&rsquo;ll reply by email. You can also reach us directly at{" "}
         <a
           href="mailto:info@barks-a-lot.com"
           className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
@@ -118,7 +118,7 @@ export default function ContactPage() {
           disabled={submitting}
           className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
         >
-          {submitting ? "Sending..." : "Send Message"}
+          {submitting ? "Sending…" : "Send Message"}
         </button>
         {user && (
           <p className="text-xs text-gray-500">

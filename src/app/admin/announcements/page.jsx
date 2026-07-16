@@ -99,7 +99,7 @@ function AnnouncementRow({ announcement, onSaved, onDeleted, onError }) {
             disabled={saving}
             className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </form>
       )}
@@ -189,7 +189,7 @@ export default function AdminAnnouncementsPage() {
             disabled={submitting}
             className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {submitting ? "Publishing..." : "Publish Announcement"}
+            {submitting ? "Publishing…" : "Publish Announcement"}
           </button>
         </form>
 
@@ -198,7 +198,7 @@ export default function AdminAnnouncementsPage() {
             Published ({announcements?.length ?? "…"})
           </h2>
           {announcements === null ? (
-            <p className="text-gray-500">Loading announcements...</p>
+            <p className="text-gray-500">Loading announcements…</p>
           ) : announcements.length === 0 ? (
             <p className="text-gray-500">No announcements yet.</p>
           ) : (

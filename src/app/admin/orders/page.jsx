@@ -57,7 +57,7 @@ export default function AdminOrdersPage() {
       )}
 
       {orders === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading orders...</p>
+        <p className="text-gray-500 text-center py-10">Loading orders…</p>
       ) : orderList.length === 0 ? (
         <p className="text-gray-500 text-center py-10">No orders yet.</p>
       ) : (

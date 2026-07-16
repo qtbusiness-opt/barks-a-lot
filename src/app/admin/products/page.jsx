@@ -85,7 +85,7 @@ function ProductFields({ form, update, variantProduct, categories }) {
           />
           {variantProduct && (
             <p className="text-xs text-gray-500 mt-1">
-              Stock lives on this product&apos;s options.
+              Stock lives on this product&rsquo;s options.
             </p>
           )}
         </div>
@@ -163,7 +163,7 @@ function ProductFields({ form, update, variantProduct, categories }) {
           placeholder={
             showsIngredients
               ? "e.g. Organic peanut butter, oat flour, eggs, honey"
-              : "Materials, sizing, care instructions..."
+              : "Materials, sizing, care instructions…"
           }
           className={inputClass}
         />
@@ -320,7 +320,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
             disabled={saving}
             className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </form>
       )}
@@ -411,7 +411,7 @@ export default function AdminProductsPage() {
             disabled={submitting}
             className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {submitting ? "Creating..." : "Create Product"}
+            {submitting ? "Creating…" : "Create Product"}
           </button>
         </form>
 
@@ -421,7 +421,7 @@ export default function AdminProductsPage() {
             Catalog ({products?.length ?? "…"})
           </h2>
           {products === null ? (
-            <p className="text-gray-500">Loading products...</p>
+            <p className="text-gray-500">Loading products…</p>
           ) : (
             <div className="space-y-3">
               {products.map((p) => (

@@ -120,7 +120,7 @@ export default function AdminMessagesPage() {
       )}
 
       {messages === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading messages...</p>
+        <p className="text-gray-500 text-center py-10">Loading messages…</p>
       ) : messages?.length === 0 ? (
         <p className="text-gray-500 text-center py-10">
           No messages yet — they appear here when someone uses the Contact Us

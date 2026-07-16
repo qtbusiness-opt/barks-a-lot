@@ -212,7 +212,7 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
                 disabled={saving}
                 className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
               >
-                {saving ? "Saving..." : "Save Changes"}
+                {saving ? "Saving…" : "Save Changes"}
               </button>
             </form>
           )}
@@ -271,7 +271,7 @@ export default function EventDayPage() {
       )}
 
       {events === null ? (
-        <p className="text-gray-500 text-center py-10">Loading events...</p>
+        <p className="text-gray-500 text-center py-10">Loading events…</p>
       ) : events.length === 0 ? (
         <div className="text-center py-10">
           <p className="text-gray-500 mb-6">No events on this day.</p>

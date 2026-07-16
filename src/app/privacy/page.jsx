@@ -24,8 +24,8 @@ export default function PrivacyPolicyPage() {
       </p>
 
       <p className="mt-6 text-gray-700 leading-relaxed">
-        Barks-A-Lot Treats &amp; More (&quot;Barks-A-Lot,&quot; &quot;we,&quot;
-        &quot;us,&quot; or &quot;our&quot;) respects your privacy. This Privacy
+        Barks-A-Lot Treats &amp; More (&ldquo;Barks-A-Lot,&rdquo; &ldquo;we,&rdquo;
+        &ldquo;us,&rdquo; or &ldquo;our&rdquo;) respects your privacy. This Privacy
         Policy explains what information we collect when you visit our website
         or make a purchase, how we use it, and the choices you have. By using
         our website, you agree to the practices described below.
@@ -137,7 +137,7 @@ export default function PrivacyPolicyPage() {
             against cross-site request forgery.
           </li>
           <li>
-            <strong>Your shopping cart</strong> is saved in your browser&apos;s
+            <strong>Your shopping cart</strong> is saved in your browser&rsquo;s
             local storage so it survives page reloads. It stays on your device
             and is not sent to us until you place an order.
           </li>

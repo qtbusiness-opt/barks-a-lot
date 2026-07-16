@@ -24,9 +24,9 @@ export default function TermsOfServicePage() {
       </p>
 
       <p className="mt-6 text-gray-700 leading-relaxed">
-        Welcome to Barks-A-Lot Treats &amp; More (&quot;Barks-A-Lot,&quot;
-        &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). These Terms of
-        Service (&quot;Terms&quot;) govern your use of our website and any
+        Welcome to Barks-A-Lot Treats &amp; More (&ldquo;Barks-A-Lot,&rdquo;
+        &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;). These Terms of
+        Service (&ldquo;Terms&rdquo;) govern your use of our website and any
         purchases made through it. By accessing our website or placing an
         order, you agree to these Terms. If you do not agree, please do not
         use our website.
@@ -41,7 +41,7 @@ export default function TermsOfServicePage() {
         <ul className="list-disc pl-6 space-y-2">
           <li>
             Ingredient lists are provided for each product. It is the
-            customer&apos;s responsibility to review ingredients for any known
+            customer&rsquo;s responsibility to review ingredients for any known
             allergies or dietary restrictions their pet may have before
             purchasing or feeding a product.
           </li>
@@ -111,7 +111,7 @@ export default function TermsOfServicePage() {
           <li>
             At checkout you select the market or event where you will pick up
             your order. Please bring your order confirmation number (from your
-            confirmation email or your account&apos;s orders page) to the
+            confirmation email or your account&rsquo;s orders page) to the
             booth.
           </li>
           <li>
@@ -193,7 +193,7 @@ export default function TermsOfServicePage() {
           </li>
           <li>
             Attempt to gain unauthorized access to our systems or another
-            user&apos;s account
+            user&rsquo;s account
           </li>
           <li>Interfere with or disrupt the operation of the website</li>
           <li>Submit false or fraudulent orders or payment information</li>
@@ -202,7 +202,7 @@ export default function TermsOfServicePage() {
 
       <Section title="8. Disclaimer of Warranties">
         <p>
-          Our website and products are provided &quot;as is&quot; without
+          Our website and products are provided &ldquo;as is&rdquo; without
           warranties of any kind, express or implied, except as expressly
           stated in these Terms. We do not guarantee that our website will be
           uninterrupted, error-free, or secure at all times.

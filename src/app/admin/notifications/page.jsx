@@ -53,8 +53,8 @@ export default function AdminNotificationsPage() {
   return (
     <AdminShell title="Customer Notifications" backTo="/admin">
       <p className="text-sm text-gray-500 mb-4 -mt-4">
-        Order updates recorded against each customer&apos;s email. A
-        notification is created every time an order&apos;s status changes.
+        Order updates recorded against each customer&rsquo;s email. A
+        notification is created every time an order&rsquo;s status changes.
       </p>
 
       <div className="flex gap-2 mb-6">
@@ -73,7 +73,7 @@ export default function AdminNotificationsPage() {
       )}
 
       {notifications === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading notifications...</p>
+        <p className="text-gray-500 text-center py-10">Loading notifications…</p>
       ) : notifications?.length === 0 ? (
         <p className="text-gray-500 text-center py-10">
           {archived
