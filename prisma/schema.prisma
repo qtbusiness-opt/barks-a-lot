@@ -119,6 +119,9 @@ model Order {
   // (never card numbers). Null when payments aren't configured (dev) or
   // for market sales recorded after the fact.
   paymentId          String?
+  // Bookkeeping-only flag an admin toggles on a picked-up order (e.g. a
+  // post-pickup return). Does not trigger a Square refund or restock.
+  refunded           Boolean     @default(false)
   address            String?
   city               String?
   state              String?

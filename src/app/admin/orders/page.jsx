@@ -30,17 +30,23 @@ export default function AdminOrdersPage() {
     }
   }, [isAdmin]);
 
-  const updateStatus = async (orderId, status) => {
+  const patchOrder = async (orderId, body, fallbackMsg) => {
     setError("");
     try {
-      const res = await api.patch(`/admin/orders/${orderId}`, { status });
+      const res = await api.patch(`/admin/orders/${orderId}`, body);
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? res.data.order : o))
       );
-    } catch {
-      setError("Failed to update order status.");
+    } catch (err) {
+      setError(err.response?.data?.error || fallbackMsg);
     }
   };
+
+  const updateStatus = (orderId, status) =>
+    patchOrder(orderId, { status }, "Failed to update order status.");
+
+  const toggleRefunded = (orderId, refunded) =>
+    patchOrder(orderId, { refunded }, "Failed to update the refunded tag.");
 
   const orderList = orders ?? [];
 
@@ -82,7 +88,7 @@ export default function AdminOrdersPage() {
                     {order.channel === "market" && " · Market sale"}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-3">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
                       STATUS_STYLES[order.status] || "bg-gray-100 text-gray-700"
@@ -90,18 +96,41 @@ export default function AdminOrdersPage() {
                   >
                     {orderStatusLabel(order.status)}
                   </span>
-                  <select
-                    value={order.status}
-                    onChange={(e) => updateStatus(order.id, e.target.value)}
-                    aria-label={`Update status for ${order.confirmationNumber}`}
-                    className="border border-gray-300 rounded-lg px-3 py-2 min-h-11 text-base sm:text-sm"
-                  >
-                    {STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {orderStatusLabel(s)}
-                      </option>
-                    ))}
-                  </select>
+                  {order.refunded && (
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                      Refunded
+                    </span>
+                  )}
+
+                  {order.status === "delivered" ? (
+                    // Picked up: status is locked; only the bookkeeping
+                    // Refunded tag can be toggled.
+                    <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={order.refunded}
+                        onChange={(e) =>
+                          toggleRefunded(order.id, e.target.checked)
+                        }
+                      />
+                      Refunded (bookkeeping)
+                    </label>
+                  ) : order.status === "cancelled" ? (
+                    <span className="text-xs text-gray-400">Locked</span>
+                  ) : (
+                    <select
+                      value={order.status}
+                      onChange={(e) => updateStatus(order.id, e.target.value)}
+                      aria-label={`Update status for ${order.confirmationNumber}`}
+                      className="border border-gray-300 rounded-lg px-3 py-2 min-h-11 text-base sm:text-sm"
+                    >
+                      {STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {orderStatusLabel(s)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">

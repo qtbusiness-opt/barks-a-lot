@@ -1180,16 +1180,59 @@ test("picked-up orders can't be cancelled by the customer", async () => {
   const refused = await api("POST", `/orders/${orderId}/cancel`, { cookie });
   assert.equal(refused.status, 409);
 
-  // An admin cancelling a picked-up order is bookkeeping only — the
-  // items already left the booth, so stock must not change.
+  // Picked-up orders are terminal: an admin can't change their status
+  // (no cancel, no revert).
   const before = await adminStock(product.id);
   const adminCancel = await api("PATCH", `/admin/orders/${orderId}`, {
     body: { status: "cancelled" },
     cookie: adminCookie,
   });
-  assert.equal(adminCancel.status, 200);
+  assert.equal(adminCancel.status, 409);
+  const revert = await api("PATCH", `/admin/orders/${orderId}`, {
+    body: { status: "pending" },
+    cookie: adminCookie,
+  });
+  assert.equal(revert.status, 409);
   const after = await adminStock(product.id);
   assert.equal(after.quantity, before.quantity);
+
+  // But the bookkeeping Refunded tag can be toggled on and off.
+  const flagged = await api("PATCH", `/admin/orders/${orderId}`, {
+    body: { refunded: true },
+    cookie: adminCookie,
+  });
+  assert.equal(flagged.status, 200);
+  assert.equal(flagged.data.order.refunded, true);
+  const unflagged = await api("PATCH", `/admin/orders/${orderId}`, {
+    body: { refunded: false },
+    cookie: adminCookie,
+  });
+  assert.equal(unflagged.status, 200);
+  assert.equal(unflagged.data.order.refunded, false);
+});
+
+test("the Refunded tag is rejected on orders that aren't picked up", async () => {
+  const adminCookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const { data: products } = await api("GET", "/products");
+  const product = products.products.find(
+    (p) => p.variants.length === 0 && p.inStock
+  );
+  const order = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "refundtag@test.local",
+    },
+  });
+  assert.equal(order.status, 201);
+
+  // Pending order: refunded toggle refused.
+  const early = await api("PATCH", `/admin/orders/${order.data.order.id}`, {
+    body: { refunded: true },
+    cookie: adminCookie,
+  });
+  assert.equal(early.status, 409);
 });
 
 test("admin cancellation of an active order restores stock", async () => {
