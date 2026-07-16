@@ -778,8 +778,7 @@ export default function CheckoutPage() {
                     type="text"
                     value={codeInput}
                     onChange={(e) => setCodeInput(e.target.value)}
-                    placeholder="e.g. VETERANS"
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 min-h-11 uppercase placeholder:normal-case"
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 min-h-11 uppercase"
                   />
                   <button
                     type="button"

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { logEvent, clientIp } from "@/lib/log";
 
 const credentialsSchema = z.object({
   email: z.email(),
@@ -43,8 +44,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: {},
       },
       authorize: async (credentials, request) => {
+        const ip = clientIp(request);
+
         if (!rateLimit("login", request)) {
-          console.warn("[auth] login rate limit hit");
+          await logEvent({
+            level: "warn",
+            category: "auth",
+            event: "login_rate_limited",
+            message: "Login rate limit hit",
+            ip,
+          });
           return null;
         }
 
@@ -55,16 +64,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({ where: { email } });
         const valid = user && (await bcrypt.compare(password, user.password));
         if (!valid) {
-          console.warn(`[auth] login failed email=${email}`);
+          await logEvent({
+            level: "warn",
+            category: "auth",
+            event: "login_failed",
+            message: "Incorrect email or password",
+            email,
+            ip,
+          });
           return null;
         }
 
         if (user.role !== "admin" && !user.emailVerified) {
-          console.warn(`[auth] login blocked (unverified) user=${user.id}`);
+          await logEvent({
+            level: "warn",
+            category: "auth",
+            event: "login_unverified",
+            message: "Login blocked — email not verified",
+            email,
+            userId: user.id,
+            ip,
+          });
           throw new EmailUnverified();
         }
 
-        console.info(`[auth] login success user=${user.id} role=${user.role}`);
+        await logEvent({
+          category: "auth",
+          event: "login_success",
+          message: `${user.role} signed in`,
+          email: user.email,
+          userId: user.id,
+          ip,
+        });
         return {
           id: user.id,
           email: user.email,

@@ -1835,3 +1835,73 @@ test("stacking rules: bundles stack without limit; only one discount code applie
   await api("DELETE", `/admin/promotions/${ten.data.promotion.id}`, { cookie });
   await api("DELETE", `/admin/promotions/${twenty.data.promotion.id}`, { cookie });
 });
+
+test("activity log records logins and errors; admin can view the breakdown", async () => {
+  // A failed login is recorded...
+  const failed = await loginAs("user@test.local", "definitely-wrong");
+  assert.equal(failed, "");
+  // ...and a successful one.
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  assert.notEqual(cookie, "");
+
+  // The log is admin-only.
+  const anon = await api("GET", "/admin/logs");
+  assert.equal(anon.status, 403);
+
+  const logs = await api("GET", "/admin/logs", { cookie });
+  assert.equal(logs.status, 200);
+  assert.ok(logs.data.summary.loginsToday >= 1, "a successful login was counted");
+  assert.ok(logs.data.summary.failedToday >= 1, "a failed login was counted");
+  assert.ok(
+    logs.data.events.some((e) => e.event === "login_failed"),
+    "failed login event is listed"
+  );
+  assert.ok(
+    logs.data.events.some(
+      (e) => e.event === "login_success" && e.email === ADMIN_EMAIL
+    ),
+    "admin login recorded with email"
+  );
+
+  // Category filters narrow to a single category.
+  const authOnly = await api("GET", "/admin/logs?category=auth", { cookie });
+  assert.ok(authOnly.data.events.length > 0);
+  assert.ok(authOnly.data.events.every((e) => e.category === "auth"));
+
+  const errorsOnly = await api("GET", "/admin/logs?category=error", { cookie });
+  assert.ok(errorsOnly.data.events.every((e) => e.category === "error"));
+});
+
+test("About page photos: admin-only settings with a key whitelist", async () => {
+  const anon = await api("GET", "/admin/site-settings");
+  assert.equal(anon.status, 403);
+
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const initial = await api("GET", "/admin/site-settings", { cookie });
+  assert.equal(initial.status, 200);
+
+  // A whitelisted key upserts.
+  const set = await api("PATCH", "/admin/site-settings", {
+    body: { key: "about_image_family", value: "/uploads/family.png" },
+    cookie,
+  });
+  assert.equal(set.status, 200);
+  const after = await api("GET", "/admin/site-settings", { cookie });
+  assert.equal(after.data.settings.about_image_family, "/uploads/family.png");
+
+  // An empty value clears it (revert to placeholder).
+  const clear = await api("PATCH", "/admin/site-settings", {
+    body: { key: "about_image_family", value: "" },
+    cookie,
+  });
+  assert.equal(clear.status, 200);
+  const gone = await api("GET", "/admin/site-settings", { cookie });
+  assert.equal(gone.data.settings.about_image_family, undefined);
+
+  // An arbitrary key is rejected — no writing outside the whitelist.
+  const bad = await api("PATCH", "/admin/site-settings", {
+    body: { key: "admin_password", value: "hax" },
+    cookie,
+  });
+  assert.equal(bad.status, 400);
+});

@@ -31,6 +31,8 @@ export default function Navbar() {
             <Link href="/" className="hover:text-[#E8DFC8] transition">Home</Link>
             <Link href="/products" className="hover:text-[#E8DFC8] transition">Shop</Link>
             <Link href="/events" className="hover:text-[#E8DFC8] transition">Events</Link>
+            <Link href="/about" className="hover:text-[#E8DFC8] transition">About</Link>
+            <Link href="/contact" className="hover:text-[#E8DFC8] transition">Contact</Link>
             {user && (
               <Link href="/orders" className="hover:text-[#E8DFC8] transition">Orders</Link>
             )}
@@ -116,6 +118,8 @@ export default function Navbar() {
             <Link href="/" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Home</Link>
             <Link href="/products" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Shop</Link>
             <Link href="/events" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Events</Link>
+            <Link href="/about" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>About</Link>
+            <Link href="/contact" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Contact</Link>
             {user && (
               <Link href="/orders" className="block py-3 active:text-[#E8DFC8]" onClick={() => setMenuOpen(false)}>Orders</Link>
             )}

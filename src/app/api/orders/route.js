@@ -18,6 +18,7 @@ import {
   PaymentError,
 } from "@/lib/payments";
 import { computeDiscounts, normalizeCode } from "@/lib/promotions";
+import { logEvent, clientIp } from "@/lib/log";
 
 function generateConfirmationNumber() {
   return `BAL-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -337,6 +338,16 @@ export async function POST(req) {
           await tx.order.delete({ where: { id: order.id } });
         });
         if (err instanceof PaymentError) {
+          await logEvent({
+            level: "warn",
+            category: "error",
+            event: "payment_error",
+            message: err.message,
+            email: auth?.email ?? guestEmail ?? null,
+            userId: auth?.userId ?? null,
+            path: "/api/orders",
+            ip: clientIp(req),
+          });
           return NextResponse.json({ error: err.message }, { status: 402 });
         }
         throw err;
@@ -368,7 +379,16 @@ export async function POST(req) {
     if ([400, 404, 409].includes(err.code)) {
       return NextResponse.json({ error: err.message }, { status: err.code });
     }
-    console.error("[orders] create error:", err);
+    await logEvent({
+      level: "error",
+      category: "error",
+      event: "server_error",
+      message: `Checkout failed: ${err?.message ?? "unknown"}`,
+      email: auth?.email ?? null,
+      userId: auth?.userId ?? null,
+      path: "/api/orders",
+      ip: clientIp(req),
+    });
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
