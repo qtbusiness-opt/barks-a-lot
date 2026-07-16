@@ -33,6 +33,15 @@ function itemLines(order) {
     .join("\n");
 }
 
+// Subtotal + discount lines, shown only when a promotion applied.
+function totalsBlock(order) {
+  if (order.discountTotal && order.discountTotal > 0) {
+    const subtotal = order.total + order.discountTotal;
+    return `Subtotal: $${subtotal.toFixed(2)}\nDiscount: -$${order.discountTotal.toFixed(2)}\nTotal: $${order.total.toFixed(2)}`;
+  }
+  return `Total: $${order.total.toFixed(2)}`;
+}
+
 // Confirmation sent when checkout completes. Email failures are logged,
 // never surfaced — the order is already placed and paid.
 export async function sendOrderConfirmationEmail(order) {
@@ -43,7 +52,7 @@ export async function sendOrderConfirmationEmail(order) {
     await sendEmail({
       to,
       subject: `Order confirmed — ${order.confirmationNumber}`,
-      text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\nTotal: $${order.total.toFixed(2)}\n${deliveryLine(order)}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
+      text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}\n${deliveryLine(order)}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
       branded: true,
     });
   } catch (err) {
@@ -65,7 +74,7 @@ export async function sendAdminOrderAlert(order) {
     await sendEmail({
       to,
       subject: `New order ${order.confirmationNumber} — $${order.total.toFixed(2)}`,
-      text: `A new order just came in.\n\nConfirmation number: ${order.confirmationNumber}\nCustomer: ${customer}\n\nItems:\n${itemLines(order)}\n\nTotal: $${order.total.toFixed(2)}\n${deliveryLine(order)}\n\nManage it in the admin dashboard under Orders.`,
+      text: `A new order just came in.\n\nConfirmation number: ${order.confirmationNumber}\nCustomer: ${customer}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${deliveryLine(order)}\n\nManage it in the admin dashboard under Orders.`,
     });
   } catch (err) {
     console.error(`[mail] admin order alert failed order=${order.id}:`, err);

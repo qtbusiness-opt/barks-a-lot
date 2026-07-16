@@ -11,9 +11,16 @@ import {
   PaymentError,
 } from "@/lib/payments";
 
-const statusSchema = z.object({
-  status: z.enum(["pending", "shipped", "delivered", "cancelled"]),
-});
+// A PATCH either changes the status (active orders only) or toggles the
+// bookkeeping "refunded" flag (picked-up orders only).
+const patchSchema = z
+  .object({
+    status: z.enum(["pending", "shipped", "delivered", "cancelled"]).optional(),
+    refunded: z.boolean().optional(),
+  })
+  .refine((d) => d.status !== undefined || d.refunded !== undefined, {
+    message: "Nothing to update",
+  });
 
 // While pickup-only, the "shipped"/"delivered" statuses keep their raw
 // values but read as pickup milestones in customer notifications.
@@ -33,11 +40,11 @@ export async function PATCH(req, { params }) {
   const { id } = await params;
 
   try {
-    const parsed = statusSchema.safeParse(await req.json());
+    const parsed = patchSchema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
-    const { status } = parsed.data;
+    const { status, refunded } = parsed.data;
 
     const fail = (code, message) =>
       Object.assign(new Error(message), { code });
@@ -48,22 +55,46 @@ export async function PATCH(req, { params }) {
     });
     if (!existing) throw fail(404, "Order not found");
 
-    // Cancelled is terminal: the items went back on the shelf and may
-    // have sold since, so resurrecting the order could oversell.
-    if (existing.status === "cancelled" && status !== "cancelled") {
-      throw fail(409, "Cancelled orders can't be reactivated");
+    // The Refunded flag is a bookkeeping-only toggle on a picked-up
+    // order — no Square refund, no restock, no customer notification.
+    if (refunded !== undefined) {
+      if (existing.status !== "delivered") {
+        throw fail(
+          409,
+          "The Refunded tag only applies to picked-up orders"
+        );
+      }
+      const order = await prisma.order.update({
+        where: { id },
+        data: { refunded },
+        include: {
+          items: { include: { product: true, variant: true } },
+          user: { select: { name: true, email: true } },
+          pickupEvent: true,
+        },
+      });
+      return NextResponse.json({ order });
+    }
+
+    // Cancelled and picked-up (delivered) orders are terminal — their
+    // status can no longer change (cancelled restocked its items; a
+    // picked-up order has already left the booth).
+    if (existing.status === "cancelled") {
+      throw fail(409, "Cancelled orders can't be changed");
+    }
+    if (existing.status === "delivered") {
+      throw fail(409, "Picked-up orders can't be changed");
     }
 
     // Cancelling an active order refunds the charge and returns its items
-    // to stock. A picked-up order's items are gone, so cancelling one is
-    // a bookkeeping correction that touches neither money nor inventory.
+    // to stock.
     const cancelling =
       status === "cancelled" &&
       ["pending", "shipped"].includes(existing.status);
 
     // Refund outside the DB transaction (external call); the order-derived
     // idempotency key means a retry can never refund twice.
-    let refunded = false;
+    let chargeRefunded = false;
     if (cancelling && existing.paymentId && isPaymentConfigured()) {
       await refundPayment({
         paymentId: existing.paymentId,
@@ -71,7 +102,7 @@ export async function PATCH(req, { params }) {
         orderId: existing.id,
         reason: `Cancelled ${existing.confirmationNumber}`,
       });
-      refunded = true;
+      chargeRefunded = true;
     }
 
     const { order, changed } = await prisma.$transaction(async (tx) => {
@@ -106,7 +137,7 @@ export async function PATCH(req, { params }) {
     if (email && changed) {
       const message =
         `Your order ${order.confirmationNumber} ${STATUS_MESSAGES[status]}.` +
-        (refunded
+        (chargeRefunded
           ? " Your payment has been refunded to your original payment method."
           : "");
       await prisma.notification.create({
