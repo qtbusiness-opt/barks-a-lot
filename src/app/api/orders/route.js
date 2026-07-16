@@ -17,6 +17,7 @@ import {
   chargePayment,
   PaymentError,
 } from "@/lib/payments";
+import { computeDiscounts, normalizeCode } from "@/lib/promotions";
 
 function generateConfirmationNumber() {
   return `BAL-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -47,6 +48,8 @@ const orderSchema = z
     // Square card token from the Web Payments SDK. Required when payments
     // are configured; ignored otherwise (dev/tests without a Square token).
     paymentToken: z.string().min(1).max(500).optional(),
+    // Optional promo code entered at checkout.
+    promoCode: z.string().trim().max(40).optional(),
   })
   .refine(
     // Pickup orders (collected at a market/event) need no address.
@@ -103,6 +106,7 @@ export async function POST(req) {
       guestName,
       pickupEventId,
       paymentToken,
+      promoCode,
     } = parsed.data;
 
     // With Square configured, no order is created without a card token.
@@ -258,6 +262,25 @@ export async function POST(req) {
         }
       }
 
+      // Apply promotions (bundles auto, code if provided) to the
+      // server-computed lines. Recomputed here authoritatively — the
+      // client-side preview is never trusted.
+      const activePromos = await tx.promotion.findMany({
+        where: { active: true },
+      });
+      const discount = computeDiscounts({
+        lines: orderItems.map((i) => ({
+          productId: i.productId,
+          price: i.price,
+          quantity: i.quantity,
+        })),
+        promotions: activePromos,
+        code: promoCode,
+      });
+      // A bad code is a soft failure: the order still goes through at full
+      // price rather than blocking checkout.
+      const finalTotal = discount.total;
+
       return tx.order.create({
         data: {
           userId: auth?.userId ?? null,
@@ -267,7 +290,12 @@ export async function POST(req) {
           channel: "online",
           fulfillmentType,
           pickupEventId: pickupEvent?.id ?? null,
-          total,
+          total: finalTotal,
+          discountTotal: discount.discountTotal,
+          promoCode:
+            discount.discountTotal > 0 && promoCode
+              ? normalizeCode(promoCode)
+              : null,
           // Only shipping orders record an address — pickup orders never
           // need one, even if the client sends it.
           address: fulfillmentType === "shipping" ? address : null,

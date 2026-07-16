@@ -122,6 +122,10 @@ model Order {
   // Bookkeeping-only flag an admin toggles on a picked-up order (e.g. a
   // post-pickup return). Does not trigger a Square refund or restock.
   refunded           Boolean     @default(false)
+  // Total discount applied from promotions (bundles + code); `total` is
+  // already net of it. promoCode records the code entered, if any.
+  discountTotal      Float       @default(0)
+  promoCode          String?
   address            String?
   city               String?
   state              String?
@@ -177,6 +181,30 @@ model Notification {
   // Set when an admin archives it off the active notifications list.
   archivedAt DateTime?
   createdAt DateTime @default(now())
+}
+
+// Admin-managed promotions. Two kinds:
+//  - "code": a percent-off coupon activated by entering `code` at
+//    checkout (e.g. "VETERANS" → 20% off).
+//  - "bundle": automatic mix-and-match pricing — buy `bundleQuantity` of
+//    any products in `productIds` for `bundlePrice` (e.g. any 2 of
+//    {biscuits, jerky} for $20).
+model Promotion {
+  id             String   @id @default(cuid())
+  // Admin-chosen topic/label shown on receipts, e.g. "Veterans Discount".
+  name           String
+  type           String   // "code" | "bundle"
+  active         Boolean  @default(true)
+  // code type
+  code           String?  @unique
+  percentOff     Int?     // 1..100
+  // bundle type
+  bundleQuantity Int?
+  bundlePrice    Float?
+  // JSON-encoded array of eligible product ids (SQLite has no arrays).
+  productIds     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // Messages sent through the public Contact Us form. Emailed to every

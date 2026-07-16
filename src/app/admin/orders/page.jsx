@@ -148,7 +148,18 @@ export default function AdminOrdersPage() {
                 ))}
               </div>
               <hr className="my-4 border-gray-100" />
-              <div className="flex justify-end">
+              <div className="flex flex-col items-end gap-0.5">
+                {order.discountTotal > 0 && (
+                  <>
+                    <p className="text-sm text-gray-500">
+                      Subtotal: ${(order.total + order.discountTotal).toFixed(2)}
+                    </p>
+                    <p className="text-sm text-green-700">
+                      Discount{order.promoCode ? ` (${order.promoCode})` : ""}: −$
+                      {order.discountTotal.toFixed(2)}
+                    </p>
+                  </>
+                )}
                 <p className="font-bold text-[#C8722A]">
                   Total: ${order.total.toFixed(2)}
                 </p>

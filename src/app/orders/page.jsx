@@ -156,7 +156,14 @@ export default function OrdersPage() {
                 ) : (
                   <span />
                 )}
-                <p className="font-bold text-[#C8722A]">Total: ${order.total.toFixed(2)}</p>
+                <div className="text-right">
+                  {order.discountTotal > 0 && (
+                    <p className="text-sm text-green-700">
+                      Discount: −${order.discountTotal.toFixed(2)}
+                    </p>
+                  )}
+                  <p className="font-bold text-[#C8722A]">Total: ${order.total.toFixed(2)}</p>
+                </div>
               </div>
             </div>
           ))}

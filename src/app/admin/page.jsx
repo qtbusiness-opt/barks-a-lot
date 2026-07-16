@@ -100,6 +100,18 @@ export default function AdminDashboardPage() {
           detail="Order updates sent to customer emails"
         />
         <StatPanel
+          href="/admin/promotions"
+          icon="🏷️"
+          accent="bg-rose-500/10"
+          label="Promotions"
+          value={stats?.activePromotions}
+          detail={
+            stats
+              ? `${stats.activePromotions} active discount${stats.activePromotions === 1 ? "" : "s"} & bundles`
+              : "Discount codes & bundles"
+          }
+        />
+        <StatPanel
           href="/admin/messages"
           icon="💬"
           accent="bg-orange-500/10"

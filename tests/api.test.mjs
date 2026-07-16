@@ -1613,3 +1613,140 @@ test("contact form stores a message, emails admins, and admins manage it", async
   const after = await api("GET", "/admin/messages", { cookie });
   assert.ok(!after.data.messages.some((m) => m.id === msg.id));
 });
+
+test("promotions: admin CRUD, code + bundle discounts, and server-authoritative order pricing", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const catalog = await adminCatalog();
+  // Two simple (non-variant) always-available products for a bundle —
+  // skip limited/seasonal drops, which validate excludes when out of
+  // their window.
+  const bundleProducts = catalog
+    .filter(
+      (p) =>
+        p.variants.length === 0 &&
+        p.quantity >= 2 &&
+        !p.limitedQuantity &&
+        !p.availableFrom &&
+        !p.availableUntil
+    )
+    .slice(0, 2);
+  assert.equal(bundleProducts.length, 2, "need two simple products");
+  const [a, b] = bundleProducts;
+
+  // Admin CRUD is protected.
+  const anon = await api("POST", "/admin/promotions", {
+    body: { name: "x", type: "code", code: "X", percentOff: 10 },
+  });
+  assert.equal(anon.status, 403);
+
+  // Create a percent-off code (code is normalized to uppercase).
+  const codePromo = await api("POST", "/admin/promotions", {
+    body: { name: "Veterans", type: "code", code: "veterans", percentOff: 20 },
+    cookie,
+  });
+  assert.equal(codePromo.status, 201);
+  assert.equal(codePromo.data.promotion.code, "VETERANS");
+
+  // Duplicate code rejected.
+  const dupe = await api("POST", "/admin/promotions", {
+    body: { name: "Dup", type: "code", code: "VETERANS", percentOff: 5 },
+    cookie,
+  });
+  assert.equal(dupe.status, 409);
+
+  // Missing percentage rejected.
+  const bad = await api("POST", "/admin/promotions", {
+    body: { name: "NoPct", type: "code", code: "NOPCT" },
+    cookie,
+  });
+  assert.equal(bad.status, 400);
+
+  // Retry the first create with a cookie (the anon attempt used none).
+  const codeOk = await api("POST", "/admin/promotions", {
+    body: { name: "Loyalty", type: "code", code: "SAVE10", percentOff: 10 },
+    cookie,
+  });
+  assert.equal(codeOk.status, 201);
+
+  // Create a bundle: any 2 of {a,b} for $1.00 (well below their prices).
+  const bundle = await api("POST", "/admin/promotions", {
+    body: {
+      name: "Treat Bundle",
+      type: "bundle",
+      bundleQuantity: 2,
+      bundlePrice: 1,
+      productIds: [a.id, b.id],
+    },
+    cookie,
+  });
+  assert.equal(bundle.status, 201);
+
+  // Validate preview: bundle applies automatically (a + b → $1.00).
+  const cartItems = [
+    { productId: a.id, quantity: 1 },
+    { productId: b.id, quantity: 1 },
+  ];
+  const preview = await api("POST", "/promotions/validate", {
+    body: { items: cartItems },
+  });
+  assert.equal(preview.status, 200);
+  assert.equal(preview.data.subtotal, Number((a.price + b.price).toFixed(2)));
+  assert.equal(preview.data.total, 1);
+  assert.ok(preview.data.applied.length >= 1);
+
+  // With the SAVE10 code stacked: 10% off the $1.00 post-bundle subtotal.
+  const withCode = await api("POST", "/promotions/validate", {
+    body: { items: cartItems, code: "save10" },
+  });
+  assert.equal(withCode.data.total, 0.9);
+
+  // Bad code is reported, not applied.
+  const badCode = await api("POST", "/promotions/validate", {
+    body: { items: cartItems, code: "NOPE" },
+  });
+  assert.ok(badCode.data.codeError);
+  assert.equal(badCode.data.total, 1);
+
+  // Order pricing is server-authoritative: even if a client lies about the
+  // total, the order stores the real discounted total.
+  const order = await api("POST", "/orders", {
+    body: {
+      items: cartItems,
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "promo@test.local",
+      promoCode: "SAVE10",
+    },
+  });
+  assert.equal(order.status, 201);
+  assert.equal(order.data.order.total, 0.9);
+  assert.equal(
+    order.data.order.discountTotal,
+    Number((a.price + b.price - 0.9).toFixed(2))
+  );
+  assert.equal(order.data.order.promoCode, "SAVE10");
+
+  // Deactivating the bundle stops it applying.
+  const deactivate = await api("PATCH", `/admin/promotions/${bundle.data.promotion.id}`, {
+    body: {
+      name: "Treat Bundle",
+      type: "bundle",
+      active: false,
+      bundleQuantity: 2,
+      bundlePrice: 1,
+      productIds: [a.id, b.id],
+    },
+    cookie,
+  });
+  assert.equal(deactivate.status, 200);
+  const noBundle = await api("POST", "/promotions/validate", {
+    body: { items: cartItems },
+  });
+  assert.equal(noBundle.data.discountTotal, 0);
+
+  // Delete cleans up.
+  const del = await api("DELETE", `/admin/promotions/${bundle.data.promotion.id}`, {
+    cookie,
+  });
+  assert.equal(del.status, 200);
+});

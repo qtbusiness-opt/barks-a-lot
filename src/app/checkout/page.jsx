@@ -83,7 +83,8 @@ function Stepper({ step }) {
   );
 }
 
-function OrderSummary({ items, total }) {
+function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
+  const total = Math.max(0, subtotal - discount);
   return (
     <div className="bg-[#F5F0E8] rounded-xl p-4 sm:p-6">
       <h2 className="text-xl font-semibold text-[#2A4A52] mb-4">Order Summary</h2>
@@ -99,6 +100,25 @@ function OrderSummary({ items, total }) {
           </div>
         ))}
         <hr className="border-[#D4CCBC]" />
+        {discount > 0 && (
+          <>
+            <div className="flex justify-between text-sm">
+              <span>Subtotal</span>
+              <span>${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-green-700">
+              <span>Discount</span>
+              <span>−${discount.toFixed(2)}</span>
+            </div>
+            {applied.length > 0 && (
+              <ul className="text-xs text-green-700/90 list-disc pl-4">
+                {applied.map((a) => (
+                  <li key={a}>{a}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
         <div className="flex justify-between font-bold text-lg">
           <span>Total</span>
           <span className="text-[#C8722A]">${total.toFixed(2)}</span>
@@ -141,6 +161,13 @@ export default function CheckoutPage() {
   // captured when the customer continues to review.
   const [payment, setPayment] = useState(null);
   const [agreed, setAgreed] = useState(false);
+  // Promo code the customer types, the code actually applied, and the
+  // server-computed discount preview.
+  const [codeInput, setCodeInput] = useState("");
+  const [appliedCode, setAppliedCode] = useState("");
+  const [discount, setDiscount] = useState({ discountTotal: 0, applied: [] });
+  const [codeError, setCodeError] = useState("");
+  const [checkingCode, setCheckingCode] = useState(false);
 
   useEffect(() => {
     api
@@ -148,6 +175,73 @@ export default function CheckoutPage() {
       .then((res) => setUpcomingEvents(res.data.events))
       .catch(() => setUpcomingEvents([]));
   }, []);
+
+  // Preview discounts (automatic bundles + any applied code) whenever the
+  // cart or applied code changes. The order API recomputes authoritatively.
+  useEffect(() => {
+    if (items.length === 0) {
+      setDiscount({ discountTotal: 0, applied: [] });
+      return;
+    }
+    api
+      .post("/promotions/validate", {
+        items: items.map((i) => ({
+          productId: i.productId,
+          ...(i.variantId ? { variantId: i.variantId } : {}),
+          quantity: i.quantity,
+        })),
+        ...(appliedCode ? { code: appliedCode } : {}),
+      })
+      .then((res) => {
+        setDiscount({
+          discountTotal: res.data.discountTotal,
+          applied: res.data.applied,
+        });
+        // A code that stopped being valid (deactivated) clears itself.
+        if (appliedCode && res.data.codeError) {
+          setCodeError(res.data.codeError);
+          setAppliedCode("");
+        }
+      })
+      .catch(() => setDiscount({ discountTotal: 0, applied: [] }));
+  }, [items, appliedCode]);
+
+  const applyCode = async () => {
+    const code = codeInput.trim();
+    if (!code) return;
+    setCodeError("");
+    setCheckingCode(true);
+    try {
+      const res = await api.post("/promotions/validate", {
+        items: items.map((i) => ({
+          productId: i.productId,
+          ...(i.variantId ? { variantId: i.variantId } : {}),
+          quantity: i.quantity,
+        })),
+        code,
+      });
+      if (res.data.codeError) {
+        setCodeError(res.data.codeError);
+        setAppliedCode("");
+      } else {
+        setAppliedCode(code);
+        setDiscount({
+          discountTotal: res.data.discountTotal,
+          applied: res.data.applied,
+        });
+      }
+    } catch {
+      setCodeError("Couldn't check that code — please try again.");
+    } finally {
+      setCheckingCode(false);
+    }
+  };
+
+  const removeCode = () => {
+    setAppliedCode("");
+    setCodeInput("");
+    setCodeError("");
+  };
 
   // Mount the Square card form on the info step; the iframe keeps card
   // details inside Square — they never touch our servers.
@@ -317,6 +411,7 @@ export default function CheckoutPage() {
           : { pickupEventId: pickupMode === "next" ? "next" : pickupChoice }),
         ...(user ? {} : { guestEmail: form.guestEmail, guestName: form.guestName }),
         ...(paymentToken ? { paymentToken } : {}),
+        ...(appliedCode ? { promoCode: appliedCode } : {}),
       });
       clearCart();
       if (user) {
@@ -651,13 +746,65 @@ export default function CheckoutPage() {
             </button>
           </form>
 
-          <div className="order-1 md:order-2 md:self-start">
-            <OrderSummary items={items} total={total} />
+          <div className="order-1 md:order-2 md:self-start space-y-4">
+            <OrderSummary
+              items={items}
+              subtotal={total}
+              discount={discount.discountTotal}
+              applied={discount.applied}
+            />
+            {/* Promo code */}
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <label htmlFor="promo-code" className="block text-sm font-medium text-gray-700 mb-1">
+                Promo code
+              </label>
+              {appliedCode ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-green-700 font-medium">
+                    {appliedCode} applied
+                  </span>
+                  <button
+                    type="button"
+                    onClick={removeCode}
+                    className="text-sm text-[#4A7C8A] underline hover:text-[#2A4A52]"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    id="promo-code"
+                    type="text"
+                    value={codeInput}
+                    onChange={(e) => setCodeInput(e.target.value)}
+                    placeholder="e.g. VETERANS"
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 min-h-11 uppercase placeholder:normal-case"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyCode}
+                    disabled={checkingCode || !codeInput.trim()}
+                    className="shrink-0 bg-[#4A7C8A] hover:bg-[#3A6270] text-white px-4 rounded-lg font-semibold transition disabled:opacity-50"
+                  >
+                    {checkingCode ? "..." : "Apply"}
+                  </button>
+                </div>
+              )}
+              {codeError && (
+                <p role="alert" className="text-red-500 text-sm mt-2">{codeError}</p>
+              )}
+            </div>
           </div>
         </div>
       ) : (
         <div className="space-y-6 max-w-2xl">
-          <OrderSummary items={items} total={total} />
+          <OrderSummary
+            items={items}
+            subtotal={total}
+            discount={discount.discountTotal}
+            applied={discount.applied}
+          />
 
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4">
             <h2 className="text-xl font-semibold text-[#2A4A52]">
@@ -739,7 +886,7 @@ export default function CheckoutPage() {
             >
               {submitting
                 ? "Processing..."
-                : `Process Payment — $${total.toFixed(2)}`}
+                : `Process Payment — $${Math.max(0, total - discount.discountTotal).toFixed(2)}`}
             </button>
           </div>
         </div>
