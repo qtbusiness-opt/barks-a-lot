@@ -193,7 +193,6 @@ export async function POST(req) {
       const fail = (code, message) =>
         Object.assign(new Error(message), { code });
 
-      let total = 0;
       const orderItems = [];
       // Track per-product/variant decrements before applying them, so a
       // failure on any line item aborts the whole transaction untouched.
@@ -218,7 +217,6 @@ export async function POST(req) {
             );
           }
           const price = variant.price ?? product.price;
-          total += price * item.quantity;
           orderItems.push({
             productId: product.id,
             variantId: variant.id,
@@ -230,7 +228,6 @@ export async function POST(req) {
           if (!product.inStock || product.quantity < item.quantity) {
             throw fail(409, `Not enough stock for ${product.name}`);
           }
-          total += product.price * item.quantity;
           orderItems.push({
             productId: product.id,
             quantity: item.quantity,
