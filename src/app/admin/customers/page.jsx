@@ -70,7 +70,7 @@ export default function AdminCustomersPage() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name or email..."
+          placeholder="Search by name or email…"
           aria-label="Search customers"
           className={inputClass}
         />
@@ -90,7 +90,7 @@ export default function AdminCustomersPage() {
       )}
 
       {customers === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading customers...</p>
+        <p className="text-gray-500 text-center py-10">Loading customers…</p>
       ) : customers?.length === 0 ? (
         <p className="text-gray-500 text-center py-10">
           No customers match that search.

@@ -64,7 +64,7 @@ export default function AdminLogsPage() {
     <AdminShell title="Activity Log" backTo="/admin">
       <p className="text-sm text-gray-500 mb-6 -mt-4">
         User logins and server errors. Every event is also written to the
-        container&apos;s stdout, so it shows up in <code>docker logs</code> too.
+        container&rsquo;s stdout, so it shows up in <code>docker logs</code> too.
       </p>
 
       {error && (
@@ -116,12 +116,12 @@ export default function AdminLogsPage() {
       </div>
 
       {events === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading events...</p>
+        <p className="text-gray-500 text-center py-10">Loading events…</p>
       ) : events?.length === 0 ? (
         <p className="text-gray-500 text-center py-10">No events recorded yet.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm tabular-nums">
             <thead>
               <tr className="text-left text-gray-500 border-b border-gray-200">
                 <th className="py-2 pr-4 font-medium">When</th>

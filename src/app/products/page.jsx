@@ -56,7 +56,7 @@ function ProductsContent() {
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-gray-500">Loading products...</div>
+        <div className="text-center py-20 text-gray-500">Loading products…</div>
       ) : products.length === 0 ? (
         <div className="text-center py-20 text-gray-500">
           No products found in this category.
@@ -74,7 +74,7 @@ function ProductsContent() {
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={<div className="text-center py-20 text-gray-500">Loading...</div>}>
+    <Suspense fallback={<div className="text-center py-20 text-gray-500">Loading…</div>}>
       <ProductsContent />
     </Suspense>
   );

@@ -291,7 +291,7 @@ function PromoRow({ promo, products, onSaved, onDeleted, onError }) {
             disabled={saving}
             className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] text-white py-2.5 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </form>
       )}
@@ -358,12 +358,12 @@ export default function AdminPromotionsPage() {
           disabled={creating}
           className="w-full bg-[#C8722A] hover:bg-[#A85D1F] text-white py-2.5 rounded-lg font-semibold transition disabled:opacity-50"
         >
-          {creating ? "Creating..." : "Create Promotion"}
+          {creating ? "Creating…" : "Create Promotion"}
         </button>
       </form>
 
       {promotions === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading promotions...</p>
+        <p className="text-gray-500 text-center py-10">Loading promotions…</p>
       ) : promotions?.length === 0 ? (
         <p className="text-gray-500 text-center py-10">
           No promotions yet — create one above.

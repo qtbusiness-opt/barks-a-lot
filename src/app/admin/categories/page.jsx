@@ -111,7 +111,7 @@ function CategoryRow({ category, onSaved, onDeleted, onError }) {
             disabled={saving}
             className="bg-[#4A7C8A] hover:bg-[#3A6270] text-white px-4 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {saving ? "..." : "Save"}
+            {saving ? "…" : "Save"}
           </button>
           <label className="col-span-3 flex items-center gap-3 min-h-11 cursor-pointer text-sm text-gray-700">
             <input
@@ -121,7 +121,7 @@ function CategoryRow({ category, onSaved, onDeleted, onError }) {
                 setForm((p) => ({ ...p, showsIngredients: e.target.checked }))
               }
             />
-            Products in this category show an &quot;Ingredients&quot; section
+            Products in this category show an &ldquo;Ingredients&rdquo; section
           </label>
           {form.name.trim() && (
             <p className="col-span-3 text-xs text-gray-500">
@@ -207,7 +207,7 @@ export default function AdminCategoriesPage() {
             disabled={creating}
             className="bg-[#C8722A] hover:bg-[#A85D1F] text-white px-4 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {creating ? "..." : "Add"}
+            {creating ? "…" : "Add"}
           </button>
         </div>
         <label className="flex items-center gap-3 min-h-11 cursor-pointer text-sm text-gray-700 mt-2">
@@ -218,7 +218,7 @@ export default function AdminCategoriesPage() {
               setForm((p) => ({ ...p, showsIngredients: e.target.checked }))
             }
           />
-          Products in this category show an &quot;Ingredients&quot; section
+          Products in this category show an &ldquo;Ingredients&rdquo; section
           (for edibles like treats)
         </label>
         <p className="text-xs text-gray-500 mt-2">
@@ -227,7 +227,7 @@ export default function AdminCategoriesPage() {
       </form>
 
       {categories === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading categories...</p>
+        <p className="text-gray-500 text-center py-10">Loading categories…</p>
       ) : (
         <div className="space-y-3 max-w-xl">
           {(categories ?? []).map((category) => (

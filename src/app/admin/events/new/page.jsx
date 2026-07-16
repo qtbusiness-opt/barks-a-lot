@@ -169,7 +169,7 @@ function NewEventForm() {
         disabled={submitting}
         className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
       >
-        {submitting ? "Creating..." : "Create Event"}
+        {submitting ? "Creating…" : "Create Event"}
       </button>
     </form>
   );
@@ -178,7 +178,7 @@ function NewEventForm() {
 export default function NewEventPage() {
   return (
     <AdminShell title="New Event" backTo="/admin">
-      <Suspense fallback={<p className="text-gray-500">Loading...</p>}>
+      <Suspense fallback={<p className="text-gray-500">Loading…</p>}>
         <NewEventForm />
       </Suspense>
     </AdminShell>

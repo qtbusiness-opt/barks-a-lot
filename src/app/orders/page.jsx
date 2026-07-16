@@ -77,7 +77,7 @@ export default function OrdersPage() {
 
       {orderList.length === 0 ? (
         <div className="text-center py-10">
-          <p className="text-gray-500 mb-6">You haven&apos;t placed any orders yet.</p>
+          <p className="text-gray-500 mb-6">You haven&rsquo;t placed any orders yet.</p>
           <Link
             href="/products"
             className="bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] transition"
@@ -151,7 +151,7 @@ export default function OrdersPage() {
                     disabled={cancelling === order.id}
                     className="min-h-11 px-4 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition disabled:opacity-50"
                   >
-                    {cancelling === order.id ? "Cancelling..." : "Cancel Order"}
+                    {cancelling === order.id ? "Cancelling…" : "Cancel Order"}
                   </button>
                 ) : (
                   <span />

@@ -71,7 +71,7 @@ export default function ImageUpload({ value, onChange, label = "Product image" }
         <span className="min-w-0">
           <span className="block font-medium text-[#4A7C8A]">
             {uploading
-              ? "Uploading..."
+              ? "Uploading…"
               : dragging
               ? "Drop it here!"
               : value

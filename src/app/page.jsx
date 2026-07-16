@@ -63,7 +63,7 @@ export default function HomePage() {
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}
-              className="w-[calc(50%-0.375rem)] sm:w-56 bg-white rounded-xl shadow-md p-5 sm:p-8 text-center hover:shadow-lg hover:-translate-y-1 active:translate-y-0 transition-all"
+              className="w-[calc(50%-0.375rem)] sm:w-56 bg-white rounded-xl shadow-md p-5 sm:p-8 text-center hover:shadow-lg hover:-translate-y-1 active:translate-y-0 transition"
             >
               <span aria-hidden="true" className="text-4xl mb-3 block">{cat.icon}</span>
               <h3 className="text-lg font-semibold text-[#2A4A52]">{cat.name}</h3>
@@ -127,7 +127,7 @@ export default function HomePage() {
             <div aria-hidden="true" className="text-3xl mb-2">❤️</div>
             <h3 className="font-semibold text-[#2A4A52] text-lg">Made with Love</h3>
             <p className="text-sm text-gray-600 mt-1">
-              Every product crafted with your pet&apos;s happiness in mind
+              Every product crafted with your pet&rsquo;s happiness in mind
             </p>
           </div>
         </div>

@@ -151,7 +151,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Sign Up"}
+            {loading ? "Creating account…" : "Sign Up"}
           </button>
         </form>
         <p className="text-center text-sm text-gray-500 mt-6">

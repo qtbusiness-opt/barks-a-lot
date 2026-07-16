@@ -74,7 +74,7 @@ export default function LocationInput({ id, value, onChange, className, required
       value={value}
       onChange={(e) => onChange(e.target.value)}
       required={required}
-      placeholder={MAPS_KEY ? "Start typing an address..." : ""}
+      placeholder={MAPS_KEY ? "Start typing an address…" : ""}
       className={className}
     />
   );

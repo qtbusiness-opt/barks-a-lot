@@ -69,7 +69,7 @@ export default async function AboutPage() {
           imageSrc={images.about_image_family}
         >
           <p>
-            We&apos;re Quinn and Nabil, the humans behind Barks-A-Lot Treats
+            We&rsquo;re Quinn and Nabil, the humans behind Barks-A-Lot Treats
             &amp; More. In the summer of 2024, we decided to move to the
             Treasure Valley, chasing a little more room to breathe and a lot
             more room for our dogs to run and play. That fresh start ended up
@@ -88,10 +88,10 @@ export default async function AboutPage() {
           <p>
             <strong>Meeko</strong>{" "}
             is our tan maltipoo and a real stud muffin.
-            At seven years old, he&apos;s been part of our family the longest.
+            At seven years old, he&rsquo;s been part of our family the longest.
             He can be a bit of a troublemaker with strangers at first, all bark
             and no follow-through, but it never takes long before he warms up
-            and shows you he&apos;s really the sweetest guy around. He spends
+            and shows you he&rsquo;s really the sweetest guy around. He spends
             his days chasing squirrels, sunbathing, and making friends with the
             biggest dogs at the dog park.
           </p>
@@ -99,10 +99,10 @@ export default async function AboutPage() {
             <strong>Evee</strong>{" "}
             is our white chipoo and an absolute cutie. She
             was rescued in early 2026 and is turning one year old on Halloween
-            2026. She&apos;s the self-appointed chaos coordinator of the
+            2026. She&rsquo;s the self-appointed chaos coordinator of the
             household, on a personal mission to find and shred any stray piece
-            of trash before we can stop her. When she isn&apos;t busy with that
-            important work, you&apos;ll find her pestering Meeko, napping under
+            of trash before we can stop her. When she isn&rsquo;t busy with that
+            important work, you&rsquo;ll find her pestering Meeko, napping under
             the couch, chasing sprinklers, or giving you her very best pleading
             eyes for a bite of whatever is in your hand.
           </p>
@@ -124,8 +124,8 @@ export default async function AboutPage() {
           <p>
             Every batch is home-baked with organic, pet-friendly ingredients
             and nothing else. No preservatives, no fillers, no mystery
-            ingredients. Just treats made the way we&apos;d want them made for
-            our own dogs, because that&apos;s exactly what they deserve.
+            ingredients. Just treats made the way we&rsquo;d want them made for
+            our own dogs, because that&rsquo;s exactly what they deserve.
           </p>
         </Section>
       </div>

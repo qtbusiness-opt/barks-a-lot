@@ -119,7 +119,7 @@ function ResetPasswordContent() {
           disabled={loading}
           className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
         >
-          {loading ? "Saving..." : "Set New Password"}
+          {loading ? "Saving…" : "Set New Password"}
         </button>
       </form>
     </div>
@@ -130,7 +130,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="max-w-md mx-auto safe-x py-10 sm:py-16">
       <Suspense
-        fallback={<p className="text-center text-gray-500">Loading...</p>}
+        fallback={<p className="text-center text-gray-500">Loading…</p>}
       >
         <ResetPasswordContent />
       </Suspense>

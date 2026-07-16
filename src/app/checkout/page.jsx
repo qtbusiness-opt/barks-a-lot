@@ -683,7 +683,7 @@ export default function CheckoutPage() {
                 </h2>
                 {cardStatus === "error" ? (
                   <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
-                    The payment form couldn&apos;t be loaded. Please refresh
+                    The payment form couldn&rsquo;t be loaded. Please refresh
                     the page and try again.
                   </p>
                 ) : (
@@ -742,7 +742,7 @@ export default function CheckoutPage() {
               }
               className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? "Checking card..." : "Continue to Review"}
+              {submitting ? "Checking card…" : "Continue to Review"}
             </button>
           </form>
 
@@ -786,7 +786,7 @@ export default function CheckoutPage() {
                     disabled={checkingCode || !codeInput.trim()}
                     className="shrink-0 bg-[#4A7C8A] hover:bg-[#3A6270] text-white px-4 rounded-lg font-semibold transition disabled:opacity-50"
                   >
-                    {checkingCode ? "..." : "Apply"}
+                    {checkingCode ? "…" : "Apply"}
                   </button>
                 </div>
               )}
@@ -884,7 +884,7 @@ export default function CheckoutPage() {
               className="sm:flex-[2] bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
             >
               {submitting
-                ? "Processing..."
+                ? "Processing…"
                 : `Process Payment — $${Math.max(0, total - discount.discountTotal).toFixed(2)}`}
             </button>
           </div>

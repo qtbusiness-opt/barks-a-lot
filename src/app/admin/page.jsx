@@ -10,7 +10,7 @@ function StatPanel({ href, icon, label, value, detail, accent }) {
   return (
     <Link
       href={href}
-      className="bg-white rounded-xl shadow-md p-5 sm:p-6 flex items-start gap-4 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all"
+      className="bg-white rounded-xl shadow-md p-5 sm:p-6 flex items-start gap-4 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition"
     >
       <span
         aria-hidden="true"

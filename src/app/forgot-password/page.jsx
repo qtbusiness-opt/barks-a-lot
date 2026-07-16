@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
           Forgot Password
         </h1>
         <p className="text-sm text-gray-500 text-center mb-6">
-          Enter your account email and we&apos;ll send you a link to choose a
+          Enter your account email and we&rsquo;ll send you a link to choose a
           new password.
         </p>
         {error && (
@@ -96,7 +96,7 @@ export default function ForgotPasswordPage() {
             disabled={loading}
             className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
-            {loading ? "Sending..." : "Send Reset Link"}
+            {loading ? "Sending…" : "Send Reset Link"}
           </button>
         </form>
         <p className="text-center text-sm text-gray-500 mt-6">
