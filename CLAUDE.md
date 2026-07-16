@@ -63,6 +63,16 @@ session logic or middleware between them.
 - Run `npm audit` (or equivalent) as part of the update routine below —
   don't let known-vulnerable dependencies linger.
 
+### Security review workflow
+- Run `/security-review` in the terminal before committing or merging any
+  change that touches auth, sessions, checkout, payments, or account
+  creation. This checks for SQL injection, XSS, auth flaws, insecure data
+  handling, and known-vulnerable dependencies.
+- Review each finding's explanation, then ask Claude to implement the fix
+  directly rather than patching manually.
+- Treat this as a required step in the workflow, not an occasional audit —
+  run it every time before merging security-sensitive changes.
+
 ---
 
 ## 2. Docker
