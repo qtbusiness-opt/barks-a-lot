@@ -1,13 +1,14 @@
 // Server-authoritative discount engine. Never trusts client-sent prices —
 // callers pass line items with the price already resolved server-side.
 //
-// Two promotion kinds combine (bundle pricing first, then a percent-off
-// code on the reduced subtotal):
+// Stacking rules:
 //   - bundle: buy `bundleQuantity` of any products in `productIds` for
-//     `bundlePrice` (mix-and-match). Extra sets stack; leftover units are
-//     full price.
-//   - code: `percentOff` off the whole (post-bundle) subtotal, activated
-//     by entering `code` at checkout.
+//     `bundlePrice` (mix-and-match). Bundles stack without limit — every
+//     active bundle applies, and a single bundle repeats for each full
+//     set of eligible units; leftover units stay full price.
+//   - code: `percentOff` off the (post-bundle) subtotal. AT MOST ONE code
+//     per order — the single `code` entered at checkout. Codes never
+//     stack with each other; one code may stack on top of the bundles.
 
 export const normalizeCode = (raw) =>
   String(raw ?? "").trim().toUpperCase();

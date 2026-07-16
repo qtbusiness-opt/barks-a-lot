@@ -1750,3 +1750,88 @@ test("promotions: admin CRUD, code + bundle discounts, and server-authoritative 
   });
   assert.equal(del.status, 200);
 });
+
+test("stacking rules: bundles stack without limit; only one discount code applies", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const catalog = await adminCatalog();
+  // A single always-available product with enough stock for two bundle sets.
+  const p = catalog.find(
+    (x) =>
+      x.variants.length === 0 &&
+      x.quantity >= 4 &&
+      !x.limitedQuantity &&
+      !x.availableFrom &&
+      !x.availableUntil
+  );
+  assert.ok(p, "need a product with stock >= 4");
+
+  // Bundle: any 2 of {p} for $1.00 — deep discount so savings are obvious.
+  const bundle = await api("POST", "/admin/promotions", {
+    body: {
+      name: "Two-Fer",
+      type: "bundle",
+      bundleQuantity: 2,
+      bundlePrice: 1,
+      productIds: [p.id],
+    },
+    cookie,
+  });
+  assert.equal(bundle.status, 201);
+
+  // Two active discount codes exist at once.
+  const ten = await api("POST", "/admin/promotions", {
+    body: { name: "Ten", type: "code", code: "TENOFF", percentOff: 10 },
+    cookie,
+  });
+  assert.equal(ten.status, 201);
+  const twenty = await api("POST", "/admin/promotions", {
+    body: { name: "Twenty", type: "code", code: "TWENTYOFF", percentOff: 20 },
+    cookie,
+  });
+  assert.equal(twenty.status, 201);
+
+  // 4 units → the bundle applies TWICE (unbounded): 4 units cost $2.00.
+  const fourUnits = [{ productId: p.id, quantity: 4 }];
+  const bundleOnly = await api("POST", "/promotions/validate", {
+    body: { items: fourUnits },
+  });
+  assert.equal(bundleOnly.data.subtotal, Number((p.price * 4).toFixed(2)));
+  assert.equal(bundleOnly.data.total, 2);
+
+  // One code stacks on top of the bundles: TWENTYOFF → 20% off $2.00 = $1.60.
+  const withOneCode = await api("POST", "/promotions/validate", {
+    body: { items: fourUnits, code: "TWENTYOFF" },
+  });
+  assert.equal(withOneCode.data.total, 1.6);
+  // Exactly one code is reflected in the applied list (bundle entries + 1 code).
+  assert.equal(
+    withOneCode.data.applied.filter((a) => a.includes("% off")).length,
+    1
+  );
+
+  // Only one code per order: the payload carries a single code, so the two
+  // codes can never combine — TENOFF alone is 10% off $2.00 = $1.80.
+  const otherCode = await api("POST", "/promotions/validate", {
+    body: { items: fourUnits, code: "TENOFF" },
+  });
+  assert.equal(otherCode.data.total, 1.8);
+
+  // Placing the order with one code stores exactly that discount.
+  const order = await api("POST", "/orders", {
+    body: {
+      items: fourUnits,
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "stack@test.local",
+      promoCode: "TWENTYOFF",
+    },
+  });
+  assert.equal(order.status, 201);
+  assert.equal(order.data.order.total, 1.6);
+  assert.equal(order.data.order.promoCode, "TWENTYOFF");
+
+  // Cleanup.
+  await api("DELETE", `/admin/promotions/${bundle.data.promotion.id}`, { cookie });
+  await api("DELETE", `/admin/promotions/${ten.data.promotion.id}`, { cookie });
+  await api("DELETE", `/admin/promotions/${twenty.data.promotion.id}`, { cookie });
+});
