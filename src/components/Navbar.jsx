@@ -18,7 +18,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
             <img src="/images/Barks-A-Lot Logo.png" alt="Barks-A-Lot" className="h-10 w-10 rounded-full" />
-            <span className="hidden sm:inline">Barks-A-Lot</span>
+            <span className="wordmark hidden sm:inline">Barks-A-Lot</span>
             {
               isDev ?  (
               <span className="ml-3 inline-flex items-center rounded-md bg-yellow-400/10 px-2 py-1 text-sm font-medium text-yellow-500 inset-ring-yellow-400/20">DEV</span>
