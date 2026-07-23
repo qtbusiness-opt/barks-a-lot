@@ -22,8 +22,8 @@ export function visibleInListing(product, now = new Date()) {
   return true;
 }
 
-// Gallery images are stored as a JSON string (SQLite has no arrays);
-// every API response hands the client a real array instead.
+// Gallery images are stored as a JSON-encoded string; every API
+// response hands the client a real array instead.
 export function parseImages(product) {
   try {
     const parsed = JSON.parse(product.images ?? "[]");

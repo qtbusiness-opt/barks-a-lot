@@ -4,7 +4,6 @@ services:
       context: .
       args:
         NODE_ENV: production
-        DATABASE_URL: "file:/app/data/qual.db"
         NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
         NEXT_PUBLIC_SQUARE_APP_ID: ${NEXT_PUBLIC_SQUARE_APP_ID:-}
         NEXT_PUBLIC_SQUARE_LOCATION_ID: ${NEXT_PUBLIC_SQUARE_LOCATION_ID:-}
@@ -12,7 +11,7 @@ services:
       - "3001:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=file:/app/data/qual.db
+      - DATABASE_URL=postgresql://barks:${POSTGRES_PASSWORD:-change-this-db-password}@db:5432/barks
       - JWT_SECRET=${JWT_SECRET:-change-this-qual-secret}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@barks-a-lot.com}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-this-admin-password-1}
@@ -25,8 +24,9 @@ services:
       - TZ=${TZ:-America/Boise}
       - EMAIL_FROM=${EMAIL_FROM:-}
       - APP_URL=${APP_URL:-}
-    volumes:
-      - qual-data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -35,5 +35,21 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=barks
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change-this-db-password}
+      - POSTGRES_DB=barks
+    volumes:
+      - qual-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barks -d barks"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
 volumes:
-  qual-data:
+  qual-db-data:

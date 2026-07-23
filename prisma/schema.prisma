@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -58,8 +58,8 @@ model Product {
   quantity    Int
   price       Float
   // Cover image, shown on cards/cart/orders. Additional gallery images
-  // live in `images` as a JSON-encoded array of URLs (SQLite has no
-  // native arrays); the detail page shows [image, ...images].
+  // live in `images` as a JSON-encoded array of URLs; the detail page
+  // shows [image, ...images].
   image       String
   images      String?
   // Ingredients for treats/food, general item details for everything
@@ -85,7 +85,7 @@ model ProductVariant {
   productId  String
   product    Product  @relation(fields: [productId], references: [id])
   name       String
-  // JSON-encoded attribute tags (SQLite has no native JSON column), e.g.
+  // JSON-encoded attribute tags, e.g.
   // {"flavor":"peanut butter","size":"large","dietary":["grain-free"]} for
   // treats or {"size":"medium","pattern":"plaid"} for bandanas — keeps
   // cart/inventory logic generic instead of hardcoding product types.
@@ -201,7 +201,7 @@ model Promotion {
   // bundle type
   bundleQuantity Int?
   bundlePrice    Float?
-  // JSON-encoded array of eligible product ids (SQLite has no arrays).
+  // JSON-encoded array of eligible product ids.
   productIds     String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -218,7 +218,7 @@ model SiteSetting {
 // Structured application events for the admin activity log: user logins
 // (success/failure) and server errors. Written best-effort and also
 // mirrored to stdout, so Docker logs and the in-app breakdown stay in
-// sync. Retained in the DB (SQLite volume) for the dashboard's queries.
+// sync. Retained in the DB for the dashboard's queries.
 model LogEvent {
   id        String   @id @default(cuid())
   // "info" | "warn" | "error"
@@ -250,6 +250,17 @@ model ContactMessage {
   message   String
   // Set once an admin marks it read on the Messages page.
   readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+// Admin-uploaded images (product photos, About page), stored in the
+// database so the app needs no persistent disk — Cloud Run's filesystem
+// is ephemeral. Served via /api/uploads/[name] with immutable caching;
+// the 5 MB cap is enforced by the upload route.
+model Upload {
+  name      String   @id
+  mime      String
+  data      Bytes
   createdAt DateTime @default(now())
 }
 

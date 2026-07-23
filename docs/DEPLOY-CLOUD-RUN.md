@@ -24,10 +24,9 @@ first lines from the crashed revision. What you find decides the fix:
 | Log says                                                     | Cause                                                                          | Fix                                                                                                  |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | `exec format error`                                          | Image built on an Apple Silicon Mac (ARM)                                      | Build with `docker build --platform linux/amd64 …` or let Cloud Build do it (`gcloud builds submit`) |
-| `Error: P1003` / migrate errors mentioning the database file | `DATABASE_URL` overridden, or a volume mounted over `/app/data`                | See "Database" below                                                                                 |
-| `SQLITE_BUSY` / `disk I/O error` during migrations           | A GCS bucket (gcsfuse) mounted at `/app/data` — SQLite cannot lock files on it | Remove the mount; see "Database" below                                                               |
-| `Memory limit … exceeded`                                    | Instance too small                                                             | Boot peaks ~131 MiB, so the 512 MiB default is fine — only raise if you see this line                |
-| Nothing at all / `npm` lines then exit                       | Wrong build type or start command                                              | See "Build type" below                                                                               |
+| `DATABASE_URL is not set` / `P1001 Can't reach database server` | Postgres connection not configured or unreachable | See "Database" below |
+| `Memory limit … exceeded` | Instance too small | Boot peaks ~131 MiB, so the 512 MiB default is fine — only raise if you see this line |
+| Nothing at all / `npm` lines then exit | Wrong build type or start command | See "Build type" below |
 
 ## Build type: use the Dockerfile
 
@@ -70,31 +69,32 @@ args**, not runtime env — pass them in the trigger's substitution/args
 settings): `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_SQUARE_APP_ID`,
 `NEXT_PUBLIC_SQUARE_LOCATION_ID`.
 
-Leave `DATABASE_URL` alone unless you know why you're changing it — the
-schema is SQLite; pointing it at Postgres makes migrations fail at boot.
+## Database: hosted Postgres required
 
-## Database: the honest caveat
+The app uses Postgres (uploads included — the container needs no
+persistent disk, which is exactly what Cloud Run requires). **You must
+set `DATABASE_URL`** on the service to a hosted Postgres connection
+string; the container exits at boot with a clear log line when it's
+missing. Migrations run automatically at startup.
 
-Cloud Run's filesystem is **ephemeral**. The SQLite file at
-`/app/data/app.db` is recreated empty on every new revision, restart, or
-scale event — **orders, products, and accounts are lost**. Mounting a GCS
-bucket does not fix this: SQLite needs file locking that gcsfuse doesn't
-provide, and the boot-time migration crash it causes produces exactly the
-"failed to start and listen" error.
+Good options:
 
-Options, in order of fit for this business:
+- **Neon** (neon.tech) — serverless Postgres with a free tier that fits
+  this store comfortably; scales to zero like Cloud Run does. Copy the
+  pooled connection string into `DATABASE_URL` (as a Secret Manager
+  secret).
+- **Cloud SQL for Postgres** — Google's managed option, from roughly
+  $10/month; connect via the Cloud SQL connector or its public IP.
+- **Supabase** — also fine; use the connection-pooler string.
 
-1. **Small always-on VM (recommended at this scale).** An e2-micro
-   Compute Engine instance running `docker compose -f
-docker-compose.prod.yml up -d` gives the SQLite file a persistent named
-   volume — already configured in this repo, no code changes.
-2. **Hosted Postgres** (Cloud SQL, Neon, Supabase) if you want to stay on
-   Cloud Run. This needs the Prisma provider switched from `sqlite` to
-   `postgresql` and fresh migrations — a small, contained code task; ask
-   Claude to do it when you're ready.
-3. If you run on Cloud Run anyway (e.g. a demo), set **max instances = 1**
-   — two instances would each have their own private database — and accept
-   that every deploy wipes the data.
+Local dev doesn't need any of this: `docker compose up` now bundles a
+`postgres:16` service with a persistent named volume.
+
+One note on scaling: sessions are stateless (JWT cookies) and the data
+now lives in Postgres, so multiple instances are safe. The login rate
+limiter is per-instance memory, so leaving **max instances = 1** keeps
+it strict (and is plenty of capacity for this store); raising it only
+loosens rate limiting, nothing else.
 
 ## Known-good manual deploy
 
@@ -105,7 +105,7 @@ gcloud run deploy barks-a-lot \
   --region us-west1 \
   --max-instances 1 \
   --set-env-vars TZ=America/Boise,SQUARE_ENV=sandbox,APP_URL=https://your-url \
-  --set-secrets AUTH_SECRET=auth-secret:latest,ADMIN_PASSWORD=admin-password:latest \
+  --set-secrets DATABASE_URL=database-url:latest,AUTH_SECRET=auth-secret:latest,ADMIN_PASSWORD=admin-password:latest \
   --allow-unauthenticated
 ```
 

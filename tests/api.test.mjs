@@ -1,16 +1,14 @@
 // Integration tests for the two money-critical areas (CLAUDE.md §6):
 // checkout (order creation, inventory decrement) and auth (login,
 // protected route access). Boots the real Next.js app against a
-// throwaway SQLite database.
+// throwaway Postgres database, created and dropped per run on the
+// server at TEST_DATABASE_ADMIN_URL (defaults to a local Postgres).
 //
 // Run with: npm test
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, execSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 
 const PORT = 4123;
@@ -18,8 +16,13 @@ const BASE = `http://localhost:${PORT}`;
 const ADMIN_EMAIL = "admin@test.local";
 const ADMIN_PASSWORD = "test-admin-pw8";
 
+// Maintenance connection used only to CREATE/DROP the throwaway DB.
+const ADMIN_DB_URL =
+  process.env.TEST_DATABASE_ADMIN_URL ||
+  "postgresql://postgres:postgres@127.0.0.1:5432/postgres";
+
 let server;
-let dbDir;
+let dbName;
 let dbUrl;
 
 function cookieFrom(res) {
@@ -46,8 +49,14 @@ async function api(method, route, { body, cookie } = {}) {
 }
 
 before(async () => {
-  dbDir = mkdtempSync(path.join(tmpdir(), "barks-test-"));
-  dbUrl = `file:${path.join(dbDir, "test.db")}`;
+  dbName = `barks_test_${Date.now()}_${process.pid}`;
+  const admin = new PrismaClient({ datasourceUrl: ADMIN_DB_URL });
+  await admin.$executeRawUnsafe(`CREATE DATABASE "${dbName}"`);
+  await admin.$disconnect();
+  dbUrl = new URL(ADMIN_DB_URL);
+  dbUrl.pathname = `/${dbName}`;
+  dbUrl = dbUrl.toString();
+
   const env = {
     ...process.env,
     DATABASE_URL: dbUrl,
@@ -55,7 +64,6 @@ before(async () => {
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
     RATE_LIMIT_MAX: "1000",
-    UPLOADS_DIR: path.join(dbDir, "uploads"),
     NODE_ENV: "development",
   };
 
@@ -90,9 +98,16 @@ before(async () => {
   }
 });
 
-after(() => {
+after(async () => {
   if (server) server.kill("SIGTERM");
-  if (dbDir) rmSync(dbDir, { recursive: true, force: true });
+  if (dbName) {
+    const admin = new PrismaClient({ datasourceUrl: ADMIN_DB_URL });
+    // FORCE kicks any connection the just-killed server still holds.
+    await admin
+      .$executeRawUnsafe(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`)
+      .catch(() => {});
+    await admin.$disconnect();
+  }
 });
 
 // Sign in through the Auth.js credentials flow: fetch a CSRF token, then
@@ -138,7 +153,11 @@ async function adminStock(productId) {
 
 test("register creates an unverified account; login is blocked until verified", async () => {
   const res = await api("POST", "/auth/register", {
-    body: { name: "Test User", email: "user@test.local", password: "secret123" },
+    body: {
+      name: "Test User",
+      email: "user@test.local",
+      password: "secret123",
+    },
   });
   assert.equal(res.status, 201);
   assert.equal(res.data.user.role, "customer");
@@ -165,7 +184,11 @@ test("register creates an unverified account; login is blocked until verified", 
 
 test("resend verification always answers 200 and reissues for unverified accounts", async () => {
   const reg = await api("POST", "/auth/register", {
-    body: { name: "Resend Tester", email: "resend@test.local", password: "secret123" },
+    body: {
+      name: "Resend Tester",
+      email: "resend@test.local",
+      password: "secret123",
+    },
   });
   assert.equal(reg.status, 201);
 
@@ -181,8 +204,12 @@ test("resend verification always answers 200 and reissues for unverified account
   assert.equal(resent.status, 200);
 
   // The original link was invalidated by the resend; garbage tokens fail.
-  const oldToken = new URL(reg.data.devVerificationUrl).searchParams.get("token");
-  const stale = await api("POST", "/auth/verify", { body: { token: oldToken } });
+  const oldToken = new URL(reg.data.devVerificationUrl).searchParams.get(
+    "token"
+  );
+  const stale = await api("POST", "/auth/verify", {
+    body: { token: oldToken },
+  });
   assert.equal(stale.status, 400);
 });
 
@@ -221,7 +248,9 @@ test("guest checkout requires an email", async () => {
 
 test("guest pickup order succeeds without address and decrements stock", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 2);
+  const product = catalog.find(
+    (p) => p.variants.length === 0 && p.quantity >= 2
+  );
 
   const res = await api("POST", "/orders", {
     body: {
@@ -260,7 +289,9 @@ test("shipping orders are rejected while the store is pickup-only", async () => 
 
 test("ordering more than available stock is rejected and nothing is written", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 1);
+  const product = catalog.find(
+    (p) => p.variants.length === 0 && p.quantity >= 1
+  );
 
   const res = await api("POST", "/orders", {
     body: {
@@ -374,7 +405,11 @@ test("variant products require an option and track per-variant stock", async () 
   const oversell = await api("POST", "/orders", {
     body: {
       items: [
-        { productId: product.id, variantId: variant.id, quantity: afterVariant.quantity + 1 },
+        {
+          productId: product.id,
+          variantId: variant.id,
+          quantity: afterVariant.quantity + 1,
+        },
       ],
       fulfillmentType: "pickup",
       pickupEventId: "next",
@@ -480,7 +515,10 @@ test("admins can create products that appear on the storefront", async () => {
   });
   assert.equal(invalid.status, 400);
 
-  const created = await api("POST", "/admin/products", { body: payload, cookie });
+  const created = await api("POST", "/admin/products", {
+    body: payload,
+    cookie,
+  });
   assert.equal(created.status, 201);
   assert.equal(created.data.product.inStock, true);
 
@@ -501,7 +539,9 @@ test("admins can create products that appear on the storefront", async () => {
 test("status changes record a notification tied to the order email", async () => {
   const email = "notify-me@test.local";
   const { data: products } = await api("GET", "/products");
-  const product = products.products.find((p) => p.variants.length === 0 && p.inStock);
+  const product = products.products.find(
+    (p) => p.variants.length === 0 && p.inStock
+  );
 
   const order = await api("POST", "/orders", {
     body: {
@@ -567,7 +607,10 @@ test("announcements: admin creates, storefront shows the latest", async () => {
   assert.equal(anon.status, 403);
 
   const created = await api("POST", "/admin/announcements", {
-    body: { title: "Market This Weekend", body: "Find us at the farmers market Saturday 9-2!" },
+    body: {
+      title: "Market This Weekend",
+      body: "Find us at the farmers market Saturday 9-2!",
+    },
     cookie,
   });
   assert.equal(created.status, 201);
@@ -670,7 +713,9 @@ test("product deletion works but is blocked by order history", async () => {
   const deleted = await api("DELETE", `/admin/products/${freshId}`, { cookie });
   assert.equal(deleted.status, 200);
 
-  const blocked = await api("DELETE", `/admin/products/${orderedId}`, { cookie });
+  const blocked = await api("DELETE", `/admin/products/${orderedId}`, {
+    cookie,
+  });
   assert.equal(blocked.status, 409);
 
   const list = await api("GET", "/admin/products", { cookie });
@@ -756,7 +801,9 @@ test("events: admin CRUD, public read-only calendar queries", async () => {
 
 test("pickup orders require an event; Next Event resolves to the nearest selectable event", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 2);
+  const product = catalog.find(
+    (p) => p.variants.length === 0 && p.quantity >= 2
+  );
 
   // Upcoming endpoint lists the seeded events for the dropdown.
   const upcoming = await api("GET", "/events?upcoming=true");
@@ -877,13 +924,21 @@ test("admins can create admin accounts with hardened passwords", async () => {
   });
   assert.equal(short.status, 400);
   const noNumber = await api("POST", "/admin/users", {
-    body: { name: "Partner", email: "partner@test.local", password: "abcdefgh" },
+    body: {
+      name: "Partner",
+      email: "partner@test.local",
+      password: "abcdefgh",
+    },
     cookie,
   });
   assert.equal(noNumber.status, 400);
 
   const created = await api("POST", "/admin/users", {
-    body: { name: "Partner", email: "partner@test.local", password: "trusty-pup8" },
+    body: {
+      name: "Partner",
+      email: "partner@test.local",
+      password: "trusty-pup8",
+    },
     cookie,
   });
   assert.equal(created.status, 201);
@@ -901,7 +956,11 @@ test("admins can create admin accounts with hardened passwords", async () => {
 
   // Duplicate emails are rejected.
   const dupe = await api("POST", "/admin/users", {
-    body: { name: "Partner", email: "partner@test.local", password: "trusty-pup8" },
+    body: {
+      name: "Partner",
+      email: "partner@test.local",
+      password: "trusty-pup8",
+    },
     cookie,
   });
   assert.equal(dupe.status, 409);
@@ -909,10 +968,16 @@ test("admins can create admin accounts with hardened passwords", async () => {
 
 test("customers can reset a forgotten password end to end", async () => {
   const reg = await api("POST", "/auth/register", {
-    body: { name: "Forgetful", email: "forgetful@test.local", password: "original6" },
+    body: {
+      name: "Forgetful",
+      email: "forgetful@test.local",
+      password: "original6",
+    },
   });
   assert.equal(reg.status, 201);
-  const verifyToken = new URL(reg.data.devVerificationUrl).searchParams.get("token");
+  const verifyToken = new URL(reg.data.devVerificationUrl).searchParams.get(
+    "token"
+  );
   await api("POST", "/auth/verify", { body: { token: verifyToken } });
 
   // Unknown emails get the same answer — no account probing.
@@ -974,14 +1039,22 @@ test("admins can look up customers, send resets, and delete accounts", async () 
   const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
 
   const reg = await api("POST", "/auth/register", {
-    body: { name: "Lookup Target", email: "lookup@test.local", password: "secret123" },
+    body: {
+      name: "Lookup Target",
+      email: "lookup@test.local",
+      password: "secret123",
+    },
   });
-  const verifyToken = new URL(reg.data.devVerificationUrl).searchParams.get("token");
+  const verifyToken = new URL(reg.data.devVerificationUrl).searchParams.get(
+    "token"
+  );
   await api("POST", "/auth/verify", { body: { token: verifyToken } });
 
   // Give them an order so deletion has history to preserve.
   const { data: products } = await api("GET", "/products");
-  const product = products.products.find((p) => p.variants.length === 0 && p.inStock);
+  const product = products.products.find(
+    (p) => p.variants.length === 0 && p.inStock
+  );
   const customerCookie = await loginAs("lookup@test.local", "secret123");
   const order = await api("POST", "/orders", {
     body: {
@@ -998,7 +1071,9 @@ test("admins can look up customers, send resets, and delete accounts", async () 
   assert.equal(anon.status, 403);
   const found = await api("GET", "/admin/customers?q=lookup", { cookie });
   assert.equal(found.status, 200);
-  const target = found.data.customers.find((c) => c.email === "lookup@test.local");
+  const target = found.data.customers.find(
+    (c) => c.email === "lookup@test.local"
+  );
   assert.ok(target);
   assert.equal(target._count.orders, 1);
 
@@ -1017,7 +1092,9 @@ test("admins can look up customers, send resets, and delete accounts", async () 
   assert.equal(adminDelete.status, 404);
 
   // Deleting the customer keeps their order as a guest record.
-  const deleted = await api("DELETE", `/admin/customers/${target.id}`, { cookie });
+  const deleted = await api("DELETE", `/admin/customers/${target.id}`, {
+    cookie,
+  });
   assert.equal(deleted.status, 200);
   assert.equal(await loginAs("lookup@test.local", "secret123"), "");
 
@@ -1036,15 +1113,23 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
 
   // Fresh verified customer.
   const reg = await api("POST", "/auth/register", {
-    body: { name: "Profile Tester", email: "profile@test.local", password: "secret123" },
+    body: {
+      name: "Profile Tester",
+      email: "profile@test.local",
+      password: "secret123",
+    },
   });
-  const verifyToken = new URL(reg.data.devVerificationUrl).searchParams.get("token");
+  const verifyToken = new URL(reg.data.devVerificationUrl).searchParams.get(
+    "token"
+  );
   await api("POST", "/auth/verify", { body: { token: verifyToken } });
   const cookie = await loginAs("profile@test.local", "secret123");
 
   // Needs two units: this test places the same order twice.
   const catalog = await adminCatalog();
-  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 2);
+  const product = catalog.find(
+    (p) => p.variants.length === 0 && p.quantity >= 2
+  );
   // Address fields sent alongside a pickup order must NOT be recorded —
   // the store is pickup-only and collects no customer addresses.
   const order = await api("POST", "/orders", {
@@ -1060,7 +1145,11 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
     cookie,
   });
   assert.equal(order.status, 201);
-  assert.equal(order.data.order.address, null, "pickup order stores no address");
+  assert.equal(
+    order.data.order.address,
+    null,
+    "pickup order stores no address"
+  );
 
   const profile = await api("GET", "/profile", { cookie });
   assert.equal(profile.status, 200);
@@ -1092,14 +1181,18 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
 
   // The dormant address routes still enforce auth + ownership: an id that
   // doesn't belong to the caller (or doesn't exist) is a 404.
-  const foreign = await api("DELETE", "/profile/addresses/nonexistent", { cookie });
+  const foreign = await api("DELETE", "/profile/addresses/nonexistent", {
+    cookie,
+  });
   assert.equal(foreign.status, 404);
 });
 
 test("customer can cancel an order until pickup; stock is restored", async () => {
   const cookie = await loginAs("user@test.local", "secret123");
   const catalog = await adminCatalog();
-  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 2);
+  const product = catalog.find(
+    (p) => p.variants.length === 0 && p.quantity >= 2
+  );
 
   const order = await api("POST", "/orders", {
     body: {
@@ -1237,7 +1330,9 @@ test("the Refunded tag is rejected on orders that aren't picked up", async () =>
 
 test("admin cancellation of an active order restores stock", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find((p) => p.variants.length === 0 && p.quantity >= 1);
+  const product = catalog.find(
+    (p) => p.variants.length === 0 && p.quantity >= 1
+  );
 
   const order = await api("POST", "/orders", {
     body: {
@@ -1262,7 +1357,11 @@ test("admin cancellation of an active order restores stock", async () => {
 
 test("customers can delete their own account; orders survive as guest records", async () => {
   const reg = await api("POST", "/auth/register", {
-    body: { name: "Self Delete", email: "selfdelete@test.local", password: "secret123" },
+    body: {
+      name: "Self Delete",
+      email: "selfdelete@test.local",
+      password: "secret123",
+    },
   });
   const token = new URL(reg.data.devVerificationUrl).searchParams.get("token");
   await api("POST", "/auth/verify", { body: { token } });
@@ -1371,7 +1470,10 @@ test("same-day pickup respects the two-hour cutoff before the event ends", async
     },
   });
   assert.equal(viaNextClosed.status, 201, JSON.stringify(viaNextClosed.data));
-  assert.notEqual(viaNextClosed.data.order.pickupEvent.id, closed.data.event.id);
+  assert.notEqual(
+    viaNextClosed.data.order.pickupEvent.id,
+    closed.data.event.id
+  );
 
   // A same-day event more than two hours from closing can be chosen
   // manually AND becomes the "next" event. (Skipped when the test runs
@@ -1727,17 +1829,21 @@ test("promotions: admin CRUD, code + bundle discounts, and server-authoritative 
   assert.equal(order.data.order.promoCode, "SAVE10");
 
   // Deactivating the bundle stops it applying.
-  const deactivate = await api("PATCH", `/admin/promotions/${bundle.data.promotion.id}`, {
-    body: {
-      name: "Treat Bundle",
-      type: "bundle",
-      active: false,
-      bundleQuantity: 2,
-      bundlePrice: 1,
-      productIds: [a.id, b.id],
-    },
-    cookie,
-  });
+  const deactivate = await api(
+    "PATCH",
+    `/admin/promotions/${bundle.data.promotion.id}`,
+    {
+      body: {
+        name: "Treat Bundle",
+        type: "bundle",
+        active: false,
+        bundleQuantity: 2,
+        bundlePrice: 1,
+        productIds: [a.id, b.id],
+      },
+      cookie,
+    }
+  );
   assert.equal(deactivate.status, 200);
   const noBundle = await api("POST", "/promotions/validate", {
     body: { items: cartItems },
@@ -1745,9 +1851,13 @@ test("promotions: admin CRUD, code + bundle discounts, and server-authoritative 
   assert.equal(noBundle.data.discountTotal, 0);
 
   // Delete cleans up.
-  const del = await api("DELETE", `/admin/promotions/${bundle.data.promotion.id}`, {
-    cookie,
-  });
+  const del = await api(
+    "DELETE",
+    `/admin/promotions/${bundle.data.promotion.id}`,
+    {
+      cookie,
+    }
+  );
   assert.equal(del.status, 200);
 });
 
@@ -1831,9 +1941,13 @@ test("stacking rules: bundles stack without limit; only one discount code applie
   assert.equal(order.data.order.promoCode, "TWENTYOFF");
 
   // Cleanup.
-  await api("DELETE", `/admin/promotions/${bundle.data.promotion.id}`, { cookie });
+  await api("DELETE", `/admin/promotions/${bundle.data.promotion.id}`, {
+    cookie,
+  });
   await api("DELETE", `/admin/promotions/${ten.data.promotion.id}`, { cookie });
-  await api("DELETE", `/admin/promotions/${twenty.data.promotion.id}`, { cookie });
+  await api("DELETE", `/admin/promotions/${twenty.data.promotion.id}`, {
+    cookie,
+  });
 });
 
 test("activity log records logins and errors; admin can view the breakdown", async () => {
@@ -1850,7 +1964,10 @@ test("activity log records logins and errors; admin can view the breakdown", asy
 
   const logs = await api("GET", "/admin/logs", { cookie });
   assert.equal(logs.status, 200);
-  assert.ok(logs.data.summary.loginsToday >= 1, "a successful login was counted");
+  assert.ok(
+    logs.data.summary.loginsToday >= 1,
+    "a successful login was counted"
+  );
   assert.ok(logs.data.summary.failedToday >= 1, "a failed login was counted");
   assert.ok(
     logs.data.events.some((e) => e.event === "login_failed"),
