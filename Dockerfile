@@ -28,14 +28,14 @@ COPY . .
 # well-formed URL keeps anything that parses it at build time happy.
 ARG DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV DATABASE_URL=${DATABASE_URL}
-# NEXT_PUBLIC_* values are inlined into the client bundle at build time,
-# so the Maps key must be present here — runtime env is too late for
-# production builds. It's a browser-exposed key by design; restrict it by
-# HTTP referrer in Google Cloud rather than treating it as a secret.
+# Browser-side config (Maps key, Square app/location ids) is served at
+# runtime via /api/config, so these build args are OPTIONAL — set the
+# same names as runtime env vars on the deployment instead. Passing them
+# here additionally inlines them into the client bundle as a fallback.
+# They're browser-exposed by design; the SQUARE_ACCESS_TOKEN secret
+# stays runtime-only and is never baked in.
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-# Square app + location ids are also browser-side (inlined at build);
-# the SQUARE_ACCESS_TOKEN secret stays runtime-only and is never baked in.
 ARG NEXT_PUBLIC_SQUARE_APP_ID=""
 ENV NEXT_PUBLIC_SQUARE_APP_ID=${NEXT_PUBLIC_SQUARE_APP_ID}
 ARG NEXT_PUBLIC_SQUARE_LOCATION_ID=""

@@ -8,27 +8,26 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { SHIPPING_ENABLED } from "@/lib/features";
 import { isPickupSelectable, formatTimeRange } from "@/lib/pickup-window";
+import { getPublicConfig } from "@/lib/public-config";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
 
 // Square Web Payments SDK. The app id is public by design (it only
 // tokenizes cards in the browser); the secret access token lives
-// server-side. Without an app id the card form is skipped and the
-// server skips charging too — payments simply aren't configured yet.
-const SQUARE_APP_ID = process.env.NEXT_PUBLIC_SQUARE_APP_ID;
-const SQUARE_LOCATION_ID = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID;
-const SQUARE_SDK_URL = SQUARE_APP_ID?.startsWith("sandbox-")
-  ? "https://sandbox.web.squarecdn.com/v1/square.js"
-  : "https://web.squarecdn.com/v1/square.js";
-
-function loadSquareSdk() {
+// server-side. Both ids come from /api/config at runtime (see
+// lib/public-config.js). Without an app id the card form is skipped and
+// the server skips charging too — payments simply aren't configured yet.
+function loadSquareSdk(appId) {
+  const sdkUrl = appId.startsWith("sandbox-")
+    ? "https://sandbox.web.squarecdn.com/v1/square.js"
+    : "https://web.squarecdn.com/v1/square.js";
   return new Promise((resolve, reject) => {
     if (window.Square) return resolve(window.Square);
-    let script = document.querySelector(`script[src="${SQUARE_SDK_URL}"]`);
+    let script = document.querySelector(`script[src="${sdkUrl}"]`);
     if (!script) {
       script = document.createElement("script");
-      script.src = SQUARE_SDK_URL;
+      script.src = sdkUrl;
       document.head.appendChild(script);
     }
     script.addEventListener("load", () => resolve(window.Square));
@@ -49,7 +48,10 @@ const formatEventDate = (event) =>
 
 function Stepper({ step }) {
   return (
-    <ol aria-label="Checkout progress" className="flex items-center gap-2 text-sm font-medium mb-6">
+    <ol
+      aria-label="Checkout progress"
+      className="flex items-center gap-2 text-sm font-medium mb-6"
+    >
       {["Your Info", "Review & Pay"].map((label, i) => {
         const active = step === i;
         const done = step > i;
@@ -59,15 +61,20 @@ function Stepper({ step }) {
             aria-current={active ? "step" : undefined}
             className="flex items-center gap-2"
           >
-            {i > 0 && <span aria-hidden="true" className="w-6 sm:w-10 h-px bg-gray-300" />}
+            {i > 0 && (
+              <span
+                aria-hidden="true"
+                className="w-6 sm:w-10 h-px bg-gray-300"
+              />
+            )}
             <span
               aria-hidden="true"
               className={`flex items-center justify-center w-6 h-6 rounded-full text-xs ${
                 done
                   ? "bg-green-700 text-white"
                   : active
-                  ? "bg-[#4A7C8A] text-white"
-                  : "bg-gray-200 text-gray-600"
+                    ? "bg-[#4A7C8A] text-white"
+                    : "bg-gray-200 text-gray-600"
               }`}
             >
               {done ? "✓" : i + 1}
@@ -87,7 +94,9 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
   const total = Math.max(0, subtotal - discount);
   return (
     <div className="bg-[#F5F0E8] rounded-xl p-4 sm:p-6">
-      <h2 className="text-xl font-semibold text-[#2A4A52] mb-4">Order Summary</h2>
+      <h2 className="text-xl font-semibold text-[#2A4A52] mb-4">
+        Order Summary
+      </h2>
       <div className="space-y-3">
         {items.map((item) => (
           <div key={item.key} className="flex justify-between text-sm">
@@ -154,8 +163,11 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
+  // Runtime Square config: null while loading, then
+  // { appId, locationId } ("" when payments aren't configured).
+  const [square, setSquare] = useState(null);
   // "off" (Square not configured) | "loading" | "ready" | "error"
-  const [cardStatus, setCardStatus] = useState(SQUARE_APP_ID ? "loading" : "off");
+  const [cardStatus, setCardStatus] = useState("loading");
   const cardRef = useRef(null);
   // One-time Square token + display details ("Visa ending in 1111"),
   // captured when the customer continues to review.
@@ -174,6 +186,16 @@ export default function CheckoutPage() {
       .get("/events?upcoming=true")
       .then((res) => setUpcomingEvents(res.data.events))
       .catch(() => setUpcomingEvents([]));
+  }, []);
+
+  useEffect(() => {
+    getPublicConfig().then((cfg) => {
+      setSquare({
+        appId: cfg.squareAppId,
+        locationId: cfg.squareLocationId,
+      });
+      if (!cfg.squareAppId) setCardStatus("off");
+    });
   }, []);
 
   // Preview discounts (automatic bundles + any applied code) whenever the
@@ -246,15 +268,15 @@ export default function CheckoutPage() {
   // Mount the Square card form on the info step; the iframe keeps card
   // details inside Square — they never touch our servers.
   useEffect(() => {
-    if (step !== 0 || !SQUARE_APP_ID) return undefined;
+    if (step !== 0 || !square?.appId) return undefined;
     let cancelled = false;
     let cardInstance;
     (async () => {
       try {
-        const Square = await loadSquareSdk();
-        const payments = SQUARE_LOCATION_ID
-          ? Square.payments(SQUARE_APP_ID, SQUARE_LOCATION_ID)
-          : Square.payments(SQUARE_APP_ID);
+        const Square = await loadSquareSdk(square.appId);
+        const payments = square.locationId
+          ? Square.payments(square.appId, square.locationId)
+          : Square.payments(square.appId);
         cardInstance = await payments.card();
         if (cancelled) {
           cardInstance.destroy();
@@ -273,7 +295,7 @@ export default function CheckoutPage() {
       cardRef.current = null;
       cardInstance?.destroy();
     };
-  }, [step]);
+  }, [step, square]);
 
   // Same-day events stay selectable until two hours before they end
   // (shared rule with the orders API). "Next Event" is simply the
@@ -337,9 +359,11 @@ export default function CheckoutPage() {
     e.preventDefault();
     setError("");
 
-    if (SQUARE_APP_ID) {
+    if (square?.appId) {
       if (!cardRef.current) {
-        setError("The payment form isn't ready yet — give it a second and try again.");
+        setError(
+          "The payment form isn't ready yet — give it a second and try again."
+        );
         return;
       }
       setSubmitting(true);
@@ -381,7 +405,7 @@ export default function CheckoutPage() {
   // one — continuing again re-tokenizes the card.
   const handleBack = () => {
     setPayment(null);
-    if (SQUARE_APP_ID) setCardStatus("loading");
+    if (square?.appId) setCardStatus("loading");
     setStep(0);
     window.scrollTo({ top: 0 });
   };
@@ -409,7 +433,9 @@ export default function CheckoutPage() {
               zip: form.zip,
             }
           : { pickupEventId: pickupMode === "next" ? "next" : pickupChoice }),
-        ...(user ? {} : { guestEmail: form.guestEmail, guestName: form.guestName }),
+        ...(user
+          ? {}
+          : { guestEmail: form.guestEmail, guestName: form.guestName }),
         ...(paymentToken ? { paymentToken } : {}),
         ...(appliedCode ? { promoCode: appliedCode } : {}),
       });
@@ -446,12 +472,20 @@ export default function CheckoutPage() {
       <Stepper step={step} />
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
+          {error}
+        </p>
       )}
 
       {step === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-          <form onSubmit={handleContinue} className="space-y-4 order-2 md:order-1">
+          <form
+            onSubmit={handleContinue}
+            className="space-y-4 order-2 md:order-1"
+          >
             {!user && (
               <>
                 <div className="flex items-center justify-between">
@@ -466,7 +500,10 @@ export default function CheckoutPage() {
                   </Link>
                 </div>
                 <div>
-                  <label htmlFor="guest-name" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="guest-name"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Name
                   </label>
                   <input
@@ -478,7 +515,10 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="guest-email" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="guest-email"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Email
                   </label>
                   <input
@@ -561,7 +601,10 @@ export default function CheckoutPage() {
                   Shipping Address
                 </h2>
                 <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="address"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Street Address
                   </label>
                   <input
@@ -574,7 +617,10 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="city"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     City
                   </label>
                   <input
@@ -588,7 +634,10 @@ export default function CheckoutPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="state"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       State
                     </label>
                     <input
@@ -601,7 +650,10 @@ export default function CheckoutPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="zip" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label
+                      htmlFor="zip"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
                       ZIP Code
                     </label>
                     <input
@@ -676,13 +728,16 @@ export default function CheckoutPage() {
               </fieldset>
             ) : null}
 
-            {SQUARE_APP_ID && (
+            {square?.appId && (
               <div>
                 <h2 className="text-xl font-semibold text-[#2A4A52] mb-2">
                   Payment
                 </h2>
                 {cardStatus === "error" ? (
-                  <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                  <p
+                    role="alert"
+                    className="text-red-500 text-sm bg-red-50 p-3 rounded-lg"
+                  >
                     The payment form couldn&rsquo;t be loaded. Please refresh
                     the page and try again.
                   </p>
@@ -696,8 +751,8 @@ export default function CheckoutPage() {
                     <div id="card-container" />
                     <p className="text-xs text-gray-500 mt-1">
                       Payments are processed securely by Square — your card
-                      details never touch our servers. Nothing is charged
-                      until you confirm on the next step.
+                      details never touch our servers. Nothing is charged until
+                      you confirm on the next step.
                     </p>
                   </>
                 )}
@@ -738,7 +793,10 @@ export default function CheckoutPage() {
               disabled={
                 submitting ||
                 (fulfillmentType === "pickup" && !hasEvents) ||
-                (SQUARE_APP_ID && cardStatus !== "ready")
+                // Config still resolving, or card form not ready yet —
+                // never let an order slip past a configured card form.
+                square === null ||
+                (Boolean(square.appId) && cardStatus !== "ready")
               }
               className="w-full bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -755,7 +813,10 @@ export default function CheckoutPage() {
             />
             {/* Promo code */}
             <div className="bg-white rounded-xl shadow-sm p-4">
-              <label htmlFor="promo-code" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="promo-code"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Promo code
               </label>
               {appliedCode ? (
@@ -791,7 +852,9 @@ export default function CheckoutPage() {
                 </div>
               )}
               {codeError && (
-                <p role="alert" className="text-red-500 text-sm mt-2">{codeError}</p>
+                <p role="alert" className="text-red-500 text-sm mt-2">
+                  {codeError}
+                </p>
               )}
             </div>
           </div>
@@ -844,7 +907,9 @@ export default function CheckoutPage() {
                   </p>
                   <p className="text-sm text-gray-600">
                     {formatEventDate(chosenEvent)}
-                    {formatTimeRange(chosenEvent) && <> · {formatTimeRange(chosenEvent)}</>}
+                    {formatTimeRange(chosenEvent) && (
+                      <> · {formatTimeRange(chosenEvent)}</>
+                    )}
                     {chosenEvent.location && <> · {chosenEvent.location}</>}
                   </p>
                 </div>
