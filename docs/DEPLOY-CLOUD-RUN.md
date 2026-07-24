@@ -64,10 +64,12 @@ Required for a working store:
 - `SQUARE_ACCESS_TOKEN` / `SQUARE_ENV` — payments (`production` when live).
 - `TZ` — e.g. `America/Boise` (pickup cutoff math).
 
-Build-time only (baked into the client bundle, so they must be **build
-args**, not runtime env — pass them in the trigger's substitution/args
-settings): `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_SQUARE_APP_ID`,
-`NEXT_PUBLIC_SQUARE_LOCATION_ID`.
+The browser-side values — `NEXT_PUBLIC_SQUARE_APP_ID`,
+`NEXT_PUBLIC_SQUARE_LOCATION_ID`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — are
+served to the browser at **runtime** via `/api/config`, so set them as
+normal service env vars like everything above; no rebuild needed when
+they change. (They also work as Docker build args for static inlining,
+but that's optional.)
 
 ## Database: hosted Postgres required
 

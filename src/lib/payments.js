@@ -13,10 +13,13 @@ export function isPaymentConfigured() {
   return Boolean(process.env.SQUARE_ACCESS_TOKEN);
 }
 
-// One location id serves both halves: the browser passes it to the Web
-// Payments SDK (NEXT_PUBLIC_), and the server reuses it for CreatePayment.
+// One location id serves both halves: the browser gets it via
+// /api/config, and the server reuses it for CreatePayment. Bracket
+// access keeps the compiler from inlining the NEXT_PUBLIC_ value at
+// build time — we want whatever the deployment sets at runtime.
 const locationId = () =>
-  process.env.SQUARE_LOCATION_ID || process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID;
+  process.env["SQUARE_LOCATION_ID"] ||
+  process.env["NEXT_PUBLIC_SQUARE_LOCATION_ID"];
 
 // Thrown with a customer-safe message; details go to server logs only.
 export class PaymentError extends Error {
@@ -43,9 +46,16 @@ async function squareRequest(path, body) {
     // Card declines come back as specific error codes; everything else is
     // an integration/availability problem the customer can't fix.
     const declined = errors.some((e) =>
-      ["GENERIC_DECLINE", "CVV_FAILURE", "ADDRESS_VERIFICATION_FAILURE",
-        "INVALID_EXPIRATION", "CARD_EXPIRED", "INSUFFICIENT_FUNDS",
-        "CARD_DECLINED_VERIFICATION_REQUIRED", "PAN_FAILURE"].includes(e.code)
+      [
+        "GENERIC_DECLINE",
+        "CVV_FAILURE",
+        "ADDRESS_VERIFICATION_FAILURE",
+        "INVALID_EXPIRATION",
+        "CARD_EXPIRED",
+        "INSUFFICIENT_FUNDS",
+        "CARD_DECLINED_VERIFICATION_REQUIRED",
+        "PAN_FAILURE",
+      ].includes(e.code)
     );
     throw new PaymentError(
       declined
@@ -79,7 +89,12 @@ export async function chargePayment({ sourceId, amountCents, note }) {
 // Refunds the full charge for a cancelled order. The idempotency key is
 // derived from the order, so retrying a failed cancellation can never
 // refund twice.
-export async function refundPayment({ paymentId, amountCents, orderId, reason }) {
+export async function refundPayment({
+  paymentId,
+  amountCents,
+  orderId,
+  reason,
+}) {
   const data = await squareRequest("/v2/refunds", {
     payment_id: paymentId,
     idempotency_key: `refund-${orderId}`,
