@@ -1,14 +1,12 @@
 import { randomBytes } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-// Uploads live in the data directory (the persisted Docker volume), NOT
-// public/ — files added to public/ at runtime aren't served by the
-// production build. They're served back via /api/uploads/[name].
-const UPLOADS_DIR =
-  process.env.UPLOADS_DIR || path.join(process.cwd(), "data", "uploads");
+// Uploads are stored in the database (Upload model), NOT on disk —
+// Cloud Run's filesystem is ephemeral, and files added to public/ at
+// runtime aren't served by the production build anyway. They're served
+// back via /api/uploads/[name].
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -48,11 +46,13 @@ export async function POST(req) {
     }
 
     const name = `${randomBytes(8).toString("hex")}.${ext}`;
-    await mkdir(UPLOADS_DIR, { recursive: true });
-    await writeFile(
-      path.join(UPLOADS_DIR, name),
-      Buffer.from(await file.arrayBuffer())
-    );
+    await prisma.upload.create({
+      data: {
+        name,
+        mime: file.type,
+        data: Buffer.from(await file.arrayBuffer()),
+      },
+    });
 
     console.info(`[admin] image uploaded ${name} by=${auth.userId}`);
     return NextResponse.json({ url: `/api/uploads/${name}` }, { status: 201 });

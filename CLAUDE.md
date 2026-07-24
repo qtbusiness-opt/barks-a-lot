@@ -8,12 +8,12 @@ seasonal events) and **online** (this app, including customer checkout).
 This dual-channel model should shape data models and UX decisions throughout
 — see "Business-Model-Specific Guidance" below.
 
-**Stack:** Next.js (App Router), React (JSX), Prisma ORM, SQLite, Docker.
+**Stack:** Next.js (App Router), React (JSX), Prisma ORM, Postgres, Docker.
 
 Scale note: this is a sole-proprietor business. Favor simple, maintainable
-solutions over enterprise-grade complexity. SQLite is fine at this scale;
-just build the Prisma layer so migrating to Postgres later is a config
-change, not a rewrite.
+solutions over enterprise-grade complexity. (The app started on SQLite and
+was switched to Postgres so it can run on Cloud Run, whose filesystem is
+ephemeral — keep the app free of local-disk state.)
 
 ---
 
@@ -90,9 +90,9 @@ a common source of "works on my machine" bugs.
   code change.
 - **`.dockerignore`**: exclude `node_modules`, `.env`, `.git`, `*.db` dev
   artifacts, and build output.
-- **SQLite persistence**: mount the SQLite file via a named volume in
-  `docker-compose.yml` — never let the DB live only inside an ephemeral
-  container layer, or data vanishes on rebuild.
+- **Postgres persistence**: compose files bundle a pinned `postgres:16`
+  service with a named volume — never let the DB live only inside an
+  ephemeral container layer, or data vanishes on rebuild.
 - **Whenever `package.json`, `prisma/schema.prisma`, or env vars change**,
   update the Dockerfile/compose file in the same commit: rerun
   `npx prisma generate` in the build stage, update `.env.example`, and bump
@@ -123,13 +123,13 @@ a common source of "works on my machine" bugs.
 
 ---
 
-## 4. Prisma + SQLite
+## 4. Prisma + Postgres
 
 - Model core entities clearly, e.g.:
   `Product`, `ProductVariant`, `Order`, `OrderItem`, `Customer`, `Event`
   (for markets/expos), with explicit relations rather than loose foreign
   keys in app code.
-- **Never edit the SQLite file directly.** All schema changes go through
+- **Never edit the database by hand.** All schema changes go through
   `npx prisma migrate dev` (local) and `prisma migrate deploy` (production/
   container startup) so history stays in version control.
 - Use a **Prisma Client singleton** pattern in Next.js (cache the client on
@@ -139,8 +139,9 @@ a common source of "works on my machine" bugs.
   partially.
 - Maintain a `seed.ts`/`seed.js` script for the current treat/bandana
   catalog so dev environments start with realistic data.
-- Keep the SQLite file path configurable via env var so it's easy to swap
-  in a Postgres connection string later without touching application code.
+- Keep the connection string in `DATABASE_URL` — local/compose use the
+  bundled Postgres service; Cloud Run uses a hosted Postgres (Neon,
+  Cloud SQL). No file-path or local-disk database state anywhere.
 
 ---
 

@@ -1,7 +1,7 @@
 # Barks-A-Lot Treats & More
 
 E-commerce storefront and admin for Barks-A-Lot: Next.js (App Router, JSX),
-Prisma + SQLite, Auth.js, Tailwind, Docker.
+Prisma + Postgres, Auth.js, Tailwind, Docker.
 
 ## Quick start
 

@@ -1,37 +1,26 @@
-import { readFile } from "fs/promises";
-import path from "path";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-const UPLOADS_DIR =
-  process.env.UPLOADS_DIR || path.join(process.cwd(), "data", "uploads");
-
-const TYPE_BY_EXT = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  webp: "image/webp",
-  gif: "image/gif",
-};
-
-// Serves admin-uploaded product images from the persistent data volume.
-// The strict name pattern (hex + known extension, set by the upload
-// route) doubles as path-traversal protection.
+// Serves admin-uploaded images from the database (Upload model). The
+// strict name pattern (hex + known extension, set by the upload route)
+// keeps lookups to values we generated ourselves.
 export async function GET(_req, { params }) {
   const { name } = await params;
 
-  const match = /^([a-f0-9]{16})\.(png|jpg|webp|gif)$/.exec(name ?? "");
+  const match = /^[a-f0-9]{16}\.(png|jpg|webp|gif)$/.exec(name ?? "");
   if (!match) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  try {
-    const file = await readFile(path.join(UPLOADS_DIR, name));
-    return new NextResponse(file, {
-      headers: {
-        "Content-Type": TYPE_BY_EXT[match[2]],
-        "Cache-Control": "public, max-age=31536000, immutable",
-      },
-    });
-  } catch {
+  const upload = await prisma.upload.findUnique({ where: { name } });
+  if (!upload) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  return new NextResponse(Buffer.from(upload.data), {
+    headers: {
+      "Content-Type": upload.mime,
+      "Cache-Control": "public, max-age=31536000, immutable",
+    },
+  });
 }

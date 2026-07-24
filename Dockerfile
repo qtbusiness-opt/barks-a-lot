@@ -24,7 +24,9 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ARG DATABASE_URL="file:/app/data/app.db"
+# prisma generate and next build never connect to the database, but a
+# well-formed URL keeps anything that parses it at build time happy.
+ARG DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV DATABASE_URL=${DATABASE_URL}
 # NEXT_PUBLIC_* values are inlined into the client bundle at build time,
 # so the Maps key must be present here — runtime env is too late for
@@ -58,7 +60,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/scripts ./scripts
 
-RUN mkdir -p /app/data && chown -R nextjs:nodejs /app
+RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
@@ -66,7 +68,9 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-ENV DATABASE_URL="file:/app/data/app.db"
+# DATABASE_URL has no default: it must point at your Postgres instance
+# (compose provides it; on Cloud Run set it on the service). The app
+# exits at boot with a clear error when it's missing.
 ENV JWT_SECRET="change-this-in-production"
 
 CMD ["node", "scripts/start.js"]
