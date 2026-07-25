@@ -21,12 +21,12 @@ The message above is generic. The actual failure reason is in the logs:
 Cloud Run → your service → **Logs** tab (or Cloud Logging). Look at the
 first lines from the crashed revision. What you find decides the fix:
 
-| Log says                                                     | Cause                                                                          | Fix                                                                                                  |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `exec format error`                                          | Image built on an Apple Silicon Mac (ARM)                                      | Build with `docker build --platform linux/amd64 …` or let Cloud Build do it (`gcloud builds submit`) |
-| `DATABASE_URL is not set` / `P1001 Can't reach database server` | Postgres connection not configured or unreachable | See "Database" below |
-| `Memory limit … exceeded` | Instance too small | Boot peaks ~131 MiB, so the 512 MiB default is fine — only raise if you see this line |
-| Nothing at all / `npm` lines then exit | Wrong build type or start command | See "Build type" below |
+| Log says                                                        | Cause                                             | Fix                                                                                                  |
+| --------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `exec format error`                                             | Image built on an Apple Silicon Mac (ARM)         | Build with `docker build --platform linux/amd64 …` or let Cloud Build do it (`gcloud builds submit`) |
+| `DATABASE_URL is not set` / `P1001 Can't reach database server` | Postgres connection not configured or unreachable | See "Database" below                                                                                 |
+| `Memory limit … exceeded`                                       | Instance too small                                | Boot peaks ~131 MiB, so the 512 MiB default is fine — only raise if you see this line                |
+| Nothing at all / `npm` lines then exit                          | Wrong build type or start command                 | See "Build type" below                                                                               |
 
 ## Build type: use the Dockerfile
 
@@ -97,6 +97,22 @@ now lives in Postgres, so multiple instances are safe. The login rate
 limiter is per-instance memory, so leaving **max instances = 1** keeps
 it strict (and is plenty of capacity for this store); raising it only
 loosens rate limiting, nothing else.
+
+## Gating a staging/dev site (Basic Auth)
+
+To keep a dev deployment (e.g. dev.barks-a-lot.com) private without GCP
+accounts: leave the Cloud Run service public (Ingress "All",
+"Allow unauthenticated") and set **both** of these env vars on the dev
+service:
+
+- `BASIC_AUTH_USER`
+- `BASIC_AUTH_PASSWORD` (use a Secret Manager secret)
+
+Every page then prompts a standard browser login popup; share the
+credentials with whoever needs access. `/api/health` stays open so
+health probes keep passing. **Do not set these on the production
+service** — leaving them unset turns the gate off, keeping the store
+public.
 
 ## Known-good manual deploy
 
