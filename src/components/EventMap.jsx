@@ -1,16 +1,26 @@
 "use client";
 
-const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+import { useEffect, useState } from "react";
+import { getPublicConfig } from "@/lib/public-config";
 
-// Map of an event's location. With a Google Maps API key configured this
-// embeds an interactive map; without one it falls back to an
-// open-in-Google-Maps link so the feature still works.
+// Map of an event's location. With a Google Maps API key configured
+// (resolved at runtime via /api/config) this embeds an interactive map;
+// without one it falls back to an open-in-Google-Maps link so the
+// feature still works.
 export default function EventMap({ location }) {
+  // null = key still resolving; "" = no key configured.
+  const [mapsKey, setMapsKey] = useState(null);
+
+  useEffect(() => {
+    getPublicConfig().then((cfg) => setMapsKey(cfg.mapsApiKey));
+  }, []);
+
   if (!location) return null;
+  if (mapsKey === null) return null;
 
   const query = encodeURIComponent(location);
 
-  if (!MAPS_KEY) {
+  if (!mapsKey) {
     return (
       <a
         href={`https://www.google.com/maps/search/?api=1&query=${query}`}
@@ -26,7 +36,7 @@ export default function EventMap({ location }) {
   return (
     <iframe
       title={`Map of ${location}`}
-      src={`https://www.google.com/maps/embed/v1/place?key=${MAPS_KEY}&q=${query}`}
+      src={`https://www.google.com/maps/embed/v1/place?key=${mapsKey}&q=${query}`}
       className="mt-4 w-full h-64 sm:h-80 rounded-xl border-0"
       loading="lazy"
       allowFullScreen
