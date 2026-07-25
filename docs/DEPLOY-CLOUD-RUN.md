@@ -122,10 +122,32 @@ gcloud run deploy barks-a-lot \
   --image gcr.io/PROJECT_ID/barks-a-lot \
   --region us-west1 \
   --max-instances 1 \
-  --set-env-vars TZ=America/Boise,SQUARE_ENV=sandbox,APP_URL=https://your-url \
-  --set-secrets DATABASE_URL=database-url:latest,AUTH_SECRET=auth-secret:latest,ADMIN_PASSWORD=admin-password:latest \
+  --update-env-vars TZ=America/Boise,SQUARE_ENV=sandbox,APP_URL=https://your-url \
+  --update-secrets DATABASE_URL=database-url:latest,AUTH_SECRET=auth-secret:latest,ADMIN_PASSWORD=admin-password:latest \
   --allow-unauthenticated
 ```
 
 (Defaults are fine for memory/CPU; add the rest of the env vars as you
 enable email and payments.)
+
+**Use `--update-env-vars`, never `--set-env-vars`.** The `set` variant
+REPLACES the service's entire env-var list with only the ones you pass —
+silently wiping everything else (a classic cause of "my Square/Maps keys
+vanished"). `update` merges.
+
+## Troubleshooting: /api/config returns empty values
+
+`/api/config` echoes what the running container actually has in its
+environment, so `{"squareAppId":"", ...}` means the vars aren't on the
+**serving revision**:
+
+1. Cloud Run → the service → **Revisions** → open the revision carrying
+   100% of traffic → **Variables & Secrets**. Revisions are immutable —
+   check this one specifically, not what you remember setting.
+2. If the vars are missing: **Edit & Deploy New Revision** → add them →
+   Deploy, then re-check `/api/config`.
+3. Common ways they go missing: they were set on a _different_ service
+   (setting up continuous deployment often creates a new one); a deploy
+   ran with `--set-env-vars` (see above); or the CD pipeline replaces
+   the whole service spec each push — if the vars vanish again after the
+   next auto-deploy, the pipeline is the culprit.
