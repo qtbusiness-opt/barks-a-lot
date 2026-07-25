@@ -24,6 +24,8 @@ services:
       - TZ=${TZ:-America/Boise}
       - EMAIL_FROM=${EMAIL_FROM:-}
       - APP_URL=${APP_URL:-}
+      - BASIC_AUTH_USER=${BASIC_AUTH_USER:-}
+      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy
