@@ -29,17 +29,12 @@ COPY . .
 ARG DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV DATABASE_URL=${DATABASE_URL}
 # Browser-side config (Maps key, Square app/location ids) is served at
-# runtime via /api/config, so these build args are OPTIONAL — set the
-# same names as runtime env vars on the deployment instead. Passing them
-# here additionally inlines them into the client bundle as a fallback.
-# They're browser-exposed by design; the SQUARE_ACCESS_TOKEN secret
-# stays runtime-only and is never baked in.
-ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""
-ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-ARG NEXT_PUBLIC_SQUARE_APP_ID=""
-ENV NEXT_PUBLIC_SQUARE_APP_ID=${NEXT_PUBLIC_SQUARE_APP_ID}
-ARG NEXT_PUBLIC_SQUARE_LOCATION_ID=""
-ENV NEXT_PUBLIC_SQUARE_LOCATION_ID=${NEXT_PUBLIC_SQUARE_LOCATION_ID}
+# RUNTIME via /api/config — set them as env vars on the deployment, not
+# here. Deliberately NO NEXT_PUBLIC_* ARG/ENV in this stage: defining
+# them during `next build` (even empty) makes the compiler inline the
+# build-time value into the bundles, permanently freezing runtime reads.
+# The SQUARE_ACCESS_TOKEN secret stays runtime-only and is never baked
+# in.
 RUN npx prisma generate
 RUN npm run build
 
