@@ -457,7 +457,7 @@ export default function CheckoutPage() {
       // step so the customer can re-enter or change the card.
       if (err.response?.status === 402) {
         setPayment(null);
-        if (SQUARE_APP_ID) setCardStatus("loading");
+        if (square?.appId) setCardStatus("loading");
         setStep(0);
         window.scrollTo({ top: 0 });
       }
@@ -944,7 +944,7 @@ export default function CheckoutPage() {
               disabled={
                 submitting ||
                 (fulfillmentType === "pickup" && !chosenEvent) ||
-                (SQUARE_APP_ID && !payment)
+                (Boolean(square?.appId) && !payment)
               }
               className="sm:flex-[2] bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
             >
