@@ -68,8 +68,11 @@ The browser-side values — `NEXT_PUBLIC_SQUARE_APP_ID`,
 `NEXT_PUBLIC_SQUARE_LOCATION_ID`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — are
 served to the browser at **runtime** via `/api/config`, so set them as
 normal service env vars like everything above; no rebuild needed when
-they change. (They also work as Docker build args for static inlining,
-but that's optional.)
+they change. (The unprefixed names `SQUARE_APP_ID`, `SQUARE_LOCATION_ID`,
+`GOOGLE_MAPS_API_KEY` work too.) Never pass them as Docker build args or
+have them in a `.env` during `next build` — defining a `NEXT_PUBLIC_*`
+variable at build time makes the compiler freeze that build-time value
+into the bundle.
 
 ## Database: hosted Postgres required
 
