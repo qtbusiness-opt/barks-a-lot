@@ -13,6 +13,13 @@ module.exports = [
     ]),
     itemDetails:
       "Whole wheat flour, natural peanut butter (no xylitol), eggs, honey, baking powder. Grain-free variant: chickpea flour instead of wheat.",
+    nutritionFacts: JSON.stringify([
+      { label: "Crude Protein (min)", value: "9%" },
+      { label: "Crude Fat (min)", value: "8%" },
+      { label: "Crude Fiber (max)", value: "4%" },
+      { label: "Moisture (max)", value: "12%" },
+      { label: "Calories", value: "32 kcal per biscuit" },
+    ]),
     category: "treats",
     featured: true,
     variants: [
@@ -67,6 +74,13 @@ module.exports = [
     quantity: 30,
     price: 16.99,
     image: "/images/products/chicken-jerky.svg",
+    nutritionFacts: JSON.stringify([
+      { label: "Crude Protein (min)", value: "68%" },
+      { label: "Crude Fat (min)", value: "4%" },
+      { label: "Crude Fiber (max)", value: "1%" },
+      { label: "Moisture (max)", value: "18%" },
+      { label: "Calories", value: "45 kcal per strip" },
+    ]),
     category: "treats",
     featured: true,
   },

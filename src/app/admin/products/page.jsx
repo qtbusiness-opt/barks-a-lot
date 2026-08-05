@@ -16,10 +16,104 @@ const EMPTY_FORM = {
   image: "/images/products/squeaky-bone.svg",
   images: [],
   itemDetails: "",
+  nutritionFacts: [],
   category: "treats",
   quantity: "",
   featured: false,
 };
+
+const MAX_NUTRITION_ROWS = 30;
+
+// A half-filled row would fail server validation and sink the whole
+// save, so incomplete rows are dropped on the way out instead.
+const cleanNutrition = (rows) =>
+  rows
+    .map((r) => ({ label: r.label.trim(), value: r.value.trim() }))
+    .filter((r) => r.label !== "" && r.value !== "");
+
+// Suggested starting rows for a dog treat — the guaranteed analysis
+// most treat labels carry. Values are left blank for the admin to fill.
+const NUTRITION_STARTER = [
+  { label: "Crude Protein (min)", value: "" },
+  { label: "Crude Fat (min)", value: "" },
+  { label: "Crude Fiber (max)", value: "" },
+  { label: "Moisture (max)", value: "" },
+];
+
+// Repeatable label/value rows rendered as the Nutrition Facts table on
+// the product page. Only offered for categories that show an
+// Ingredients section — the app's "this is edible" flag.
+function NutritionFactsFields({ rows, onChange, idSuffix }) {
+  const setRow = (index, field, value) =>
+    onChange(rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+
+  return (
+    <fieldset>
+      <legend className="block text-sm font-medium text-gray-700 mb-1">
+        Nutrition Facts (optional)
+      </legend>
+      {rows.length > 0 && (
+        <div className="space-y-2 mb-2">
+          {rows.map((row, i) => (
+            <div key={i} className="flex gap-2 items-start">
+              <input
+                type="text"
+                value={row.label}
+                onChange={(e) => setRow(i, "label", e.target.value)}
+                aria-label={`Nutrient name, row ${i + 1}`}
+                placeholder="Crude Protein (min)"
+                maxLength={80}
+                className={`${inputClass} flex-[3] py-2`}
+              />
+              <input
+                type="text"
+                value={row.value}
+                onChange={(e) => setRow(i, "value", e.target.value)}
+                aria-label={`Amount, row ${i + 1}`}
+                placeholder="24%"
+                maxLength={80}
+                className={`${inputClass} flex-1 py-2`}
+              />
+              <button
+                type="button"
+                onClick={() => onChange(rows.filter((_, j) => j !== i))}
+                aria-label={`Remove nutrition row ${i + 1}`}
+                className="shrink-0 h-11 w-11 rounded-lg border border-red-300 text-red-500 hover:bg-red-500 hover:text-white transition"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {rows.length < MAX_NUTRITION_ROWS && (
+          <button
+            type="button"
+            onClick={() => onChange([...rows, { label: "", value: "" }])}
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
+          >
+            + Add row
+          </button>
+        )}
+        {rows.length === 0 && (
+          <button
+            type="button"
+            onClick={() => onChange(NUTRITION_STARTER.map((r) => ({ ...r })))}
+            id={`nutrition-starter-${idSuffix}`}
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-100 transition"
+          >
+            Use guaranteed analysis
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-gray-500 mt-1">
+        Shown as a table on the product page. Rows missing a name or an amount
+        are dropped when you save.
+      </p>
+    </fieldset>
+  );
+}
 
 const stockOf = (p) =>
   p.variants.length > 0
@@ -181,6 +275,34 @@ function ProductFields({ form, update, variantProduct, categories }) {
         </p>
       </div>
 
+      {showsIngredients ? (
+        <NutritionFactsFields
+          rows={form.nutritionFacts}
+          onChange={(rows) => update("nutritionFacts", rows)}
+          idSuffix={variantProduct ? "edit" : "new"}
+        />
+      ) : (
+        form.nutritionFacts.length > 0 && (
+          // Recategorized to a non-edible category: the rows are kept
+          // (never silently destroyed) but hidden from the storefront,
+          // so offer a way to clear them rather than stranding them.
+          <div className="bg-yellow-50 rounded-lg p-3">
+            <p className="text-xs text-yellow-800">
+              This product has {form.nutritionFacts.length} nutrition fact
+              {form.nutritionFacts.length === 1 ? "" : "s"}, hidden because this
+              category has no Ingredients section.
+            </p>
+            <button
+              type="button"
+              onClick={() => update("nutritionFacts", [])}
+              className="mt-2 min-h-11 px-3 rounded-lg text-sm font-medium border border-yellow-400 text-yellow-800 hover:bg-yellow-100 transition"
+            >
+              Clear nutrition facts
+            </button>
+          </div>
+        )
+      )}
+
       <label className="flex items-center gap-3 min-h-11 cursor-pointer">
         <input
           type="checkbox"
@@ -210,6 +332,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
       image: product.image,
       images: product.images ?? [],
       itemDetails: product.itemDetails ?? "",
+      nutritionFacts: product.nutritionFacts ?? [],
       category: product.category,
       quantity: String(product.quantity),
       featured: product.featured,
@@ -233,6 +356,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
         image: form.image,
         images: form.images,
         itemDetails: form.itemDetails,
+        nutritionFacts: cleanNutrition(form.nutritionFacts),
         category: form.category,
         ...(variantProduct ? {} : { quantity: Number(form.quantity) }),
         featured: form.featured,
@@ -380,6 +504,7 @@ export default function AdminProductsPage() {
         image: form.image,
         images: form.images,
         itemDetails: form.itemDetails,
+        nutritionFacts: cleanNutrition(form.nutritionFacts),
         category: form.category,
         quantity: Number(form.quantity),
         featured: form.featured,
