@@ -3,8 +3,10 @@
 // from listings entirely (regular products stay visible as "out of stock").
 
 export function isWithinWindow(product, now = new Date()) {
-  if (product.availableFrom && now < new Date(product.availableFrom)) return false;
-  if (product.availableUntil && now > new Date(product.availableUntil)) return false;
+  if (product.availableFrom && now < new Date(product.availableFrom))
+    return false;
+  if (product.availableUntil && now > new Date(product.availableUntil))
+    return false;
   return true;
 }
 

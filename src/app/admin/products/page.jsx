@@ -21,7 +21,6 @@ const EMPTY_FORM = {
   featured: false,
 };
 
-
 const stockOf = (p) =>
   p.variants.length > 0
     ? p.variants.reduce((sum, v) => sum + v.quantity, 0)
@@ -33,7 +32,9 @@ function ProductFields({ form, update, variantProduct, categories }) {
   return (
     <>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Name
+        </label>
         <input
           type="text"
           value={form.name}
@@ -91,7 +92,9 @@ function ProductFields({ form, update, variantProduct, categories }) {
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Category
+        </label>
         <select
           value={form.category}
           onChange={(e) => update("category", e.target.value)}
@@ -104,7 +107,10 @@ function ProductFields({ form, update, variantProduct, categories }) {
           ))}
         </select>
       </div>
-      <ImageUpload value={form.image} onChange={(url) => update("image", url)} />
+      <ImageUpload
+        value={form.image}
+        onChange={(url) => update("image", url)}
+      />
 
       <div>
         <span className="block text-sm font-medium text-gray-700 mb-1">
@@ -122,7 +128,10 @@ function ProductFields({ form, update, variantProduct, categories }) {
                 <button
                   type="button"
                   onClick={() =>
-                    update("images", form.images.filter((_, j) => j !== i))
+                    update(
+                      "images",
+                      form.images.filter((_, j) => j !== i)
+                    )
                   }
                   aria-label={`Remove additional photo ${i + 1}`}
                   className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center hover:bg-red-600"
@@ -150,10 +159,7 @@ function ProductFields({ form, update, variantProduct, categories }) {
           htmlFor={`item-details-${variantProduct ? "edit" : "new"}`}
           className="block text-sm font-medium text-gray-700 mb-1"
         >
-          {showsIngredients
-            ? "Ingredients"
-            : "Item Details"}{" "}
-          (optional)
+          {showsIngredients ? "Ingredients" : "Item Details"} (optional)
         </label>
         <textarea
           id={`item-details-${variantProduct ? "edit" : "new"}`}
@@ -242,7 +248,8 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
   };
 
   const remove = async () => {
-    if (!window.confirm(`Delete "${product.name}"? This can't be undone.`)) return;
+    if (!window.confirm(`Delete "${product.name}"? This can't be undone.`))
+      return;
     onError("");
     try {
       await api.delete(`/admin/products/${product.id}`);
@@ -261,12 +268,15 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
           className="w-14 h-14 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
         />
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-[#2A4A52] truncate">{product.name}</p>
+          <p className="font-semibold text-[#2A4A52] truncate">
+            {product.name}
+          </p>
           <p className="text-xs text-gray-500 capitalize">
             {product.category}
             {product.featured && " · Featured"}
             {product.limitedQuantity != null && " · Limited drop"}
-            {product.variants.length > 0 && ` · ${product.variants.length} options`}
+            {product.variants.length > 0 &&
+              ` · ${product.variants.length} options`}
           </p>
           <p
             className={`text-xs font-medium ${
@@ -296,7 +306,10 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
       </div>
 
       {editing && form && (
-        <form onSubmit={save} className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+        <form
+          onSubmit={save}
+          className="mt-4 pt-4 border-t border-gray-100 space-y-4"
+        >
           <ProductFields
             form={form}
             update={update}
@@ -384,7 +397,12 @@ export default function AdminProductsPage() {
   return (
     <AdminShell title="Products" backTo="/admin">
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
+          {error}
+        </p>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Creation form: the fields that make up a product card. */}
@@ -394,7 +412,12 @@ export default function AdminProductsPage() {
         >
           <h2 className="text-xl font-semibold text-[#2A4A52]">New Product</h2>
           {success && (
-            <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg">{success}</p>
+            <p
+              role="status"
+              className="text-green-700 text-sm bg-green-50 p-3 rounded-lg"
+            >
+              {success}
+            </p>
           )}
           <ProductFields
             form={form}
@@ -403,8 +426,8 @@ export default function AdminProductsPage() {
             categories={categories}
           />
           <p className="text-xs text-gray-500">
-            Stock status is set automatically: products with quantity 0 show
-            as out of stock.
+            Stock status is set automatically: products with quantity 0 show as
+            out of stock.
           </p>
           <button
             type="submit"

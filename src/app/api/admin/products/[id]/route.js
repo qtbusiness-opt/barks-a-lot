@@ -66,7 +66,8 @@ export async function PATCH(req, { params }) {
       const data = { ...fields };
       // Arrays/blank strings map to the stored representation.
       if (fields.images !== undefined) {
-        data.images = fields.images.length > 0 ? JSON.stringify(fields.images) : null;
+        data.images =
+          fields.images.length > 0 ? JSON.stringify(fields.images) : null;
       }
       if (fields.itemDetails !== undefined) {
         data.itemDetails = fields.itemDetails || null;
