@@ -11,8 +11,7 @@ import { useCart } from "@/context/CartContext";
 function GalleryColumn({ product, imageIndex, setImageIndex }) {
   const gallery = [product.image, ...(product.images ?? [])];
   const current = gallery[imageIndex] ?? gallery[0];
-  const advance = () =>
-    setImageIndex((i) => (i + 1) % gallery.length);
+  const advance = () => setImageIndex((i) => (i + 1) % gallery.length);
 
   if (gallery.length <= 1) {
     return (
@@ -65,11 +64,51 @@ function GalleryColumn({ product, imageIndex, setImageIndex }) {
   );
 }
 
+// Nutrition facts for edible products, as a simple two-column table.
+// Row headers carry the labels so screen readers announce "Crude Protein
+// (min), 24%" instead of reading two disconnected cells.
+function NutritionTable({ rows }) {
+  return (
+    <div className="mt-6 bg-white rounded-xl shadow-sm p-4 sm:p-6">
+      <h2 className="text-lg font-semibold text-[#2A4A52] mb-3">
+        Nutrition Facts
+      </h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm tabular-nums">
+          <caption className="sr-only">
+            Nutrition facts, per guaranteed analysis
+          </caption>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr
+                key={`${row.label}-${i}`}
+                className="border-b border-gray-100 last:border-0"
+              >
+                <th
+                  scope="row"
+                  className="py-2 pr-4 text-left font-medium text-gray-700"
+                >
+                  {row.label}
+                </th>
+                <td className="py-2 text-right text-[#2A4A52] whitespace-nowrap">
+                  {row.value}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function variantLabel(variant) {
   // attributes is a JSON string of tags, e.g. {"size":"small","pattern":"plaid"}
   try {
     const attrs = JSON.parse(variant.attributes || "{}");
-    const dietary = Array.isArray(attrs.dietary) ? ` (${attrs.dietary.join(", ")})` : "";
+    const dietary = Array.isArray(attrs.dietary)
+      ? ` (${attrs.dietary.join(", ")})`
+      : "";
     return `${variant.name}${dietary}`;
   } catch {
     return variant.name;
@@ -103,9 +142,9 @@ export default function ProductDetailPage() {
 
   const hasVariants = product.variants?.length > 0;
   const variant = hasVariants
-    ? product.variants.find((v) => v.id === variantId) ?? null
+    ? (product.variants.find((v) => v.id === variantId) ?? null)
     : null;
-  const price = variant ? variant.price ?? product.price : product.price;
+  const price = variant ? (variant.price ?? product.price) : product.price;
   // Availability is boolean-only on the storefront; exact counts live on
   // the admin side.
   const inStock = hasVariants
@@ -132,7 +171,10 @@ export default function ProductDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto safe-x py-6 sm:py-10">
-      <Link href="/products" className="inline-flex items-center min-h-11 text-[#4A7C8A] hover:underline mb-2 sm:mb-6">
+      <Link
+        href="/products"
+        className="inline-flex items-center min-h-11 text-[#4A7C8A] hover:underline mb-2 sm:mb-6"
+      >
         &larr; Back to Products
       </Link>
 
@@ -147,7 +189,9 @@ export default function ProductDetailPage() {
           <span className="text-sm text-[#4A7C8A] font-medium uppercase tracking-wide">
             {product.category}
           </span>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mt-2">{product.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mt-2">
+            {product.name}
+          </h1>
 
           {product.limitedQuantity != null && (
             <p className="inline-block bg-[#C8722A] text-white text-sm font-semibold px-3 py-1 rounded-full mt-2">
@@ -163,11 +207,13 @@ export default function ProductDetailPage() {
               {!product.available
                 ? "Not currently available"
                 : inStock
-                ? "In Stock"
-                : "Out of Stock"}
+                  ? "In Stock"
+                  : "Out of Stock"}
             </span>
           </p>
-          <p className="text-gray-600 mt-4 leading-relaxed">{product.description}</p>
+          <p className="text-gray-600 mt-4 leading-relaxed">
+            {product.description}
+          </p>
 
           {hasVariants && (
             <fieldset className="mt-6">
@@ -193,7 +239,9 @@ export default function ProductDetailPage() {
                         onChange={() => setVariantId(v.id)}
                         disabled={!v.inStock}
                       />
-                      <span className="text-sm font-medium">{variantLabel(v)}</span>
+                      <span className="text-sm font-medium">
+                        {variantLabel(v)}
+                      </span>
                     </span>
                     <span className="text-sm text-gray-600">
                       ${(v.price ?? product.price).toFixed(2)}
@@ -216,7 +264,9 @@ export default function ProductDetailPage() {
               className="border border-gray-300 rounded-lg px-3 py-2 min-h-11 text-base sm:text-sm"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                <option key={n} value={n}>{n}</option>
+                <option key={n} value={n}>
+                  {n}
+                </option>
               ))}
             </select>
           </div>
@@ -233,10 +283,10 @@ export default function ProductDetailPage() {
             {!product.available
               ? "Not Available"
               : !inStock
-              ? "Out of Stock"
-              : hasVariants && !variant
-              ? "Choose an Option"
-              : "Add to Cart"}
+                ? "Out of Stock"
+                : hasVariants && !variant
+                  ? "Choose an Option"
+                  : "Add to Cart"}
           </button>
 
           {/* The category's admin-set toggle decides the flavor: an
@@ -261,6 +311,14 @@ export default function ProductDetailPage() {
               )}
             </div>
           )}
+
+          {/* Same edible-category gate as the Ingredients section, so a
+              product moved to a non-food category doesn't keep showing a
+              nutrition panel (its rows are preserved, just hidden). */}
+          {product.categoryShowsIngredients &&
+            product.nutritionFacts?.length > 0 && (
+              <NutritionTable rows={product.nutritionFacts} />
+            )}
         </div>
       </div>
     </div>

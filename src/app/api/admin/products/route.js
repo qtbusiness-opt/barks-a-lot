@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { parseImages } from "@/lib/catalog";
+import { adminProduct, nutritionRowSchema } from "@/lib/catalog";
 
 // The fields that make up a product card. inStock is derived from
 // quantity rather than trusted from the client. Categories are
@@ -16,6 +16,8 @@ const productSchema = z.object({
   images: z.array(z.string().trim().min(1).max(300)).max(8).default([]),
   // Ingredients (treats/food) or item details (everything else).
   itemDetails: z.string().trim().max(5000).optional(),
+  // Nutrition facts table rows, for edible categories.
+  nutritionFacts: z.array(nutritionRowSchema).max(30).default([]),
   category: z.string().trim().min(1).max(60),
   quantity: z.number().int().min(0).max(100000),
   featured: z.boolean().default(false),
@@ -34,9 +36,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({
-    products: products.map((p) => ({ ...p, images: parseImages(p) })),
-  });
+  return NextResponse.json({ products: products.map(adminProduct) });
 }
 
 export async function POST(req) {
@@ -65,12 +65,14 @@ export async function POST(req) {
       );
     }
 
-    const { images, itemDetails, ...rest } = data;
+    const { images, itemDetails, nutritionFacts, ...rest } = data;
     const product = await prisma.product.create({
       data: {
         ...rest,
         images: images.length > 0 ? JSON.stringify(images) : null,
         itemDetails: itemDetails || null,
+        nutritionFacts:
+          nutritionFacts.length > 0 ? JSON.stringify(nutritionFacts) : null,
         inStock: data.quantity > 0,
       },
       include: { variants: true },
@@ -78,7 +80,7 @@ export async function POST(req) {
 
     console.info(`[admin] product created id=${product.id} by=${auth.userId}`);
     return NextResponse.json(
-      { product: { ...product, images: parseImages(product) } },
+      { product: adminProduct(product) },
       { status: 201 }
     );
   } catch (err) {

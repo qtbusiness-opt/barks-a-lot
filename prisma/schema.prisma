@@ -65,6 +65,13 @@ model Product {
   // Ingredients for treats/food, general item details for everything
   // else — the label is chosen by category in the UI.
   itemDetails String?
+  // Nutrition facts for edible products, as a JSON-encoded array of
+  // {label, value} rows (e.g. [{"label":"Crude Protein (min)",
+  // "value":"24%"}]) rendered as a table on the product page. Only
+  // offered for categories with showsIngredients — same gate as the
+  // Ingredients section, so "edible" stays one admin-managed flag
+  // rather than a hardcoded category name.
+  nutritionFacts String?
   category    String
   inStock     Boolean     @default(true)
   featured    Boolean     @default(false)
