@@ -21,12 +21,13 @@ The message above is generic. The actual failure reason is in the logs:
 Cloud Run → your service → **Logs** tab (or Cloud Logging). Look at the
 first lines from the crashed revision. What you find decides the fix:
 
-| Log says                                                        | Cause                                             | Fix                                                                                                  |
-| --------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `exec format error`                                             | Image built on an Apple Silicon Mac (ARM)         | Build with `docker build --platform linux/amd64 …` or let Cloud Build do it (`gcloud builds submit`) |
-| `DATABASE_URL is not set` / `P1001 Can't reach database server` | Postgres connection not configured or unreachable | See "Database" below                                                                                 |
-| `Memory limit … exceeded`                                       | Instance too small                                | Boot peaks ~131 MiB, so the 512 MiB default is fine — only raise if you see this line                |
-| Nothing at all / `npm` lines then exit                          | Wrong build type or start command                 | See "Build type" below                                                                               |
+| Log says                                                         | Cause                                             | Fix                                                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `exec format error`                                              | Image built on an Apple Silicon Mac (ARM)         | Build with `docker build --platform linux/amd64 …` or let Cloud Build do it (`gcloud builds submit`) |
+| `DATABASE_URL is not set` / `P1001 Can't reach database server`  | Postgres connection not configured or unreachable | See "Database" below                                                                                 |
+| `P1002 ... Timed out trying to acquire a postgres advisory lock` | Migrations ran through a connection pooler        | Handled automatically — see "Pooled vs direct" below; if it persists set `DIRECT_DATABASE_URL`       |
+| `Memory limit … exceeded`                                        | Instance too small                                | Boot peaks ~131 MiB, so the 512 MiB default is fine — only raise if you see this line                |
+| Nothing at all / `npm` lines then exit                           | Wrong build type or start command                 | See "Build type" below                                                                               |
 
 ## Build type: use the Dockerfile
 
@@ -94,6 +95,32 @@ Good options:
 
 Local dev doesn't need any of this: `docker compose up` now bundles a
 `postgres:16` service with a persistent named volume.
+
+### Pooled vs direct connections
+
+Use Neon's **pooled** connection string (the host with `-pooler` in it)
+for `DATABASE_URL`. Serverless instances open and drop connections
+constantly, so pooling is what keeps Postgres from running out of
+backends.
+
+Prisma Migrate, though, cannot use a pooler: it takes a session-level
+advisory lock to serialize concurrent deploys, and PgBouncer in
+transaction mode won't keep a session pinned, so the lock never lands
+and startup dies with:
+
+```
+Error: P1002 ... Timed out trying to acquire a postgres advisory lock
+```
+
+`scripts/start.js` handles this: it runs migrations against the direct
+host (Neon's pooled host minus `-pooler`) while the app keeps using the
+pooled one. Nothing to configure. If your provider names its direct host
+differently, set **`DIRECT_DATABASE_URL`** to it and that wins.
+
+Two related notes: migrations are retried a few times before the
+container gives up, so a cold serverless database waking up doesn't fail
+a deploy; and `npm run db:migrate` locally should always point at a
+direct (or plain local) connection, never a pooler.
 
 One note on scaling: sessions are stateless (JWT cookies) and the data
 now lives in Postgres, so multiple instances are safe. The login rate
