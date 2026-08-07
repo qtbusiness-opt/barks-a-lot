@@ -6,6 +6,7 @@ const { PrismaClient } = require("@prisma/client");
 const seedProducts = require("./seed-products");
 const seedAdmin = require("./seed-admin");
 const seedEvents = require("./seed-events");
+const { directDatabaseUrl, redactDatabaseUrl } = require("./db-url");
 
 // Run from the app root no matter where the process was launched from
 // (Docker CMD, `npm start`, or a buildpack launcher).
@@ -47,11 +48,38 @@ function resolveServer() {
   process.exit(1);
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Migrations run against the direct (non-pooled) connection — see
+// db-url.js. A cold serverless database can also refuse the first
+// connection while it wakes, so a failed attempt is retried before the
+// container gives up and the platform kills a healthy deploy.
+async function runMigrations(migrationUrl) {
+  const attempts = 3;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      execSync("node node_modules/prisma/build/index.js migrate deploy", {
+        stdio: "inherit",
+        env: { ...process.env, DATABASE_URL: migrationUrl },
+      });
+      return;
+    } catch (err) {
+      if (attempt === attempts) throw err;
+      const delay = 2000 * attempt;
+      console.warn(
+        `Migration attempt ${attempt} of ${attempts} failed; retrying in ${delay}ms...`
+      );
+      await sleep(delay);
+    }
+  }
+}
+
 async function main() {
   const env = process.env.NODE_ENV || "development";
   const dbUrl = process.env.DATABASE_URL;
   console.log(`Starting Barks-A-Lot [${env}]...`);
-  console.log(`Database: ${dbUrl}`);
+  // Redacted: the connection string carries the database password.
+  console.log(`Database: ${redactDatabaseUrl(dbUrl)}`);
   console.log(`Port: ${process.env.PORT || 3000}`);
 
   if (!dbUrl) {
@@ -59,11 +87,15 @@ async function main() {
     process.exit(1);
   }
 
+  const migrationUrl = directDatabaseUrl(
+    dbUrl,
+    process.env.DIRECT_DATABASE_URL
+  );
   console.log("Running migrations...");
-  execSync("node node_modules/prisma/build/index.js migrate deploy", {
-    stdio: "inherit",
-    env: { ...process.env },
-  });
+  if (migrationUrl !== dbUrl) {
+    console.log(`Migrating via ${redactDatabaseUrl(migrationUrl)}`);
+  }
+  await runMigrations(migrationUrl);
 
   const prisma = new PrismaClient({ datasourceUrl: dbUrl });
   try {
