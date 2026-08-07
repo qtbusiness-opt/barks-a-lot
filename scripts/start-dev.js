@@ -4,11 +4,13 @@ const { PrismaClient } = require("@prisma/client");
 const seedProducts = require("./seed-products");
 const seedAdmin = require("./seed-admin");
 const seedEvents = require("./seed-events");
+const { redactDatabaseUrl } = require("./db-url");
 
 async function main() {
   const dbUrl = process.env.DATABASE_URL;
   console.log("Starting Barks-A-Lot [development]...");
-  console.log(`Database: ${dbUrl}`);
+  // Redacted: the connection string carries the database password.
+  console.log(`Database: ${redactDatabaseUrl(dbUrl)}`);
 
   if (!dbUrl) {
     console.error("ERROR: DATABASE_URL is not set!");
