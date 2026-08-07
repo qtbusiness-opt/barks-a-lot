@@ -536,6 +536,92 @@ test("admins can create products that appear on the storefront", async () => {
   );
 });
 
+test("nutrition facts round-trip and are gated on the edible category flag", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const rows = [
+    { label: "Crude Protein (min)", value: "24%" },
+    { label: "Crude Fat (min)", value: "12%" },
+  ];
+
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Nutrition Test Treat",
+      description: "Has a nutrition table",
+      price: 6.5,
+      image: "/images/products/squeaky-bone.svg",
+      category: "treats",
+      quantity: 4,
+      nutritionFacts: rows,
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  // Stored as JSON but handed back as a real array.
+  assert.deepEqual(created.data.product.nutritionFacts, rows);
+  const id = created.data.product.id;
+
+  // The storefront gets the parsed rows plus the category's flag.
+  const shown = await api("GET", `/products/${id}`);
+  assert.deepEqual(shown.data.product.nutritionFacts, rows);
+  assert.equal(shown.data.product.categoryShowsIngredients, true);
+
+  // A row missing its value is rejected rather than half-saved.
+  const invalid = await api("PATCH", `/admin/products/${id}`, {
+    body: { nutritionFacts: [{ label: "Crude Protein (min)", value: "" }] },
+    cookie,
+  });
+  assert.equal(invalid.status, 400);
+  const unchanged = await api("GET", `/products/${id}`);
+  assert.deepEqual(unchanged.data.product.nutritionFacts, rows);
+
+  // Omitting the field entirely leaves the table untouched.
+  const renamed = await api("PATCH", `/admin/products/${id}`, {
+    body: { name: "Nutrition Test Treat v2" },
+    cookie,
+  });
+  assert.equal(renamed.status, 200);
+  assert.deepEqual(renamed.data.product.nutritionFacts, rows);
+
+  // Moving to a category without an Ingredients section keeps the rows
+  // (never silently destroyed) but drops the storefront's flag, which is
+  // what hides the table.
+  const moved = await api("PATCH", `/admin/products/${id}`, {
+    body: { category: "toys" },
+    cookie,
+  });
+  assert.equal(moved.status, 200);
+  assert.deepEqual(moved.data.product.nutritionFacts, rows);
+  const hidden = await api("GET", `/products/${id}`);
+  assert.equal(hidden.data.product.categoryShowsIngredients, false);
+  assert.deepEqual(hidden.data.product.nutritionFacts, rows);
+
+  // An empty array clears the table.
+  const cleared = await api("PATCH", `/admin/products/${id}`, {
+    body: { nutritionFacts: [] },
+    cookie,
+  });
+  assert.equal(cleared.status, 200);
+  assert.deepEqual(cleared.data.product.nutritionFacts, []);
+
+  // Products that never had nutrition facts report an empty list, not null.
+  const plain = await api("POST", "/admin/products", {
+    body: {
+      name: "No Nutrition Treat",
+      description: "No table here",
+      price: 3.25,
+      image: "/images/products/squeaky-bone.svg",
+      category: "treats",
+      quantity: 2,
+    },
+    cookie,
+  });
+  assert.equal(plain.status, 201);
+  assert.deepEqual(plain.data.product.nutritionFacts, []);
+
+  await api("DELETE", `/admin/products/${id}`, { cookie });
+  await api("DELETE", `/admin/products/${plain.data.product.id}`, { cookie });
+});
+
 test("status changes record a notification tied to the order email", async () => {
   const email = "notify-me@test.local";
   const { data: products } = await api("GET", "/products");

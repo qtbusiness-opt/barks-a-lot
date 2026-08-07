@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { parseImages } from "@/lib/catalog";
+import { adminProduct, nutritionRowSchema } from "@/lib/catalog";
 
 // All card fields optional — PATCH applies only what was sent. inStock
 // unchecked wipes the stock: quantity goes to 0 (all variant quantities
@@ -16,6 +16,8 @@ const updateSchema = z.object({
   images: z.array(z.string().trim().min(1).max(300)).max(8).optional(),
   // "" clears the field.
   itemDetails: z.string().trim().max(5000).optional(),
+  // An empty array clears the nutrition table.
+  nutritionFacts: z.array(nutritionRowSchema).max(30).optional(),
   category: z.string().trim().min(1).max(60).optional(),
   quantity: z.number().int().min(0).max(100000).optional(),
   featured: z.boolean().optional(),
@@ -66,10 +68,17 @@ export async function PATCH(req, { params }) {
       const data = { ...fields };
       // Arrays/blank strings map to the stored representation.
       if (fields.images !== undefined) {
-        data.images = fields.images.length > 0 ? JSON.stringify(fields.images) : null;
+        data.images =
+          fields.images.length > 0 ? JSON.stringify(fields.images) : null;
       }
       if (fields.itemDetails !== undefined) {
         data.itemDetails = fields.itemDetails || null;
+      }
+      if (fields.nutritionFacts !== undefined) {
+        data.nutritionFacts =
+          fields.nutritionFacts.length > 0
+            ? JSON.stringify(fields.nutritionFacts)
+            : null;
       }
 
       if (inStock === false) {
@@ -99,9 +108,7 @@ export async function PATCH(req, { params }) {
     });
 
     console.info(`[admin] product updated id=${id} by=${auth.userId}`);
-    return NextResponse.json({
-      product: { ...product, images: parseImages(product) },
-    });
+    return NextResponse.json({ product: adminProduct(product) });
   } catch (err) {
     console.error("[admin] product update error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
