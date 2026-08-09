@@ -3,8 +3,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
-// How long before the session ends the warning appears.
-const WARN_SECONDS = 2 * 60;
+// How long before the session ends the warning appears, at most. Short
+// windows (ADMIN_SESSION_SECONDS in dev) get a proportionally shorter
+// lead time: the warning has to leave room for the renewal below, which
+// stands down while it's on screen — otherwise a small window would sit
+// permanently inside the warning band and never renew.
+const MAX_WARN_SECONDS = 2 * 60;
+const warnSecondsFor = (windowSeconds) =>
+  windowSeconds > 0
+    ? Math.max(15, Math.min(MAX_WARN_SECONDS, Math.floor(windowSeconds / 3)))
+    : MAX_WARN_SECONDS;
+
+// The session renews on real activity, but not on every twitch — at most
+// once a minute, which also bounds how far the deadline can lag behind
+// the last thing the user actually did.
+const RENEW_EVERY_SECONDS = 60;
+
+// Deliberately only things a person does. Nothing here fires on its own,
+// so a parked tab genuinely goes idle.
+const ACTIVITY_EVENTS = [
+  "pointerdown",
+  "keydown",
+  "wheel",
+  "touchstart",
+  "scroll",
+  "mousemove",
+];
 
 const mmss = (seconds) => {
   const m = Math.floor(seconds / 60);
@@ -12,18 +36,23 @@ const mmss = (seconds) => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
-// Warns before an idle session runs out and offers to keep it alive.
-// Doing nothing is a real choice: the countdown reaching zero signs the
-// user out, which is the point of a short admin session — an unattended
-// browser shouldn't stay logged in.
+// Sliding idle session: while the user is doing anything, the session
+// keeps renewing itself, so the warning below never interrupts someone
+// mid-task. It only shows up after real inactivity — and doing nothing
+// about it is a valid answer, since an unattended browser shouldn't stay
+// signed in.
 export default function SessionTimeoutModal() {
-  const { user, expiresAt, extendSession, expireSession, logout } = useAuth();
+  const { user, expiresAt, issuedAt, extendSession, expireSession, logout } =
+    useAuth();
   // Epoch seconds, ticked once a second. 0 until the first tick so the
   // server and first client render agree.
   const [now, setNow] = useState(0);
   const [extending, setExtending] = useState(false);
   const stayRef = useRef(null);
   const dialogRef = useRef(null);
+  // Refs, not state: activity fires constantly and must never re-render.
+  const lastActivity = useRef(0);
+  const lastRenewal = useRef(0);
 
   useEffect(() => {
     const tick = () => setNow(Math.floor(Date.now() / 1000));
@@ -33,11 +62,31 @@ export default function SessionTimeoutModal() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    const seconds = Math.floor(Date.now() / 1000);
+    lastActivity.current = seconds;
+    // Start the throttle now so a fresh session isn't renewed instantly.
+    lastRenewal.current = seconds;
+
+    const mark = () => {
+      lastActivity.current = Math.floor(Date.now() / 1000);
+    };
+    for (const event of ACTIVITY_EVENTS) {
+      window.addEventListener(event, mark, { passive: true });
+    }
+    return () => {
+      for (const event of ACTIVITY_EVENTS) {
+        window.removeEventListener(event, mark);
+      }
+    };
+  }, []);
+
   // Derived from the absolute deadline rather than counting down a local
   // number, so a tab that was asleep shows the truth when it wakes.
   const remaining =
     user && expiresAt && now > 0 ? Math.max(0, expiresAt - now) : null;
-  const open = remaining !== null && remaining <= WARN_SECONDS;
+  const open =
+    remaining !== null && remaining <= warnSecondsFor(expiresAt - issuedAt);
 
   const stay = useCallback(async () => {
     setExtending(true);
@@ -47,6 +96,22 @@ export default function SessionTimeoutModal() {
       setExtending(false);
     }
   }, [extendSession]);
+
+  // Slide the deadline forward while the user is active. Skipped once the
+  // warning is up: at that point they've been idle, and a stray mouse
+  // nudge shouldn't answer the question on their behalf — the whole point
+  // is to find out whether anyone is still there.
+  useEffect(() => {
+    if (!user || !expiresAt || now === 0 || open) return;
+    const activeRecently = now - lastActivity.current <= RENEW_EVERY_SECONDS;
+    const throttled = now - lastRenewal.current < RENEW_EVERY_SECONDS;
+    if (!activeRecently || throttled) return;
+
+    lastRenewal.current = now;
+    // A session that already lapsed can't be renewed — the server says
+    // so, and the usual unauthenticated handling takes it from there.
+    Promise.resolve(extendSession()).catch(() => {});
+  }, [now, user, expiresAt, open, extendSession]);
 
   // Out of time — end it here rather than waiting for the next session
   // refetch, so the sign-out lands when the countdown says it will.

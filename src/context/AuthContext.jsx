@@ -182,8 +182,10 @@ function AuthState({ children }) {
         login,
         register,
         logout,
-        // Epoch seconds; drives the expiry warning countdown.
+        // Epoch seconds; together these give the idle deadline and the
+        // length of the window, which drive the expiry warning.
         expiresAt: session?.user?.expiresAt ?? null,
+        issuedAt: session?.user?.issuedAt ?? null,
         extendSession,
         expireSession,
       }}
