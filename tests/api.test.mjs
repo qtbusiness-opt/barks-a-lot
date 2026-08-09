@@ -2075,6 +2075,62 @@ test("activity log records logins and errors; admin can view the breakdown", asy
   assert.ok(errorsOnly.data.events.every((e) => e.category === "error"));
 });
 
+test("abandoned carts are logged for analytics and attributed to the session", async () => {
+  const items = [
+    { name: "Peanut Butter Biscuits", quantity: 2, price: 12.99 },
+    { name: "Chicken Jerky Strips", quantity: 1, price: 16.99 },
+  ];
+
+  // Garbage in is rejected — this endpoint is written to by the browser.
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const empty = await api("POST", "/cart/abandoned", {
+    body: { reason: "signed_out", items: [] },
+    cookie,
+  });
+  assert.equal(empty.status, 400);
+
+  const badReason = await api("POST", "/cart/abandoned", {
+    body: { reason: "whatever", items },
+    cookie,
+  });
+  assert.equal(badReason.status, 400);
+
+  // A signed-in logout records the cart against the account.
+  const logged = await api("POST", "/cart/abandoned", {
+    body: { reason: "signed_out", items },
+    cookie,
+  });
+  assert.equal(logged.status, 202);
+
+  const logs = await api("GET", "/admin/logs?category=cart", { cookie });
+  assert.equal(logs.status, 200);
+  assert.ok(
+    logs.data.events.every((e) => e.category === "cart"),
+    "the cart filter returns only cart events"
+  );
+  const entry = logs.data.events.find((e) => e.event === "cart_abandoned");
+  assert.ok(entry, "abandoned cart is listed in the activity log");
+  // 2 x 12.99 + 1 x 16.99 = 42.97 across 3 units.
+  assert.match(entry.message, /3 items · \$42\.97/);
+  assert.match(entry.message, /signed out/);
+  assert.match(entry.message, /Peanut Butter Biscuits x2/);
+  assert.equal(entry.email, ADMIN_EMAIL, "attributed to the signed-in user");
+
+  // A timed-out session can't be attributed, but the cart value still is.
+  const anon = await api("POST", "/cart/abandoned", {
+    body: { reason: "session_expired", items: [items[1]] },
+  });
+  assert.equal(anon.status, 202);
+
+  const after = await api("GET", "/admin/logs?category=cart", { cookie });
+  const expired = after.data.events.find((e) =>
+    e.message.includes("session timed out")
+  );
+  assert.ok(expired, "expired-session abandonment is recorded");
+  assert.equal(expired.email, null, "no identity is invented for it");
+  assert.match(expired.message, /1 item · \$16\.99/);
+});
+
 test("About page photos: admin-only settings with a key whitelist", async () => {
   const anon = await api("GET", "/admin/site-settings");
   assert.equal(anon.status, 403);
