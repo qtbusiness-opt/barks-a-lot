@@ -27,16 +27,24 @@ class EmailUnverified extends CredentialsSignin {
 // measures time since the last thing they did. An unattended browser
 // still times out, because nothing renews on its own.
 //
-// ADMIN_SESSION_SECONDS shortens it outside production so the warning
-// modal can be exercised without waiting half an hour. Deliberately
-// ignored in production: a misconfigured env var must never be able to
-// stretch an admin session.
+// ADMIN_SESSION_SECONDS shortens it — handy for exercising the expiry
+// warning without waiting half an hour, and usable on a staging
+// deployment. It can only ever SHORTEN the window (clamped to the
+// 30-minute ceiling), so a stray value can't weaken an admin session and
+// there's nothing to gate on the environment.
+//
+// It deliberately does NOT check NODE_ENV: the bundler inlines that at
+// build time and constant-folds the whole branch away, which is why an
+// earlier NODE_ENV-gated version compiled down to a hardcoded 1800 and
+// ignored the variable entirely on deployed builds.
+const ADMIN_MAX_SECONDS = 30 * 60;
+const ADMIN_MIN_SECONDS = 30;
 const adminOverride = Number(process.env.ADMIN_SESSION_SECONDS);
 export const SESSION_SECONDS = {
   admin:
-    process.env.NODE_ENV !== "production" && adminOverride > 0
-      ? adminOverride
-      : 30 * 60,
+    Number.isFinite(adminOverride) && adminOverride > 0
+      ? Math.min(ADMIN_MAX_SECONDS, Math.max(ADMIN_MIN_SECONDS, adminOverride))
+      : ADMIN_MAX_SECONDS,
   customer: 7 * 24 * 60 * 60,
 };
 

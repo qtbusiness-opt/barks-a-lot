@@ -15,9 +15,14 @@ const warnSecondsFor = (windowSeconds) =>
     : MAX_WARN_SECONDS;
 
 // The session renews on real activity, but not on every twitch — at most
-// once a minute, which also bounds how far the deadline can lag behind
-// the last thing the user actually did.
+// once a minute.
 const RENEW_EVERY_SECONDS = 60;
+
+// ...and only while the user is actually doing something right now. A
+// wider window here would hand an idle session a free extension: the
+// click that signed them in would still count as "recent" a minute
+// later, pushing the deadline out even though nobody touched anything.
+const ACTIVITY_FRESH_SECONDS = 5;
 
 // Deliberately only things a person does. Nothing here fires on its own,
 // so a parked tab genuinely goes idle.
@@ -64,7 +69,8 @@ export default function SessionTimeoutModal() {
 
   useEffect(() => {
     const seconds = Math.floor(Date.now() / 1000);
-    lastActivity.current = seconds;
+    // Left at 0: only a real event counts as activity, so a page nobody
+    // touches is idle from the moment it loads.
     // Start the throttle now so a fresh session isn't renewed instantly.
     lastRenewal.current = seconds;
 
@@ -103,9 +109,9 @@ export default function SessionTimeoutModal() {
   // is to find out whether anyone is still there.
   useEffect(() => {
     if (!user || !expiresAt || now === 0 || open) return;
-    const activeRecently = now - lastActivity.current <= RENEW_EVERY_SECONDS;
+    const activeNow = now - lastActivity.current <= ACTIVITY_FRESH_SECONDS;
     const throttled = now - lastRenewal.current < RENEW_EVERY_SECONDS;
-    if (!activeRecently || throttled) return;
+    if (!activeNow || throttled) return;
 
     lastRenewal.current = now;
     // A session that already lapsed can't be renewed — the server says
