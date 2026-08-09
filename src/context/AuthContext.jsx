@@ -68,7 +68,7 @@ async function reportAbandonedCart(reason) {
 }
 
 function AuthState({ children }) {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
 
   // Guards against running the logout sequence twice — signOut() flips
   // status to "unauthenticated", which would otherwise look like an
@@ -144,6 +144,11 @@ function AuthState({ children }) {
     [endSession]
   );
 
+  // Answering "Stay signed in" on the expiry warning. The server decides
+  // whether the session is still extendable; a token that already ran
+  // out comes back unauthenticated and the usual sign-out kicks in.
+  const extendSession = useCallback(() => update({ extend: true }), [update]);
+
   useEffect(() => {
     if (status === "authenticated") localStorage.setItem(SESSION_FLAG, "1");
   }, [status]);
@@ -171,7 +176,17 @@ function AuthState({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading: status === "loading", login, register, logout }}
+      value={{
+        user,
+        loading: status === "loading",
+        login,
+        register,
+        logout,
+        // Epoch seconds; drives the expiry warning countdown.
+        expiresAt: session?.user?.expiresAt ?? null,
+        extendSession,
+        expireSession,
+      }}
     >
       {children}
     </AuthContext.Provider>
