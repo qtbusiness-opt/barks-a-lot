@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
@@ -9,9 +9,11 @@ import api from "@/lib/api";
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
 
-export default function LoginPage() {
+function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
+  // Set when the app signed the user out because their session expired.
+  const expired = useSearchParams().get("expired") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -52,8 +54,21 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold text-[#2A4A52] text-center mb-6">
           Welcome Back
         </h1>
+        {expired && !error && (
+          <p
+            role="status"
+            className="text-[#2A4A52] text-sm bg-[#F5F0E8] p-3 rounded-lg mb-4"
+          >
+            Your session timed out, so we signed you out. Please log in again.
+          </p>
+        )}
         {error && (
-          <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+          <p
+            role="alert"
+            className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4"
+          >
+            {error}
+          </p>
         )}
         {unverified && (
           <button
@@ -65,13 +80,19 @@ export default function LoginPage() {
           </button>
         )}
         {resent && (
-          <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4">
+          <p
+            role="status"
+            className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4"
+          >
             A new verification link is on its way — check your inbox.
           </p>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="l-email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="l-email"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Email
             </label>
             <input
@@ -85,7 +106,10 @@ export default function LoginPage() {
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label htmlFor="l-password" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="l-password"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Password
               </label>
               <Link
@@ -114,11 +138,24 @@ export default function LoginPage() {
         </form>
         <p className="text-center text-sm text-gray-500 mt-6">
           Don&rsquo;t have an account?{" "}
-          <Link href="/register" className="text-[#4A7C8A] font-medium hover:underline">
+          <Link
+            href="/register"
+            className="text-[#4A7C8A] font-medium hover:underline"
+          >
             Sign Up
           </Link>
         </p>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() opts a route out of static prerendering unless it
+// sits behind a Suspense boundary.
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

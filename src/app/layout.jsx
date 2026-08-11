@@ -3,6 +3,7 @@ import { Fraunces, Geist } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AddedToCartNotice from "@/components/AddedToCartNotice";
+import SessionTimeoutModal from "@/components/SessionTimeoutModal";
 import Script from "next/script";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
@@ -58,9 +59,12 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <CartProvider>
             <Navbar />
-            <main id="main-content" className="flex-1">{children}</main>
+            <main id="main-content" className="flex-1">
+              {children}
+            </main>
             <Footer />
             <AddedToCartNotice />
+            <SessionTimeoutModal />
           </CartProvider>
         </AuthProvider>
         <Script
