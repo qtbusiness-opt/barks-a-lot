@@ -21,30 +21,20 @@ class EmailUnverified extends CredentialsSignin {
 // Admin sessions are kept short (CLAUDE.md §1); customers get a longer
 // "remember me" window. The global maxAge covers customers; admin expiry
 // is enforced via the issuedAt claim in the jwt callback and getAuthUser.
+// The window is a session's whole life, not a sliding idle timer — it
+// only extends when the user answers the expiry warning, so an
+// unattended browser still times out on schedule.
 //
-// This is an IDLE window, not a session's whole life: the browser renews
-// it as the user works (and when they answer the expiry warning), so it
-// measures time since the last thing they did. An unattended browser
-// still times out, because nothing renews on its own.
-//
-// ADMIN_SESSION_SECONDS shortens it — handy for exercising the expiry
-// warning without waiting half an hour, and usable on a staging
-// deployment. It can only ever SHORTEN the window (clamped to the
-// 30-minute ceiling), so a stray value can't weaken an admin session and
-// there's nothing to gate on the environment.
-//
-// It deliberately does NOT check NODE_ENV: the bundler inlines that at
-// build time and constant-folds the whole branch away, which is why an
-// earlier NODE_ENV-gated version compiled down to a hardcoded 1800 and
-// ignored the variable entirely on deployed builds.
-const ADMIN_MAX_SECONDS = 30 * 60;
-const ADMIN_MIN_SECONDS = 30;
+// ADMIN_SESSION_SECONDS shortens it outside production so the warning
+// modal can be exercised without waiting half an hour. Deliberately
+// ignored in production: a misconfigured env var must never be able to
+// stretch an admin session.
 const adminOverride = Number(process.env.ADMIN_SESSION_SECONDS);
 export const SESSION_SECONDS = {
   admin:
-    Number.isFinite(adminOverride) && adminOverride > 0
-      ? Math.min(ADMIN_MAX_SECONDS, Math.max(ADMIN_MIN_SECONDS, adminOverride))
-      : ADMIN_MAX_SECONDS,
+    process.env.NODE_ENV !== "production" && adminOverride > 0
+      ? adminOverride
+      : 30 * 60,
   customer: 7 * 24 * 60 * 60,
 };
 
@@ -151,9 +141,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return null;
       }
 
-      // The sliding idle window: the browser renews an active session as
-      // the user works, and "Stay signed in" on the expiry warning does
-      // the same. Either way it only restarts a clock still running.
+      // "Stay signed in" on the expiry warning: restart the clock on a
+      // session that is still alive.
       if (trigger === "update" && session?.extend) {
         token.issuedAt = now;
       }
