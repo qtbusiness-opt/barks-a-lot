@@ -13,6 +13,7 @@ const EVENT_LABELS = {
   login_rate_limited: "Rate-limited",
   server_error: "Server error",
   payment_error: "Payment error",
+  cart_abandoned: "Abandoned cart",
 };
 const eventLabel = (e) => EVENT_LABELS[e] || e;
 
@@ -34,7 +35,7 @@ function StatCard({ label, value, accent }) {
 export default function AdminLogsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  // "all" | "auth" | "error"
+  // "all" | "auth" | "error" | "cart"
   const [filter, setFilter] = useState("all");
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -63,22 +64,42 @@ export default function AdminLogsPage() {
   return (
     <AdminShell title="Activity Log" backTo="/admin">
       <p className="text-sm text-gray-500 mb-6 -mt-4">
-        User logins and server errors. Every event is also written to the
-        container&rsquo;s stdout, so it shows up in <code>docker logs</code> too.
+        User logins, server errors, and carts abandoned at logout. Every event
+        is also written to the container&rsquo;s stdout, so it shows up in{" "}
+        <code>docker logs</code> too.
       </p>
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
           {error}
         </p>
       )}
 
       {/* Summary (last 24h, plus 7-day total) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <StatCard label="Logins (24h)" value={summary?.loginsToday} accent="bg-green-50 text-green-700" />
-        <StatCard label="Failed logins (24h)" value={summary?.failedToday} accent="bg-yellow-50 text-yellow-700" />
-        <StatCard label="Errors (24h)" value={summary?.errorsToday} accent="bg-red-50 text-red-700" />
-        <StatCard label="Events (7d)" value={summary?.totalWeek} accent="bg-slate-100 text-slate-700" />
+        <StatCard
+          label="Logins (24h)"
+          value={summary?.loginsToday}
+          accent="bg-green-50 text-green-700"
+        />
+        <StatCard
+          label="Failed logins (24h)"
+          value={summary?.failedToday}
+          accent="bg-yellow-50 text-yellow-700"
+        />
+        <StatCard
+          label="Errors (24h)"
+          value={summary?.errorsToday}
+          accent="bg-red-50 text-red-700"
+        />
+        <StatCard
+          label="Events (7d)"
+          value={summary?.totalWeek}
+          accent="bg-slate-100 text-slate-700"
+        />
       </div>
 
       {/* Breakdown by event type (last 24h) */}
@@ -104,21 +125,38 @@ export default function AdminLogsPage() {
       )}
 
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setFilter("all")} className={tabClass(filter === "all")}>
+        <button
+          onClick={() => setFilter("all")}
+          className={tabClass(filter === "all")}
+        >
           All
         </button>
-        <button onClick={() => setFilter("auth")} className={tabClass(filter === "auth")}>
+        <button
+          onClick={() => setFilter("auth")}
+          className={tabClass(filter === "auth")}
+        >
           Logins
         </button>
-        <button onClick={() => setFilter("error")} className={tabClass(filter === "error")}>
+        <button
+          onClick={() => setFilter("error")}
+          className={tabClass(filter === "error")}
+        >
           Errors
+        </button>
+        <button
+          onClick={() => setFilter("cart")}
+          className={tabClass(filter === "cart")}
+        >
+          Carts
         </button>
       </div>
 
       {events === null && !error ? (
         <p className="text-gray-500 text-center py-10">Loading events…</p>
       ) : events?.length === 0 ? (
-        <p className="text-gray-500 text-center py-10">No events recorded yet.</p>
+        <p className="text-gray-500 text-center py-10">
+          No events recorded yet.
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm tabular-nums">
@@ -148,13 +186,17 @@ export default function AdminLogsPage() {
                   <td className="py-2 pr-4 text-gray-700">
                     {e.email || "—"}
                     {e.ip && (
-                      <span className="block text-xs text-gray-400">{e.ip}</span>
+                      <span className="block text-xs text-gray-400">
+                        {e.ip}
+                      </span>
                     )}
                   </td>
                   <td className="py-2 pr-4 text-gray-600">
                     {e.message}
                     {e.path && (
-                      <span className="block text-xs text-gray-400">{e.path}</span>
+                      <span className="block text-xs text-gray-400">
+                        {e.path}
+                      </span>
                     )}
                   </td>
                 </tr>
