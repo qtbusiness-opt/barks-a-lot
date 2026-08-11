@@ -1121,6 +1121,200 @@ test("admin password resets enforce the hardened policy", async () => {
   assert.equal(reset.status, 200);
 });
 
+test("products are addressed by a name slug, with ids still resolving", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Slug Test Bandana!",
+      description: "Named URL",
+      price: 4.5,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 3,
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const product = created.data.product;
+  assert.equal(product.slug, "slug-test-bandana");
+
+  // The slug is the public address...
+  const bySlug = await api("GET", `/products/${product.slug}`);
+  assert.equal(bySlug.status, 200);
+  assert.equal(bySlug.data.product.id, product.id);
+  // ...and the id still resolves, so older links keep working.
+  const byId = await api("GET", `/products/${product.id}`);
+  assert.equal(byId.status, 200);
+  assert.equal(byId.data.product.slug, product.slug);
+
+  // A second product with the same name gets a distinct slug.
+  const twin = await api("POST", "/admin/products", {
+    body: {
+      name: "Slug Test Bandana!",
+      description: "Same name",
+      price: 4.5,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 1,
+    },
+    cookie,
+  });
+  assert.equal(twin.data.product.slug, "slug-test-bandana-2");
+
+  // Renaming moves the URL with it.
+  const renamed = await api("PATCH", `/admin/products/${product.id}`, {
+    body: { name: "Renamed Bandana" },
+    cookie,
+  });
+  assert.equal(renamed.data.product.slug, "renamed-bandana");
+  assert.equal((await api("GET", "/products/renamed-bandana")).status, 200);
+
+  await api("DELETE", `/admin/products/${product.id}`, { cookie });
+  await api("DELETE", `/admin/products/${twin.data.product.id}`, { cookie });
+});
+
+test("product option groups round-trip and are enforced at checkout", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Option Test Bandana",
+      description: "Sizes and styles",
+      price: 9.0,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 10,
+      optionGroups: [
+        {
+          name: "Size",
+          inputType: "select",
+          required: true,
+          choices: [{ label: "Small" }, { label: "Large" }],
+        },
+        {
+          name: "Add-ons",
+          inputType: "checkbox",
+          required: false,
+          choices: [{ label: "Gift wrap" }, { label: "Name tag" }],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const productId = created.data.product.id;
+
+  const shown = await api("GET", `/products/${created.data.product.slug}`);
+  const groups = shown.data.product.optionGroups;
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0].name, "Size");
+  assert.equal(groups[0].inputType, "select");
+  assert.equal(groups[0].choices.length, 2);
+  assert.equal(groups[1].required, false);
+
+  const sizeGroup = groups[0];
+  const addOns = groups[1];
+  const order = (options) => ({
+    items: [{ productId, quantity: 1, ...(options ? { options } : {}) }],
+    fulfillmentType: "pickup",
+    pickupEventId: "next",
+    guestEmail: "options@test.local",
+    guestName: "Options Tester",
+  });
+
+  // A required group must be answered.
+  const missing = await api("POST", "/orders", { body: order() });
+  assert.equal(missing.status, 400);
+  assert.match(missing.data.error, /choose a Size/);
+
+  // A single-choice group refuses two answers.
+  const tooMany = await api("POST", "/orders", {
+    body: order([
+      { groupId: sizeGroup.id, choiceIds: sizeGroup.choices.map((c) => c.id) },
+    ]),
+  });
+  assert.equal(tooMany.status, 400);
+  assert.match(tooMany.data.error, /one Size/);
+
+  // Choice ids from another group are rejected outright.
+  const foreign = await api("POST", "/orders", {
+    body: order([{ groupId: sizeGroup.id, choiceIds: [addOns.choices[0].id] }]),
+  });
+  assert.equal(foreign.status, 400);
+
+  // A valid order records the labels, and checkboxes keep both answers.
+  const placed = await api("POST", "/orders", {
+    body: order([
+      { groupId: sizeGroup.id, choiceIds: [sizeGroup.choices[1].id] },
+      { groupId: addOns.id, choiceIds: addOns.choices.map((c) => c.id) },
+    ]),
+  });
+  assert.equal(placed.status, 201);
+
+  const admin = await api("GET", "/admin/orders", { cookie });
+  const mine = admin.data.orders.find(
+    (o) => o.confirmationNumber === placed.data.order.confirmationNumber
+  );
+  const line = mine.items.find((i) => i.productId === productId);
+  assert.deepEqual(JSON.parse(line.options), [
+    { group: "Size", values: ["Large"] },
+    { group: "Add-ons", values: ["Gift wrap", "Name tag"] },
+  ]);
+
+  // Editing a product replaces its groups.
+  const edited = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      optionGroups: [
+        {
+          name: "Style",
+          inputType: "carousel",
+          required: true,
+          choices: [
+            { label: "Plaid", image: "/images/products/bandana-set.svg" },
+          ],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.data.product.optionGroups.length, 1);
+  assert.equal(edited.data.product.optionGroups[0].name, "Style");
+  assert.equal(
+    edited.data.product.optionGroups[0].choices[0].image,
+    "/images/products/bandana-set.svg"
+  );
+
+  // An unknown input type is refused.
+  const bogus = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      optionGroups: [
+        { name: "Nope", inputType: "slider", choices: [{ label: "x" }] },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(bogus.status, 400);
+
+  // Clearing the groups leaves an ordinary product behind...
+  const cleared = await api("PATCH", `/admin/products/${productId}`, {
+    body: { optionGroups: [] },
+    cookie,
+  });
+  assert.equal(cleared.status, 200);
+  assert.deepEqual(cleared.data.product.optionGroups, []);
+  // ...and it can be ordered again with no options at all.
+  const plain = await api("POST", "/orders", { body: order() });
+  assert.equal(plain.status, 201);
+
+  // The order placed earlier keeps its snapshot even though the options
+  // it referenced no longer exist.
+  const after = await api("GET", "/admin/orders", { cookie });
+  const stillThere = after.data.orders
+    .find((o) => o.confirmationNumber === placed.data.order.confirmationNumber)
+    .items.find((i) => i.productId === productId);
+  assert.match(stillThere.options, /Large/);
+});
+
 test("admins can look up customers, send resets, and delete accounts", async () => {
   const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
 

@@ -52,6 +52,10 @@ model VerificationToken {
 model Product {
   id          String      @id @default(cuid())
   name        String
+  // URL-friendly form of the name, used for /products/<slug>. Kept
+  // optional so a row can never be blocked on it; the detail route still
+  // resolves a bare id, which keeps old links and order history working.
+  slug        String?     @unique
   description String
   // Stock for products without variants; for products with variants the
   // stock lives on each variant and this stays 0.
@@ -84,7 +88,44 @@ model Product {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   variants    ProductVariant[]
+  optionGroups ProductOptionGroup[]
   orderItems  OrderItem[]
+}
+
+// A set of choices the customer picks from on the product page — e.g. a
+// bandana's "Size" and "Style" are two separate groups. Distinct from
+// ProductVariant: variants carry their own price and stock, while option
+// groups are selections recorded on the order (no price or stock of
+// their own), so a product can have several without multiplying SKUs.
+model ProductOptionGroup {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  // How the choices are presented: "select" (dropdown), "carousel"
+  // (thumbnails the customer clicks through), "radio", or "checkbox".
+  // Only checkbox groups accept more than one selection.
+  inputType String   @default("radio")
+  // When true the customer must answer before adding to the cart.
+  required  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  choices   ProductOptionChoice[]
+
+  @@index([productId])
+}
+
+model ProductOptionChoice {
+  id        String   @id @default(cuid())
+  groupId   String
+  group     ProductOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  label     String
+  // Thumbnail for "carousel" groups; ignored by the other input types.
+  image     String?
+  sortOrder Int      @default(0)
+
+  @@index([groupId])
 }
 
 model ProductVariant {
@@ -152,6 +193,11 @@ model OrderItem {
   variant   ProductVariant? @relation(fields: [variantId], references: [id])
   quantity  Int
   price     Float
+  // The option-group answers for this line, JSON-encoded as
+  // [{"group":"Size","values":["Large"]}]. Stored as a snapshot of the
+  // labels, so renaming or deleting an option later can't rewrite what
+  // the customer actually ordered.
+  options   String?
 }
 
 // Product categories, managed by admins. Products reference the slug as

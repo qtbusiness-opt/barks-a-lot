@@ -86,6 +86,19 @@ module.exports = [
   },
   {
     name: "Rope Tug Toy",
+    optionGroups: [
+      {
+        name: "Rope Size",
+        inputType: "radio",
+        choices: [{ label: "Standard" }, { label: "Chunky" }],
+      },
+      {
+        name: "Add-ons",
+        inputType: "checkbox",
+        required: false,
+        choices: [{ label: "Gift wrap" }, { label: "Personalised name tag" }],
+      },
+    ],
     description:
       "Durable, multi-colored cotton rope toy perfect for tug-of-war. Helps clean teeth while your pup plays!",
     quantity: 15,
@@ -127,6 +140,26 @@ module.exports = [
   },
   {
     name: "Classic Leather Collar",
+    optionGroups: [
+      {
+        name: "Size",
+        inputType: "select",
+        choices: [
+          { label: "Small (10-14 in)" },
+          { label: "Medium (14-18 in)" },
+          { label: "Large (18-24 in)" },
+        ],
+      },
+      {
+        name: "Colour",
+        inputType: "carousel",
+        choices: [
+          { label: "Tan", image: "/images/products/leather-collar.svg" },
+          { label: "Black", image: "/images/products/rope-toy.svg" },
+          { label: "Chestnut", image: "/images/products/bandana-set.svg" },
+        ],
+      },
+    ],
     description:
       "Handcrafted genuine leather collar with a sturdy brass buckle. Available in multiple sizes for the perfect fit.",
     quantity: 20,

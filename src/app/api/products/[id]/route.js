@@ -2,12 +2,26 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isWithinWindow, publicProduct } from "@/lib/catalog";
 
+const withDetail = {
+  variants: true,
+  optionGroups: {
+    orderBy: { sortOrder: "asc" },
+    include: { choices: { orderBy: { sortOrder: "asc" } } },
+  },
+};
+
 export async function GET(_req, { params }) {
   const { id } = await params;
-  const product = await prisma.product.findUnique({
-    where: { id },
-    include: { variants: true },
-  });
+
+  // Products are addressed by their name slug. Ids still resolve so
+  // links shared before slugs existed — and anything pointing at an
+  // order's product id — keep working.
+  const product =
+    (await prisma.product.findUnique({
+      where: { slug: id },
+      include: withDetail,
+    })) ??
+    (await prisma.product.findUnique({ where: { id }, include: withDetail }));
 
   if (!product) {
     return NextResponse.json({ error: "Product not found" }, { status: 404 });

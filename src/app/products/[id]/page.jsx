@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { useCart } from "@/context/CartContext";
+import ProductOptions from "@/components/ProductOptions";
+import { formatSelectedOptions } from "@/lib/options";
 
 // Cover image plus any gallery extras. Clicking the photo advances to
 // the next one; thumbnails jump straight to an image.
@@ -122,12 +124,16 @@ export default function ProductDetailPage() {
   const [variantId, setVariantId] = useState(null);
   const [qty, setQuantity] = useState(1);
   const [imageIndex, setImageIndex] = useState(0);
+  // { [groupId]: [choiceId, ...] }
+  const [optionChoices, setOptionChoices] = useState({});
+  const [optionError, setOptionError] = useState("");
 
   useEffect(() => {
     if (id) {
       api.get(`/products/${id}`).then((res) => {
         setProduct(res.data.product);
         setImageIndex(0);
+        setOptionChoices({});
       });
     }
   }, [id]);
@@ -155,8 +161,31 @@ export default function ProductDetailPage() {
   const purchasable =
     product.available && inStock && (!hasVariants || variant !== null);
 
+  const optionGroups = product.optionGroups ?? [];
+  // The order API re-checks all of this; answering here just saves the
+  // customer a round trip.
+  const missingGroup = optionGroups.find(
+    (g) => g.required && !(optionChoices[g.id] ?? []).length
+  );
+  // Labels for the cart line, resolved from the ids the customer picked.
+  const chosenOptions = optionGroups
+    .map((g) => ({
+      groupId: g.id,
+      group: g.name,
+      choiceIds: optionChoices[g.id] ?? [],
+      values: g.choices
+        .filter((c) => (optionChoices[g.id] ?? []).includes(c.id))
+        .map((c) => c.label),
+    }))
+    .filter((o) => o.choiceIds.length > 0);
+
   // The added-to-cart notice (drawer/bottom sheet) provides the feedback.
   const handleAdd = () => {
+    if (missingGroup) {
+      setOptionError(`Please choose a ${missingGroup.name}.`);
+      return;
+    }
+    setOptionError("");
     addItem(
       {
         productId: product.id,
@@ -164,6 +193,11 @@ export default function ProductDetailPage() {
         name: variant ? `${product.name} — ${variant.name}` : product.name,
         price,
         image: product.image,
+        options: chosenOptions.map((o) => ({
+          groupId: o.groupId,
+          choiceIds: o.choiceIds,
+        })),
+        optionsLabel: formatSelectedOptions(chosenOptions),
       },
       qty
     );
@@ -251,6 +285,26 @@ export default function ProductDetailPage() {
                 ))}
               </div>
             </fieldset>
+          )}
+
+          {/* Admin-defined choices — Size, Style, and so on — each shown
+              the way the admin picked. */}
+          <ProductOptions
+            groups={optionGroups}
+            selections={optionChoices}
+            onChange={(next) => {
+              setOptionChoices(next);
+              setOptionError("");
+            }}
+          />
+
+          {optionError && (
+            <p
+              role="alert"
+              className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mt-4"
+            >
+              {optionError}
+            </p>
           )}
 
           <div className="mt-6 flex items-center gap-4">

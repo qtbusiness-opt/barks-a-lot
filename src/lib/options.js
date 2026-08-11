@@ -1,0 +1,87 @@
+// Product option groups: the choices a customer makes on the product page
+// (a bandana's Size and Style, say). Unlike variants they carry no price
+// or stock of their own — they're answers recorded on the order — so a
+// product can have several without multiplying SKUs.
+
+// How a group's choices are presented. Only "checkbox" takes more than
+// one answer.
+export const OPTION_INPUT_TYPES = ["select", "carousel", "radio", "checkbox"];
+
+export const OPTION_INPUT_LABELS = {
+  select: "Dropdown",
+  carousel: "Image carousel",
+  radio: "Radio buttons",
+  checkbox: "Checkboxes",
+};
+
+export const allowsMultiple = (inputType) => inputType === "checkbox";
+
+// Selections travel as [{ group, values: [...] }] and are stored on the
+// order item as a JSON snapshot of the labels, so renaming or deleting an
+// option later can't rewrite what was actually ordered.
+export function parseSelectedOptions(raw) {
+  try {
+    const parsed = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((row) => row && typeof row === "object")
+      .map((row) => ({
+        group: String(row.group ?? ""),
+        values: Array.isArray(row.values) ? row.values.map(String) : [],
+      }))
+      .filter((row) => row.group !== "" && row.values.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+// "Size: Large · Style: Plaid" — one line for carts, orders and emails.
+export function formatSelectedOptions(selections) {
+  return (selections ?? [])
+    .map((s) => `${s.group}: ${s.values.join(", ")}`)
+    .join(" · ");
+}
+
+/**
+ * Checks a customer's selections against the product's groups.
+ * Returns { ok: true, selections } with labels resolved from the
+ * database, or { ok: false, error } with a customer-safe message.
+ * Never trusts the labels sent by the browser — they're matched against
+ * the stored choices by id.
+ */
+export function validateSelections(product, submitted) {
+  const groups = product.optionGroups ?? [];
+  if (groups.length === 0) return { ok: true, selections: [] };
+
+  const byGroup = new Map(
+    (submitted ?? []).map((s) => [String(s.groupId), s.choiceIds ?? []])
+  );
+  const selections = [];
+
+  for (const group of groups) {
+    const chosenIds = byGroup.get(group.id) ?? [];
+    const valid = group.choices.filter((c) => chosenIds.includes(c.id));
+
+    if (valid.length !== chosenIds.length) {
+      return { ok: false, error: `Please re-check the ${group.name} options` };
+    }
+    if (valid.length === 0) {
+      if (group.required) {
+        return { ok: false, error: `Please choose a ${group.name}` };
+      }
+      continue;
+    }
+    if (valid.length > 1 && !allowsMultiple(group.inputType)) {
+      return { ok: false, error: `Please choose one ${group.name}` };
+    }
+
+    selections.push({
+      group: group.name,
+      values: group.choices
+        .filter((c) => chosenIds.includes(c.id))
+        .map((c) => c.label),
+    });
+  }
+
+  return { ok: true, selections };
+}

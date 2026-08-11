@@ -102,6 +102,11 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
           <div key={item.key} className="flex justify-between text-sm">
             <span>
               {item.name} x {item.quantity}
+              {item.optionsLabel && (
+                <span className="block text-xs text-gray-500">
+                  {item.optionsLabel}
+                </span>
+              )}
             </span>
             <span className="font-medium">
               ${(item.price * item.quantity).toFixed(2)}
@@ -423,6 +428,9 @@ export default function CheckoutPage() {
           productId: i.productId,
           ...(i.variantId ? { variantId: i.variantId } : {}),
           quantity: i.quantity,
+          // The server re-resolves these ids to labels and re-checks
+          // required groups before the order is written.
+          ...(i.options?.length ? { options: i.options } : {}),
         })),
         fulfillmentType,
         ...(fulfillmentType === "shipping"

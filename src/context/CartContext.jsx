@@ -4,10 +4,15 @@ import { createContext, useContext, useState, useEffect } from "react";
 
 const CartContext = createContext(undefined);
 
-// A cart line is identified by product + chosen variant, so the same
-// product in two sizes/patterns is two separate lines.
-function lineKey(productId, variantId) {
-  return variantId ? `${productId}:${variantId}` : productId;
+// A cart line is identified by product + chosen variant + chosen options,
+// so the same product in two sizes/patterns is two separate lines — and
+// so is the same bandana ordered in two different styles.
+function lineKey(productId, variantId, options) {
+  const chosen = (options ?? [])
+    .map((o) => `${o.groupId}=${[...o.choiceIds].sort().join("+")}`)
+    .sort()
+    .join("|");
+  return [productId, variantId ?? "", chosen].filter(Boolean).join(":");
 }
 
 export function CartProvider({ children }) {
@@ -39,9 +44,12 @@ export function CartProvider({ children }) {
     localStorage.setItem("barks-cart", JSON.stringify(items));
   }, [items]);
 
-  // entry: { productId, variantId?, name, price, image }
+  // entry: { productId, variantId?, name, price, image, options?,
+  //          optionsLabel? } where options is
+  //          [{ groupId, choiceIds: [...] }] and optionsLabel is the
+  //          human-readable summary shown in the cart.
   const addItem = (entry, quantity = 1) => {
-    const key = lineKey(entry.productId, entry.variantId);
+    const key = lineKey(entry.productId, entry.variantId, entry.options);
     setItems((prev) => {
       const existing = prev.find((i) => i.key === key);
       if (existing) {

@@ -5,6 +5,7 @@ import { useCart } from "@/context/CartContext";
 
 export default function ProductCard({
   id,
+  slug,
   name,
   price,
   image,
@@ -21,15 +22,13 @@ export default function ProductCard({
   const inStock = hasVariants
     ? variants.some((v) => v.inStock)
     : productInStock;
-  const prices = hasVariants
-    ? variants.map((v) => v.price ?? price)
-    : [price];
+  const prices = hasVariants ? variants.map((v) => v.price ?? price) : [price];
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
 
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition group">
-      <Link href={`/products/${id}`}>
+      <Link href={`/products/${slug ?? id}`}>
         <div className="relative aspect-square overflow-hidden bg-[#F5F0E8]">
           <img
             src={image}
@@ -47,7 +46,7 @@ export default function ProductCard({
         <span className="text-xs text-[#4A7C8A] font-medium uppercase tracking-wide">
           {category}
         </span>
-        <Link href={`/products/${id}`}>
+        <Link href={`/products/${slug ?? id}`}>
           <h3 className="font-semibold text-sm sm:text-base text-[#2A4A52] mt-1 hover:text-[#4A7C8A] transition line-clamp-2">
             {name}
           </h3>
@@ -55,7 +54,9 @@ export default function ProductCard({
         {inStock ? (
           <p className="font-semibold text-sm text-green-600 mt-1">In Stock</p>
         ) : (
-          <p className="font-semibold text-sm text-red-600 mt-1">Out of Stock</p>
+          <p className="font-semibold text-sm text-red-600 mt-1">
+            Out of Stock
+          </p>
         )}
         {/* Cards are ~140px wide in the 2-up phone grid, so the price and
             button stack there and sit side by side from sm up. */}
@@ -67,7 +68,7 @@ export default function ProductCard({
           </span>
           {hasVariants ? (
             <Link
-              href={`/products/${id}`}
+              href={`/products/${slug ?? id}`}
               className="bg-[#4A7C8A] text-white px-3 py-2.5 sm:py-1.5 rounded-lg text-sm font-medium text-center hover:bg-[#3A6270] active:bg-[#2A4A52] transition"
             >
               Choose Options

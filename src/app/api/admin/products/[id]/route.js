@@ -3,6 +3,16 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { adminProduct, nutritionRowSchema } from "@/lib/catalog";
+import { uniqueProductSlug } from "@/lib/slug";
+import { optionGroupSchema, writeOptionGroups } from "@/lib/option-writes";
+
+const ADMIN_PRODUCT_INCLUDE = {
+  variants: true,
+  optionGroups: {
+    orderBy: { sortOrder: "asc" },
+    include: { choices: { orderBy: { sortOrder: "asc" } } },
+  },
+};
 
 // All card fields optional — PATCH applies only what was sent. inStock
 // unchecked wipes the stock: quantity goes to 0 (all variant quantities
@@ -18,6 +28,8 @@ const updateSchema = z.object({
   itemDetails: z.string().trim().max(5000).optional(),
   // An empty array clears the nutrition table.
   nutritionFacts: z.array(nutritionRowSchema).max(30).optional(),
+  // Omitted leaves the option groups alone; an empty array removes them.
+  optionGroups: z.array(optionGroupSchema).max(6).optional(),
   category: z.string().trim().min(1).max(60).optional(),
   quantity: z.number().int().min(0).max(100000).optional(),
   featured: z.boolean().optional(),
@@ -65,7 +77,19 @@ export async function PATCH(req, { params }) {
     const hasVariants = existing.variants.length > 0;
 
     const product = await prisma.$transaction(async (tx) => {
-      const data = { ...fields };
+      const { optionGroups, ...rest } = fields;
+      const data = { ...rest };
+      // Renaming a product moves its URL with it; old links keep working
+      // because the detail route still resolves a bare id.
+      if (fields.name !== undefined && fields.name !== existing.name) {
+        data.slug = await uniqueProductSlug(tx, fields.name, id);
+      } else if (!existing.slug) {
+        // Backfill anything that predates slugs.
+        data.slug = await uniqueProductSlug(tx, existing.name, id);
+      }
+      if (optionGroups !== undefined) {
+        await writeOptionGroups(tx, id, optionGroups);
+      }
       // Arrays/blank strings map to the stored representation.
       if (fields.images !== undefined) {
         data.images =
@@ -103,7 +127,7 @@ export async function PATCH(req, { params }) {
       return tx.product.update({
         where: { id },
         data,
-        include: { variants: true },
+        include: ADMIN_PRODUCT_INCLUDE,
       });
     });
 

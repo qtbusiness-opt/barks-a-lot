@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
 import ImageUpload from "@/components/ImageUpload";
+import OptionGroupsEditor from "@/components/OptionGroupsEditor";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -17,6 +18,7 @@ const EMPTY_FORM = {
   images: [],
   itemDetails: "",
   nutritionFacts: [],
+  optionGroups: [],
   category: "treats",
   quantity: "",
   featured: false,
@@ -26,6 +28,17 @@ const MAX_NUTRITION_ROWS = 30;
 
 // A half-filled row would fail server validation and sink the whole
 // save, so incomplete rows are dropped on the way out instead.
+const cleanOptionGroups = (groups) =>
+  groups
+    .map((g) => ({
+      ...g,
+      name: g.name.trim(),
+      choices: g.choices
+        .map((c) => ({ label: c.label.trim(), image: c.image || null }))
+        .filter((c) => c.label !== ""),
+    }))
+    .filter((g) => g.name !== "" && g.choices.length > 0);
+
 const cleanNutrition = (rows) =>
   rows
     .map((r) => ({ label: r.label.trim(), value: r.value.trim() }))
@@ -303,6 +316,12 @@ function ProductFields({ form, update, variantProduct, categories }) {
         )
       )}
 
+      <OptionGroupsEditor
+        groups={form.optionGroups}
+        onChange={(next) => update("optionGroups", next)}
+        idSuffix={variantProduct ? "edit" : "new"}
+      />
+
       <label className="flex items-center gap-3 min-h-11 cursor-pointer">
         <input
           type="checkbox"
@@ -333,6 +352,15 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
       images: product.images ?? [],
       itemDetails: product.itemDetails ?? "",
       nutritionFacts: product.nutritionFacts ?? [],
+      optionGroups: (product.optionGroups ?? []).map((g) => ({
+        name: g.name,
+        inputType: g.inputType,
+        required: g.required,
+        choices: (g.choices ?? []).map((c) => ({
+          label: c.label,
+          image: c.image ?? null,
+        })),
+      })),
       category: product.category,
       quantity: String(product.quantity),
       featured: product.featured,
@@ -357,6 +385,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
         images: form.images,
         itemDetails: form.itemDetails,
         nutritionFacts: cleanNutrition(form.nutritionFacts),
+        optionGroups: cleanOptionGroups(form.optionGroups),
         category: form.category,
         ...(variantProduct ? {} : { quantity: Number(form.quantity) }),
         featured: form.featured,
@@ -505,6 +534,7 @@ export default function AdminProductsPage() {
         images: form.images,
         itemDetails: form.itemDetails,
         nutritionFacts: cleanNutrition(form.nutritionFacts),
+        optionGroups: cleanOptionGroups(form.optionGroups),
         category: form.category,
         quantity: Number(form.quantity),
         featured: form.featured,

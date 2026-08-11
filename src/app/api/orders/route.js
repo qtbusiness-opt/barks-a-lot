@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { isWithinWindow } from "@/lib/catalog";
+import { validateSelections } from "@/lib/options";
 import { isPickupSelectable } from "@/lib/pickup-window";
 import {
   sendOrderConfirmationEmail,
@@ -32,6 +33,17 @@ const orderSchema = z
           productId: z.string().min(1),
           variantId: z.string().min(1).optional(),
           quantity: z.number().int().min(1).max(100),
+          // Chosen option groups, by id. Labels are resolved server-side
+          // from the stored choices — never taken from the browser.
+          options: z
+            .array(
+              z.object({
+                groupId: z.string().min(1),
+                choiceIds: z.array(z.string().min(1)).max(20),
+              })
+            )
+            .max(6)
+            .optional(),
         })
       )
       .min(1),
@@ -185,7 +197,13 @@ export async function POST(req) {
       const productIds = items.map((i) => i.productId);
       const products = await tx.product.findMany({
         where: { id: { in: productIds } },
-        include: { variants: true },
+        include: {
+          variants: true,
+          optionGroups: {
+            orderBy: { sortOrder: "asc" },
+            include: { choices: { orderBy: { sortOrder: "asc" } } },
+          },
+        },
       });
       const productMap = {};
       for (const p of products) productMap[p.id] = p;
@@ -205,6 +223,16 @@ export async function POST(req) {
           throw fail(409, `${product.name} is not currently available`);
         }
 
+        // Option answers are checked against the product's own groups and
+        // stored as a label snapshot, so the order keeps saying what was
+        // ordered even if the options are edited later.
+        const chosen = validateSelections(product, item.options);
+        if (!chosen.ok) throw fail(400, chosen.error);
+        const options =
+          chosen.selections.length > 0
+            ? JSON.stringify(chosen.selections)
+            : null;
+
         if (product.variants.length > 0) {
           const variant = product.variants.find((v) => v.id === item.variantId);
           if (!variant) {
@@ -222,6 +250,7 @@ export async function POST(req) {
             variantId: variant.id,
             quantity: item.quantity,
             price,
+            options,
           });
           decrements.push({ product, variant, quantity: item.quantity });
         } else {
@@ -232,6 +261,7 @@ export async function POST(req) {
             productId: product.id,
             quantity: item.quantity,
             price: product.price,
+            options,
           });
           decrements.push({ product, quantity: item.quantity });
         }
