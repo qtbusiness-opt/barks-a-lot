@@ -4,25 +4,29 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 // How long before the session ends the warning appears, at most. Short
-// windows (ADMIN_SESSION_SECONDS in dev) get a proportionally shorter
-// lead time: the warning has to leave room for the renewal below, which
-// stands down while it's on screen — otherwise a small window would sit
-// permanently inside the warning band and never renew.
+// windows (ADMIN_SESSION_SECONDS) get a proportionally shorter lead
+// time — a two-minute warning on a two-minute window would be on screen
+// permanently. The full two minutes applies from a six-minute window up.
 const MAX_WARN_SECONDS = 2 * 60;
 const warnSecondsFor = (windowSeconds) =>
   windowSeconds > 0
     ? Math.max(15, Math.min(MAX_WARN_SECONDS, Math.floor(windowSeconds / 3)))
     : MAX_WARN_SECONDS;
 
-// The session renews on real activity, but not on every twitch — at most
-// once a minute.
-const RENEW_EVERY_SECONDS = 60;
-
-// ...and only while the user is actually doing something right now. A
-// wider window here would hand an idle session a free extension: the
-// click that signed them in would still count as "recent" a minute
-// later, pushing the deadline out even though nobody touched anything.
-const ACTIVITY_FRESH_SECONDS = 5;
+// The session renews on real activity, but not on every twitch. Also
+// scaled to the window, which keeps the guarantee that matters: while
+// someone is working, the remaining time never falls below
+// window - renewEvery, and that stays comfortably above the warning
+// threshold at every window size. Without the scaling, a short window
+// could dip into the warning band mid-work.
+const MAX_RENEW_EVERY_SECONDS = 60;
+const renewEverySecondsFor = (windowSeconds) =>
+  windowSeconds > 0
+    ? Math.max(
+        10,
+        Math.min(MAX_RENEW_EVERY_SECONDS, Math.floor(windowSeconds / 4))
+      )
+    : MAX_RENEW_EVERY_SECONDS;
 
 // Deliberately only things a person does. Nothing here fires on its own,
 // so a parked tab genuinely goes idle.
@@ -109,9 +113,15 @@ export default function SessionTimeoutModal() {
   // is to find out whether anyone is still there.
   useEffect(() => {
     if (!user || !expiresAt || now === 0 || open) return;
-    const activeNow = now - lastActivity.current <= ACTIVITY_FRESH_SECONDS;
-    const throttled = now - lastRenewal.current < RENEW_EVERY_SECONDS;
-    if (!activeNow || throttled) return;
+    // Anything done since the last renewal counts, not just this instant.
+    // Requiring activity *right now* meant a normal working rhythm —
+    // acting during the throttle, then pausing — could go a whole window
+    // without renewing, and the warning would interrupt someone who had
+    // been using the app the entire time.
+    const activeSinceRenewal = lastActivity.current > lastRenewal.current;
+    const throttled =
+      now - lastRenewal.current < renewEverySecondsFor(expiresAt - issuedAt);
+    if (!activeSinceRenewal || throttled) return;
 
     lastRenewal.current = now;
     // A session that already lapsed can't be renewed — the server says

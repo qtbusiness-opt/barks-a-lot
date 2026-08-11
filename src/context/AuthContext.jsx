@@ -74,8 +74,14 @@ function AuthState({ children }) {
   // status to "unauthenticated", which would otherwise look like an
   // expiry and re-trigger it.
   const loggingOut = useRef(false);
+  // Renewing the session puts it back into "loading" with no data for a
+  // moment. Without these, every renewal blanked whatever page the user
+  // was on (role-gated pages fell back to their "Loading..." state) and
+  // then refilled a beat later.
+  const settled = useRef(false);
+  const lastKnownUser = useRef(null);
 
-  const user = session?.user
+  const liveUser = session?.user
     ? {
         id: session.user.id,
         email: session.user.email,
@@ -83,6 +89,21 @@ function AuthState({ children }) {
         role: session.user.role,
       }
     : null;
+
+  useEffect(() => {
+    if (liveUser) lastKnownUser.current = liveUser;
+    if (status !== "loading") settled.current = true;
+    // liveUser is rebuilt each render; the session object is the real input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, status]);
+
+  // Hold the last known identity across a refresh so the UI doesn't flap.
+  // A real sign-out reports "unauthenticated", which drops it properly.
+  const refreshing = status === "loading" && settled.current;
+  const user = liveUser ?? (refreshing ? lastKnownUser.current : null);
+  // Only the very first resolution counts as loading; a background
+  // refresh must never blank a page that already rendered.
+  const loading = status === "loading" && !settled.current;
 
   // Returns the signed-in user so callers can route by role (admins land
   // on the dashboard).
@@ -178,7 +199,7 @@ function AuthState({ children }) {
     <AuthContext.Provider
       value={{
         user,
-        loading: status === "loading",
+        loading,
         login,
         register,
         logout,
