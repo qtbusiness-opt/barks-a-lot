@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { allowsMultiple } from "@/lib/options";
+import StoreImage from "@/components/StoreImage";
 
 // One option group, rendered the way the admin chose: a dropdown, a
 // carousel of thumbnails, radio buttons, or checkboxes. Every variation
@@ -113,9 +114,11 @@ function OptionGroup({ group, selected, onChange }) {
                     />
                     <span className="block w-16 h-16 rounded-md overflow-hidden bg-[#F5F0E8] peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-[#C8722A]">
                       {choice.image ? (
-                        <img
+                        <StoreImage
                           src={choice.image}
                           alt=""
+                          width={64}
+                          height={64}
                           className="w-full h-full object-cover"
                         />
                       ) : (

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import StoreImage from "@/components/StoreImage";
 
 // Confirmation shown after adding to cart: a right-side drawer on desktop
 // (md+) and a bottom-sheet modal on phones. Driven by CartContext so it
@@ -87,9 +88,11 @@ export default function AddedToCartNotice() {
         </div>
 
         <div className="px-5 py-4 flex items-center gap-4 overflow-y-auto">
-          <img
+          <StoreImage
             src={lastAdded.image}
             alt={lastAdded.name}
+            width={80}
+            height={80}
             className="w-20 h-20 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
           />
           <div className="min-w-0">

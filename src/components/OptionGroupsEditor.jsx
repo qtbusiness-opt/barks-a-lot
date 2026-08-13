@@ -2,6 +2,7 @@
 
 import ImageUpload from "@/components/ImageUpload";
 import { OPTION_INPUT_TYPES, OPTION_INPUT_LABELS } from "@/lib/options";
+import StoreImage from "@/components/StoreImage";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -135,9 +136,11 @@ export default function OptionGroupsEditor({ groups, onChange, idSuffix }) {
                   {group.choices.map((choice, ci) => (
                     <div key={ci} className="flex items-center gap-3">
                       {choice.image ? (
-                        <img
+                        <StoreImage
                           src={choice.image}
                           alt=""
+                          width={48}
+                          height={48}
                           className="w-12 h-12 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
                         />
                       ) : (

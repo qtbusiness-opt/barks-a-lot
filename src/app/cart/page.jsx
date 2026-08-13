@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import StoreImage from "@/components/StoreImage";
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, total } = useCart();
@@ -32,9 +33,11 @@ export default function CartPage() {
           <div key={item.key} className="bg-white rounded-xl shadow-sm p-4">
             {/* Two rows on phones (details, then controls); one row from sm up. */}
             <div className="flex items-center gap-3 sm:gap-4">
-              <img
+              <StoreImage
                 src={item.image}
                 alt={item.name}
+                width={80}
+                height={80}
                 className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
               />
               <div className="flex-1 min-w-0">

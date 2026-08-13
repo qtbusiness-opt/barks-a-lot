@@ -1,4 +1,5 @@
 import { getSettings, ABOUT_IMAGE_KEYS } from "@/lib/site-settings";
+import StoreImage from "@/components/StoreImage";
 
 export const metadata = {
   title: "About Us — Barks-A-Lot Treats & More",
@@ -14,12 +15,15 @@ export const dynamic = "force-dynamic";
 function SectionImage({ src, label }) {
   if (src) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={src}
-        alt={label}
-        className="w-full aspect-[4/3] rounded-2xl object-cover bg-[#F5F0E8]"
-      />
+      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-[#F5F0E8]">
+        <StoreImage
+          src={src}
+          alt={label}
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-cover"
+        />
+      </div>
     );
   }
   return (

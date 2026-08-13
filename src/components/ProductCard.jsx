@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import StoreImage from "@/components/StoreImage";
 
 export default function ProductCard({
   id,
@@ -30,10 +31,12 @@ export default function ProductCard({
     <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition group">
       <Link href={`/products/${slug ?? id}`}>
         <div className="relative aspect-square overflow-hidden bg-[#F5F0E8]">
-          <img
+          <StoreImage
             src={image}
             alt={name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            fill
+            sizes="(max-width: 640px) 50vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
           {limitedQuantity != null && inStock && (
             <span className="absolute top-2 left-2 bg-[#C8722A] text-white text-xs font-semibold px-2 py-1 rounded-full">

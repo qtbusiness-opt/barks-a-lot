@@ -6,6 +6,8 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { orderStatusLabel } from "@/lib/order-status";
 import { parseSelectedOptions, formatSelectedOptions } from "@/lib/options";
+import { formatCalendarDay, formatDate } from "@/lib/format-date";
+import StoreImage from "@/components/StoreImage";
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
@@ -105,8 +107,7 @@ export default function OrdersPage() {
               <div className="flex flex-wrap gap-2 justify-between items-start mb-4">
                 <div>
                   <p className="text-sm text-gray-500">
-                    Order placed{" "}
-                    {new Date(order.createdAt).toLocaleDateString()}
+                    Order placed {formatDate(order.createdAt)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     Confirmation #: {order.confirmationNumber}
@@ -114,9 +115,9 @@ export default function OrdersPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
                       ? order.pickupEvent
-                        ? `Pickup at ${order.pickupEvent.title} — ${new Date(
-                            `${String(order.pickupEvent.date).slice(0, 10)}T00:00:00`
-                          ).toLocaleDateString()}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
+                        ? `Pickup at ${order.pickupEvent.title} — ${formatCalendarDay(
+                            order.pickupEvent.date
+                          )}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
                         : "Pickup at market/event"
                       : "Ships to your address"}
                   </p>
@@ -138,9 +139,11 @@ export default function OrdersPage() {
               <div className="space-y-3">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-4">
-                    <img
+                    <StoreImage
                       src={item.product.image}
                       alt={item.product.name}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 rounded-lg object-cover bg-[#F5F0E8]"
                     />
                     <div className="flex-1">

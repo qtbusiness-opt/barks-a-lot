@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
 import { orderStatusLabel } from "@/lib/order-status";
+import { formatCalendarDay, formatDateTime } from "@/lib/format-date";
 
 const STATUSES = ["pending", "shipped", "delivered", "cancelled"];
 
@@ -78,7 +79,7 @@ export default function AdminOrdersPage() {
                     {order.confirmationNumber}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {new Date(order.createdAt).toLocaleString()}
+                    {formatDateTime(order.createdAt)}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
                     {order.user
@@ -88,9 +89,9 @@ export default function AdminOrdersPage() {
                   <p className="text-sm text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
                       ? order.pickupEvent
-                        ? `Pickup at ${order.pickupEvent.title} — ${new Date(
-                            `${String(order.pickupEvent.date).slice(0, 10)}T00:00:00`
-                          ).toLocaleDateString()}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
+                        ? `Pickup at ${order.pickupEvent.title} — ${formatCalendarDay(
+                            order.pickupEvent.date
+                          )}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
                         : "Pickup at market/event"
                       : `Ship to: ${order.address}, ${order.city}, ${order.state} ${order.zip}`}
                     {order.channel === "market" && " · Market sale"}

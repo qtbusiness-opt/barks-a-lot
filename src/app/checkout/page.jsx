@@ -9,6 +9,7 @@ import Link from "next/link";
 import { SHIPPING_ENABLED } from "@/lib/features";
 import { isPickupSelectable, formatTimeRange } from "@/lib/pickup-window";
 import { getPublicConfig } from "@/lib/public-config";
+import { formatCalendarDay } from "@/lib/format-date";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -40,7 +41,7 @@ function loadSquareSdk(appId) {
 const eventDay = (event) => String(event.date).slice(0, 10);
 
 const formatEventDate = (event) =>
-  new Date(`${eventDay(event)}T00:00:00`).toLocaleDateString(undefined, {
+  formatCalendarDay(eventDay(event), {
     weekday: "short",
     month: "short",
     day: "numeric",

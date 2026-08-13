@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
 import ImageUpload from "@/components/ImageUpload";
 import OptionGroupsEditor from "@/components/OptionGroupsEditor";
+import StoreImage from "@/components/StoreImage";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -134,15 +135,22 @@ const stockOf = (p) =>
     : p.quantity;
 
 function ProductFields({ form, update, variantProduct, categories }) {
+  // Rendered by the create form and by every open edit form, so field
+  // ids have to be unique per instance for labels to resolve.
+  const fieldId = useId();
   const showsIngredients =
     categories.find((c) => c.slug === form.category)?.showsIngredients ?? false;
   return (
     <>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor={`${fieldId}-name`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Name
         </label>
         <input
+          id={`${fieldId}-name`}
           type="text"
           value={form.name}
           onChange={(e) => update("name", e.target.value)}
@@ -151,10 +159,14 @@ function ProductFields({ form, update, variantProduct, categories }) {
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor={`${fieldId}-description`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Description
         </label>
         <textarea
+          id={`${fieldId}-description`}
           value={form.description}
           onChange={(e) => update("description", e.target.value)}
           required
@@ -164,10 +176,14 @@ function ProductFields({ form, update, variantProduct, categories }) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor={`${fieldId}-price`}
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Price ($)
           </label>
           <input
+            id={`${fieldId}-price`}
             type="number"
             min="0.01"
             step="0.01"
@@ -178,10 +194,14 @@ function ProductFields({ form, update, variantProduct, categories }) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor={`${fieldId}-quantity`}
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Quantity in stock
           </label>
           <input
+            id={`${fieldId}-quantity`}
             type="number"
             min="0"
             step="1"
@@ -199,10 +219,14 @@ function ProductFields({ form, update, variantProduct, categories }) {
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor={`${fieldId}-category`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Category
         </label>
         <select
+          id={`${fieldId}-category`}
           value={form.category}
           onChange={(e) => update("category", e.target.value)}
           className={inputClass}
@@ -227,9 +251,11 @@ function ProductFields({ form, update, variantProduct, categories }) {
           <div className="flex flex-wrap gap-3 mb-2">
             {form.images.map((src, i) => (
               <div key={`${src}-${i}`} className="relative">
-                <img
+                <StoreImage
                   src={src}
                   alt={`Additional photo ${i + 1}`}
+                  width={64}
+                  height={64}
                   className="w-16 h-16 rounded-lg object-cover bg-[#F5F0E8]"
                 />
                 <button
@@ -415,9 +441,11 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-3">
       <div className="flex items-center gap-3">
-        <img
+        <StoreImage
           src={product.image}
           alt={product.name}
+          width={56}
+          height={56}
           className="w-14 h-14 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
         />
         <div className="flex-1 min-w-0">

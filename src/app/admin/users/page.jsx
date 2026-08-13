@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { formatDate } from "@/lib/format-date";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -165,7 +166,7 @@ export default function AdminUsersPage() {
                     <p className="text-sm text-gray-500 truncate">{a.email}</p>
                   </div>
                   <p className="text-xs text-gray-500 shrink-0">
-                    Since {new Date(a.createdAt).toLocaleDateString()}
+                    Since {formatDate(a.createdAt)}
                   </p>
                 </div>
               ))}

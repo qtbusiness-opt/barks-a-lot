@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import ProductOptions from "@/components/ProductOptions";
 import { formatSelectedOptions } from "@/lib/options";
+import StoreImage from "@/components/StoreImage";
 
 // Cover image plus any gallery extras. Clicking the photo advances to
 // the next one; thumbnails jump straight to an image.
@@ -17,11 +18,14 @@ function GalleryColumn({ product, imageIndex, setImageIndex }) {
 
   if (gallery.length <= 1) {
     return (
-      <div className="bg-[#F5F0E8] rounded-xl overflow-hidden self-start">
-        <img
+      <div className="relative aspect-square bg-[#F5F0E8] rounded-xl overflow-hidden self-start">
+        <StoreImage
           src={product.image}
           alt={product.name}
-          className="w-full h-full object-cover"
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-cover"
         />
       </div>
     );
@@ -33,12 +37,15 @@ function GalleryColumn({ product, imageIndex, setImageIndex }) {
         type="button"
         onClick={advance}
         aria-label={`${product.name} photo ${imageIndex + 1} of ${gallery.length} — show next photo`}
-        className="block w-full bg-[#F5F0E8] rounded-xl overflow-hidden cursor-pointer"
+        className="relative block w-full aspect-square bg-[#F5F0E8] rounded-xl overflow-hidden cursor-pointer"
       >
-        <img
+        <StoreImage
           src={current}
           alt={`${product.name} — photo ${imageIndex + 1} of ${gallery.length}`}
-          className="w-full aspect-square object-cover"
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-cover"
         />
       </button>
       <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
@@ -55,7 +62,13 @@ function GalleryColumn({ product, imageIndex, setImageIndex }) {
                 : "border-transparent opacity-70 hover:opacity-100"
             }`}
           >
-            <img src={src} alt="" className="w-full h-full object-cover" />
+            <StoreImage
+              src={src}
+              alt=""
+              width={48}
+              height={48}
+              className="w-full h-full object-cover"
+            />
           </button>
         ))}
       </div>

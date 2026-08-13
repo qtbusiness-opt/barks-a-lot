@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { formatDate } from "@/lib/format-date";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
 
 function AnnouncementRow({ announcement, onSaved, onDeleted, onError }) {
+  // Several rows can be open for editing at once, so the field ids have
+  // to be unique per row for the labels to point at the right inputs.
+  const fieldId = useId();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: "", body: "" });
@@ -55,7 +59,7 @@ function AnnouncementRow({ announcement, onSaved, onDeleted, onError }) {
           <p className="text-sm text-gray-600 mt-1">{announcement.body}</p>
         </div>
         <p className="text-xs text-gray-500 shrink-0">
-          {new Date(announcement.createdAt).toLocaleDateString()}
+          {formatDate(announcement.createdAt)}
         </p>
       </div>
       <div className="flex gap-2 mt-3">
@@ -78,10 +82,14 @@ function AnnouncementRow({ announcement, onSaved, onDeleted, onError }) {
           className="mt-4 pt-4 border-t border-gray-100 space-y-3"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor={`${fieldId}-title`}
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Title
             </label>
             <input
+              id={`${fieldId}-title`}
               type="text"
               value={form.title}
               onChange={(e) =>
@@ -92,10 +100,14 @@ function AnnouncementRow({ announcement, onSaved, onDeleted, onError }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor={`${fieldId}-body`}
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Message
             </label>
             <textarea
+              id={`${fieldId}-body`}
               value={form.body}
               onChange={(e) => setForm((p) => ({ ...p, body: e.target.value }))}
               required

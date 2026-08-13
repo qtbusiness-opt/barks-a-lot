@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useState } from "react";
+import StoreImage from "@/components/StoreImage";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -20,9 +21,11 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto safe-x sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <img
+            <StoreImage
               src="/images/Barks-A-Lot Logo.png"
               alt="Barks-A-Lot"
+              width={40}
+              height={40}
               className="h-10 w-10 rounded-full"
             />
             <span className="wordmark hidden sm:inline">Barks-A-Lot</span>

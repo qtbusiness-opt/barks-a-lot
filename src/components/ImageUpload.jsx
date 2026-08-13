@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import StoreImage from "@/components/StoreImage";
 
 // Product image picker: click to browse or drag & drop. Uploads to the
 // admin uploads API and hands the served URL back to the form.
@@ -65,9 +66,11 @@ export default function ImageUpload({
         }`}
       >
         {value ? (
-          <img
+          <StoreImage
             src={value}
             alt="Product preview"
+            width={64}
+            height={64}
             className="w-16 h-16 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
           />
         ) : (

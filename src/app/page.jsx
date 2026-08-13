@@ -5,6 +5,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 import { SHIPPING_ENABLED } from "@/lib/features";
+import StoreImage from "@/components/StoreImage";
 
 export default function HomePage() {
   const [featured, setFeatured] = useState([]);
@@ -36,9 +37,12 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="bg-linear-to-br from-[#4A7C8A] to-[#3A6270] text-white">
         <div className="max-w-7xl mx-auto safe-x py-12 sm:py-28 flex flex-col items-center text-center">
-          <img
+          <StoreImage
             src="/images/Barks-A-Lot Logo.png"
             alt="Barks-A-Lot Treats & More"
+            width={160}
+            height={160}
+            priority
             className="h-28 w-28 sm:h-40 sm:w-40 mb-6 rounded-full shadow-xl"
           />
           <h1 className="text-3xl sm:text-5xl font-bold mb-4">

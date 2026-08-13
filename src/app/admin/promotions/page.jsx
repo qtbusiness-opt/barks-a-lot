@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
@@ -21,6 +21,9 @@ const EMPTY = {
 
 // Shared create/edit form fields for a promotion.
 function PromoFields({ form, update, products }) {
+  // Rendered by the create form and by each open edit form, so the ids
+  // tying labels to inputs have to be unique per instance.
+  const fieldId = useId();
   const toggleProduct = (id) =>
     update(
       "productIds",
@@ -32,10 +35,14 @@ function PromoFields({ form, update, products }) {
   return (
     <>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor={`${fieldId}-name`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Name / topic
         </label>
         <input
+          id={`${fieldId}-name`}
           type="text"
           value={form.name}
           onChange={(e) => update("name", e.target.value)}
@@ -75,10 +82,14 @@ function PromoFields({ form, update, products }) {
       {form.type === "code" ? (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor={`${fieldId}-code`}
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Code
             </label>
             <input
+              id={`${fieldId}-code`}
               type="text"
               value={form.code}
               onChange={(e) => update("code", e.target.value.toUpperCase())}
@@ -88,10 +99,14 @@ function PromoFields({ form, update, products }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor={`${fieldId}-percent`}
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Percent off
             </label>
             <input
+              id={`${fieldId}-percent`}
               type="number"
               min="1"
               max="100"
@@ -106,10 +121,14 @@ function PromoFields({ form, update, products }) {
         <>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor={`${fieldId}-bundleqty`}
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Buy any (quantity)
               </label>
               <input
+                id={`${fieldId}-bundleqty`}
                 type="number"
                 min="2"
                 max="50"
@@ -119,10 +138,14 @@ function PromoFields({ form, update, products }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor={`${fieldId}-bundleprice`}
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 For price ($)
               </label>
               <input
+                id={`${fieldId}-bundleprice`}
                 type="number"
                 min="0.01"
                 step="0.01"

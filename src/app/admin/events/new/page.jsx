@@ -175,6 +175,7 @@ function NewEventForm() {
                 value={key}
                 checked={form.color === key}
                 onChange={() => update("color", key)}
+                aria-label={EVENT_COLORS[key].label}
                 className="sr-only"
               />
               <span

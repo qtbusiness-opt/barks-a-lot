@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { formatDateTime } from "@/lib/format-date";
 
 export default function AdminNotificationsPage() {
   const { user } = useAuth();
@@ -106,7 +107,7 @@ export default function AdminNotificationsPage() {
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <p className="text-xs text-gray-500">
-                  {new Date(n.createdAt).toLocaleString()}
+                  {formatDateTime(n.createdAt)}
                 </p>
                 <button
                   onClick={() => setArchived(n.id, !archived)}

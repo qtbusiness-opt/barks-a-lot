@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { formatDate } from "@/lib/format-date";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -124,7 +125,7 @@ export default function AdminCustomersPage() {
                 <p className="text-sm text-gray-500 truncate">{c.email}</p>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {c._count.orders} {c._count.orders === 1 ? "order" : "orders"}{" "}
-                  · joined {new Date(c.createdAt).toLocaleDateString()}
+                  · joined {formatDate(c.createdAt)}
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">
