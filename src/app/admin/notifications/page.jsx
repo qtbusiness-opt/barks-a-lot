@@ -20,7 +20,9 @@ export default function AdminNotificationsPage() {
       const q = view === "archived" ? "?archived=true" : "";
       api
         .get(`/admin/notifications${q}`)
-        .then((res) => setResult({ view, notifications: res.data.notifications }))
+        .then((res) =>
+          setResult({ view, notifications: res.data.notifications })
+        )
         .catch(() => setError("Failed to load notifications."));
     }
   }, [isAdmin, view]);
@@ -58,22 +60,33 @@ export default function AdminNotificationsPage() {
       </p>
 
       <div className="flex gap-2 mb-6">
-        <button onClick={() => setView("active")} className={tabClass(!archived)}>
+        <button
+          onClick={() => setView("active")}
+          className={tabClass(!archived)}
+        >
           Active
         </button>
-        <button onClick={() => setView("archived")} className={tabClass(archived)}>
+        <button
+          onClick={() => setView("archived")}
+          className={tabClass(archived)}
+        >
           Archived
         </button>
       </div>
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
           {error}
         </p>
       )}
 
       {notifications === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading notifications…</p>
+        <p className="text-gray-500 text-center py-10">
+          Loading notifications…
+        </p>
       ) : notifications?.length === 0 ? (
         <p className="text-gray-500 text-center py-10">
           {archived

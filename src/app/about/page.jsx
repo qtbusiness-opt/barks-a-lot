@@ -28,7 +28,9 @@ function SectionImage({ src, label }) {
       role="img"
       aria-label={`${label} (image coming soon)`}
     >
-      <span aria-hidden="true" className="text-4xl mb-2">🐾</span>
+      <span aria-hidden="true" className="text-4xl mb-2">
+        🐾
+      </span>
       <span className="text-sm font-medium text-[#4A7C8A]">{label}</span>
       <span className="text-xs text-gray-400 mt-1">Image coming soon</span>
     </div>
@@ -44,7 +46,9 @@ function Section({ title, imageLabel, imageSrc, flip = false, children }) {
         <h2 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-4">
           {title}
         </h2>
-        <div className="space-y-4 text-gray-700 leading-relaxed">{children}</div>
+        <div className="space-y-4 text-gray-700 leading-relaxed">
+          {children}
+        </div>
       </div>
       <div className={flip ? "md:order-1" : "md:order-2"}>
         <SectionImage src={imageSrc} label={imageLabel} />
@@ -58,7 +62,9 @@ export default async function AboutPage() {
   return (
     <div className="max-w-5xl mx-auto safe-x py-8 sm:py-12">
       <header className="text-center mb-12">
-        <h1 className="text-3xl sm:text-4xl font-bold text-[#2A4A52]">About Us</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-[#2A4A52]">
+          About Us
+        </h1>
       </header>
 
       <div className="space-y-16">
@@ -86,8 +92,7 @@ export default async function AboutPage() {
         >
           <p>Everything we do here traces back to two very good dogs.</p>
           <p>
-            <strong>Meeko</strong>{" "}
-            is our tan maltipoo and a real stud muffin.
+            <strong>Meeko</strong> is our tan maltipoo and a real stud muffin.
             At seven years old, he&rsquo;s been part of our family the longest.
             He can be a bit of a troublemaker with strangers at first, all bark
             and no follow-through, but it never takes long before he warms up
@@ -96,8 +101,7 @@ export default async function AboutPage() {
             biggest dogs at the dog park.
           </p>
           <p>
-            <strong>Evee</strong>{" "}
-            is our white chipoo and an absolute cutie. She
+            <strong>Evee</strong> is our white chipoo and an absolute cutie. She
             was rescued in early 2026 and is turning one year old on Halloween
             2026. She&rsquo;s the self-appointed chaos coordinator of the
             household, on a personal mission to find and shred any stray piece
@@ -122,10 +126,10 @@ export default async function AboutPage() {
             our community.
           </p>
           <p>
-            Every batch is home-baked with organic, pet-friendly ingredients
-            and nothing else. No preservatives, no fillers, no mystery
-            ingredients. Just treats made the way we&rsquo;d want them made for
-            our own dogs, because that&rsquo;s exactly what they deserve.
+            Every batch is home-baked with organic, pet-friendly ingredients and
+            nothing else. No preservatives, no fillers, no mystery ingredients.
+            Just treats made the way we&rsquo;d want them made for our own dogs,
+            because that&rsquo;s exactly what they deserve.
           </p>
         </Section>
       </div>

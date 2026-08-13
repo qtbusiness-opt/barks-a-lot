@@ -56,10 +56,18 @@ function NewEventForm() {
       className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4 max-w-xl"
     >
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg"
+        >
+          {error}
+        </p>
       )}
       <div>
-        <label htmlFor="e-title" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="e-title"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Title
         </label>
         <input
@@ -72,7 +80,10 @@ function NewEventForm() {
         />
       </div>
       <div>
-        <label htmlFor="e-desc" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="e-desc"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Description
         </label>
         <textarea
@@ -86,7 +97,10 @@ function NewEventForm() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="e-loc" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="e-loc"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Location (optional)
           </label>
           <LocationInput
@@ -97,7 +111,10 @@ function NewEventForm() {
           />
         </div>
         <div>
-          <label htmlFor="e-date" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="e-date"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Date
           </label>
           <input
@@ -112,7 +129,10 @@ function NewEventForm() {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="e-start" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="e-start"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Start time
           </label>
           <input
@@ -124,7 +144,10 @@ function NewEventForm() {
           />
         </div>
         <div>
-          <label htmlFor="e-end" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="e-end"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             End time
           </label>
           <input
@@ -157,7 +180,9 @@ function NewEventForm() {
               <span
                 title={EVENT_COLORS[key].label}
                 className={`block w-9 h-9 rounded-full ${EVENT_COLORS[key].swatch} ${
-                  form.color === key ? "ring-2 ring-offset-2 ring-[#2A4A52]" : ""
+                  form.color === key
+                    ? "ring-2 ring-offset-2 ring-[#2A4A52]"
+                    : ""
                 }`}
               />
             </label>

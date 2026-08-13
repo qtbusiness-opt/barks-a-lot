@@ -47,7 +47,9 @@ function PromoFields({ form, update, products }) {
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700 mb-1">Type</span>
+        <span className="block text-sm font-medium text-gray-700 mb-1">
+          Type
+        </span>
         <div className="flex gap-2">
           {[
             ["code", "Discount code (% off)"],
@@ -169,7 +171,11 @@ function PromoFields({ form, update, products }) {
 function toPayload(form) {
   const base = { name: form.name.trim(), type: form.type, active: form.active };
   if (form.type === "code") {
-    return { ...base, code: form.code.trim(), percentOff: Number(form.percentOff) };
+    return {
+      ...base,
+      code: form.code.trim(),
+      percentOff: Number(form.percentOff),
+    };
   }
   return {
     ...base,
@@ -187,7 +193,8 @@ function fromPromo(promo) {
     active: promo.active,
     code: promo.code ?? "",
     percentOff: promo.percentOff != null ? String(promo.percentOff) : "",
-    bundleQuantity: promo.bundleQuantity != null ? String(promo.bundleQuantity) : "2",
+    bundleQuantity:
+      promo.bundleQuantity != null ? String(promo.bundleQuantity) : "2",
     bundlePrice: promo.bundlePrice != null ? String(promo.bundlePrice) : "",
     productIds: promo.productIds ?? [],
   };
@@ -213,7 +220,10 @@ function PromoRow({ promo, products, onSaved, onDeleted, onError }) {
     setSaving(true);
     onError("");
     try {
-      const res = await api.patch(`/admin/promotions/${promo.id}`, toPayload(form));
+      const res = await api.patch(
+        `/admin/promotions/${promo.id}`,
+        toPayload(form)
+      );
       onSaved(res.data.promotion);
       setEditing(false);
     } catch (err) {
@@ -284,7 +294,10 @@ function PromoRow({ promo, products, onSaved, onDeleted, onError }) {
       </div>
 
       {editing && (
-        <form onSubmit={save} className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+        <form
+          onSubmit={save}
+          className="mt-4 pt-4 border-t border-gray-100 space-y-4"
+        >
           <PromoFields form={form} update={update} products={products} />
           <button
             type="submit"
@@ -345,12 +358,18 @@ export default function AdminPromotionsPage() {
         bundles (mix &amp; match) apply automatically when the cart qualifies.
       </p>
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
           {error}
         </p>
       )}
 
-      <form onSubmit={create} className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6 max-w-xl space-y-4">
+      <form
+        onSubmit={create}
+        className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6 max-w-xl space-y-4"
+      >
         <h2 className="text-lg font-semibold text-[#2A4A52]">New Promotion</h2>
         <PromoFields form={form} update={update} products={products} />
         <button

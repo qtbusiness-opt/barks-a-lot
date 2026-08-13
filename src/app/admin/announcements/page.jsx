@@ -73,19 +73,28 @@ function AnnouncementRow({ announcement, onSaved, onDeleted, onError }) {
         </button>
       </div>
       {editing && (
-        <form onSubmit={save} className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+        <form
+          onSubmit={save}
+          className="mt-4 pt-4 border-t border-gray-100 space-y-3"
+        >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Title
+            </label>
             <input
               type="text"
               value={form.title}
-              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, title: e.target.value }))
+              }
               required
               className={inputClass}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Message
+            </label>
             <textarea
               value={form.body}
               onChange={(e) => setForm((p) => ({ ...p, body: e.target.value }))}
@@ -152,14 +161,22 @@ export default function AdminAnnouncementsPage() {
             New Announcement
           </h2>
           <p className="text-sm text-gray-500">
-            The most recent announcement appears as a banner on the
-            storefront homepage.
+            The most recent announcement appears as a banner on the storefront
+            homepage.
           </p>
           {error && (
-            <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>
+            <p
+              role="alert"
+              className="text-red-500 text-sm bg-red-50 p-3 rounded-lg"
+            >
+              {error}
+            </p>
           )}
           <div>
-            <label htmlFor="a-title" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="a-title"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Title
             </label>
             <input
@@ -172,7 +189,10 @@ export default function AdminAnnouncementsPage() {
             />
           </div>
           <div>
-            <label htmlFor="a-body" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="a-body"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Message
             </label>
             <textarea

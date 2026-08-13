@@ -53,7 +53,12 @@ export default function AdminOrdersPage() {
   return (
     <AdminShell title="Orders" backTo="/admin">
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
+          {error}
+        </p>
       )}
 
       {orders === null && !error ? (
@@ -63,7 +68,10 @@ export default function AdminOrdersPage() {
       ) : (
         <div className="space-y-6">
           {orderList.map((order) => (
-            <div key={order.id} className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+            <div
+              key={order.id}
+              className="bg-white rounded-xl shadow-sm p-4 sm:p-6"
+            >
               <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                 <div>
                   <p className="font-semibold text-[#2A4A52]">
@@ -135,7 +143,10 @@ export default function AdminOrdersPage() {
               </div>
               <div className="space-y-2">
                 {order.items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 text-sm">
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-4 text-sm"
+                  >
                     <span className="flex-1">
                       {item.product.name}
                       {item.variant && ` — ${item.variant.name}`}
@@ -152,10 +163,12 @@ export default function AdminOrdersPage() {
                 {order.discountTotal > 0 && (
                   <>
                     <p className="text-sm text-gray-500">
-                      Subtotal: ${(order.total + order.discountTotal).toFixed(2)}
+                      Subtotal: $
+                      {(order.total + order.discountTotal).toFixed(2)}
                     </p>
                     <p className="text-sm text-green-700">
-                      Discount{order.promoCode ? ` (${order.promoCode})` : ""}: −$
+                      Discount{order.promoCode ? ` (${order.promoCode})` : ""}:
+                      −$
                       {order.discountTotal.toFixed(2)}
                     </p>
                   </>

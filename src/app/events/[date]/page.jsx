@@ -101,12 +101,14 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
       <h2 className="text-xl font-bold text-[#2A4A52] mt-3">{event.title}</h2>
       {formatTimeRange(event) && (
         <p className="text-sm text-[#4A7C8A] font-medium mt-1">
-          <span aria-hidden="true">🕒 </span>{formatTimeRange(event)}
+          <span aria-hidden="true">🕒 </span>
+          {formatTimeRange(event)}
         </p>
       )}
       {event.location && (
         <p className="text-sm text-[#4A7C8A] font-medium mt-1">
-          <span aria-hidden="true">📍 </span>{event.location}
+          <span aria-hidden="true">📍 </span>
+          {event.location}
         </p>
       )}
       <p className="text-gray-600 mt-3 leading-relaxed">{event.description}</p>
@@ -130,7 +132,10 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
           </div>
 
           {editing && form && (
-            <form onSubmit={save} className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+            <form
+              onSubmit={save}
+              className="mt-4 pt-4 border-t border-gray-100 space-y-4"
+            >
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Title
@@ -206,7 +211,10 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
                   </p>
                 </div>
               </div>
-              <ColorPicker value={form.color} onChange={(c) => update("color", c)} />
+              <ColorPicker
+                value={form.color}
+                onChange={(c) => update("color", c)}
+              />
               <button
                 type="submit"
                 disabled={saving}
@@ -267,7 +275,12 @@ export default function EventDayPage() {
       </h1>
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
+          {error}
+        </p>
       )}
 
       {events === null ? (

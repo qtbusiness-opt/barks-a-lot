@@ -39,7 +39,11 @@ export default function EventsCalendarPage() {
 
   const firstWeekday = new Date(view.year, view.month, 1).getDay();
   const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-  const todayKey = dayKey(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayKey = dayKey(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
 
   const cells = [
     ...Array.from({ length: firstWeekday }, () => null),
