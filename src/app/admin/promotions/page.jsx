@@ -4,6 +4,7 @@ import { useEffect, useState, useId } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -341,7 +342,6 @@ export default function AdminPromotionsPage() {
   const [promotions, setPromotions] = useState(null);
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState(EMPTY);
-  const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -359,20 +359,17 @@ export default function AdminPromotionsPage() {
 
   const update = (field, value) => setForm((p) => ({ ...p, [field]: value }));
 
-  const create = async (e) => {
+  const [create, creating] = useAsyncAction(async (e) => {
     e.preventDefault();
     setError("");
-    setCreating(true);
     try {
       const res = await api.post("/admin/promotions", toPayload(form));
       setPromotions((prev) => [res.data.promotion, ...(prev ?? [])]);
       setForm(EMPTY);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to create the promotion.");
-    } finally {
-      setCreating(false);
     }
-  };
+  });
 
   return (
     <AdminShell title="Promotions" backTo="/admin">

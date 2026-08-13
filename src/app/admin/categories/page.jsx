@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -139,7 +140,6 @@ export default function AdminCategoriesPage() {
   const isAdmin = user?.role === "admin";
   const [categories, setCategories] = useState(null);
   const [form, setForm] = useState({ name: "", icon: "🐾", showsIngredients: false });
-  const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -151,10 +151,9 @@ export default function AdminCategoriesPage() {
     }
   }, [isAdmin]);
 
-  const create = async (e) => {
+  const [create, creating] = useAsyncAction(async (e) => {
     e.preventDefault();
     setError("");
-    setCreating(true);
     try {
       const res = await api.post("/admin/categories", form);
       setCategories((prev) => [
@@ -164,10 +163,8 @@ export default function AdminCategoriesPage() {
       setForm({ name: "", icon: "🐾", showsIngredients: false });
     } catch (err) {
       setError(err.response?.data?.error || "Failed to create the category.");
-    } finally {
-      setCreating(false);
     }
-  };
+  });
 
   return (
     <AdminShell title="Categories" backTo="/admin">
