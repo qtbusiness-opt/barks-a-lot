@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 const CartContext = createContext(undefined);
 
@@ -48,7 +55,12 @@ export function CartProvider({ children }) {
   //          optionsLabel? } where options is
   //          [{ groupId, choiceIds: [...] }] and optionsLabel is the
   //          human-readable summary shown in the cart.
-  const addItem = (entry, quantity = 1) => {
+  // Every function below goes through useCallback and every read of the
+  // current cart goes through the updater argument, so none of them
+  // depend on `items`. That keeps their identities fixed for the life of
+  // the provider, which is what lets the context value below stay put
+  // when nothing about the cart has actually changed.
+  const addItem = useCallback((entry, quantity = 1) => {
     const key = lineKey(entry.productId, entry.variantId, entry.options);
     setItems((prev) => {
       const existing = prev.find((i) => i.key === key);
@@ -60,46 +72,56 @@ export function CartProvider({ children }) {
       return [...prev, { ...entry, key, quantity }];
     });
     setLastAdded({ ...entry, quantity });
-  };
+  }, []);
 
-  const dismissLastAdded = () => setLastAdded(null);
+  const dismissLastAdded = useCallback(() => setLastAdded(null), []);
 
-  const removeItem = (key) => {
+  const removeItem = useCallback((key) => {
     setItems((prev) => prev.filter((i) => i.key !== key));
-  };
+  }, []);
 
-  const updateQuantity = (key, quantity) => {
-    if (quantity <= 0) {
-      removeItem(key);
-      return;
-    }
-    setItems((prev) =>
-      prev.map((i) => (i.key === key ? { ...i, quantity } : i))
-    );
-  };
-
-  const clearCart = () => setItems([]);
-
-  const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
-
-  return (
-    <CartContext.Provider
-      value={{
-        items,
-        addItem,
-        removeItem,
-        updateQuantity,
-        clearCart,
-        total,
-        itemCount,
-        lastAdded,
-        dismissLastAdded,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+  const updateQuantity = useCallback(
+    (key, quantity) => {
+      if (quantity <= 0) {
+        removeItem(key);
+        return;
+      }
+      setItems((prev) =>
+        prev.map((i) => (i.key === key ? { ...i, quantity } : i))
+      );
+    },
+    [removeItem]
   );
+
+  const clearCart = useCallback(() => setItems([]), []);
+
+  // Built inline, this object was a new object on every render, so every
+  // component reading the cart re-rendered whenever anything above them
+  // re-rendered — even when the cart itself was untouched.
+  const value = useMemo(
+    () => ({
+      items,
+      addItem,
+      removeItem,
+      updateQuantity,
+      clearCart,
+      total: items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+      itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
+      lastAdded,
+      dismissLastAdded,
+    }),
+    [
+      items,
+      lastAdded,
+      addItem,
+      removeItem,
+      updateQuantity,
+      clearCart,
+      dismissLastAdded,
+    ]
+  );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {
