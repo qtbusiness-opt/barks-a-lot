@@ -22,7 +22,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
             <StoreImage
-              src="/images/Barks-A-Lot Logo.png"
+              src="/images/barks-a-lot-logo.png"
               alt="Barks-A-Lot"
               width={40}
               height={40}

@@ -38,7 +38,7 @@ export default function HomePage() {
       <section className="bg-linear-to-br from-[#4A7C8A] to-[#3A6270] text-white">
         <div className="max-w-7xl mx-auto safe-x py-12 sm:py-28 flex flex-col items-center text-center">
           <StoreImage
-            src="/images/Barks-A-Lot Logo.png"
+            src="/images/barks-a-lot-logo.png"
             alt="Barks-A-Lot Treats & More"
             width={160}
             height={160}
