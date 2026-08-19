@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { bypassesStagingGate } from "@/lib/staging-gate";
 
 // Runs before routes render (this Next version's replacement for
 // middleware). Three jobs:
@@ -29,10 +30,11 @@ function basicAuthGate(request) {
   const password = process.env.BASIC_AUTH_PASSWORD;
   if (!user || !password) return null;
 
-  // Health stays open: Docker healthchecks and platform probes don't
-  // send credentials. It now also echoes the app version — no CVE
-  // surface for a bespoke app, so that's still nothing sensitive.
-  if (request.nextUrl.pathname === "/api/health") return null;
+  // Health probes and image bytes are never challenged — the second is
+  // load-bearing, not a convenience, since next/image re-fetches its
+  // source server-side without the browser's credentials. See
+  // src/lib/staging-gate.js for the full reasoning.
+  if (bypassesStagingGate(request.nextUrl.pathname)) return null;
 
   const header = request.headers.get("authorization") || "";
   if (header.startsWith("Basic ")) {
