@@ -27,9 +27,9 @@ export const metadata = {
   title: "Barks-A-Lot Treats & More",
   description: "Premium treats and accessories for your furry friend",
   icons: {
-    icon: "/images/Barks-A-Lot Logo.png",
-    apple: "/images/Barks-A-Lot Logo.png",
-    shortcut: "/images/Barks-A-Lot Logo.png",
+    icon: "/images/barks-a-lot-logo.png",
+    apple: "/images/barks-a-lot-logo.png",
+    shortcut: "/images/barks-a-lot-logo.png",
   },
   appleWebApp: {
     title: "Barks-A-Lot",
