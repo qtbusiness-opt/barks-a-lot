@@ -14,14 +14,28 @@ const emptyGroup = () => ({
   name: "",
   inputType: "radio",
   required: true,
-  choices: [{ label: "", image: null }],
+  setsPrice: false,
+  choices: [{ label: "", image: null, price: "" }],
 });
 
+// A group can price the product only if every customer answering it
+// picks exactly one choice — a checkbox group or an optional one can't.
+const canSetPrice = (group) => group.required && group.inputType !== "checkbox";
+
 // Builds a product's option groups — e.g. a bandana's Size and Style —
-// and picks how each one is presented on the product page. Groups carry
-// no price or stock; they're the customer's choices, recorded on the
-// order. Use variants when the price or stock actually differs.
-export default function OptionGroupsEditor({ groups, onChange, idSuffix }) {
+// and picks how each one is presented on the product page. With
+// trackOptionStock on, one group's choices set the price (Small $12,
+// Large $15) and every combination across the required groups gets its
+// own stock — filled in after saving, once the combinations exist (see
+// VariantStockGrid). Off, groups are plain customer answers recorded on
+// the order, carrying no price or stock of their own.
+export default function OptionGroupsEditor({
+  groups,
+  onChange,
+  idSuffix,
+  trackOptionStock,
+  onTrackOptionStockChange,
+}) {
   const setGroup = (index, patch) =>
     onChange(groups.map((g, i) => (i === index ? { ...g, ...patch } : g)));
 
@@ -32,16 +46,38 @@ export default function OptionGroupsEditor({ groups, onChange, idSuffix }) {
       ),
     });
 
+  // Only one group may set the price — picking a new one clears the rest.
+  const setPricingGroup = (gi) =>
+    onChange(groups.map((g, i) => ({ ...g, setsPrice: i === gi })));
+
   return (
-    <fieldset>
-      <legend className="block text-sm font-medium text-gray-700 mb-1">
-        Product Options (optional)
-      </legend>
-      <p className="text-xs text-gray-500 mb-2">
-        Choices the customer picks on the product page, like Size and Style. For
-        things that change the price or have their own stock, use options with
-        prices instead.
-      </p>
+    <fieldset className="space-y-4">
+      <div>
+        <legend className="block text-sm font-medium text-gray-700 mb-1">
+          Product Options (optional)
+        </legend>
+        <p className="text-xs text-gray-500">
+          Choices the customer picks on the product page, like Size and Style.
+        </p>
+      </div>
+
+      <label className="flex items-center gap-3 min-h-11 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={trackOptionStock}
+          onChange={(e) => onTrackOptionStockChange(e.target.checked)}
+        />
+        <span className="text-sm font-medium text-gray-700">
+          Track price and stock by these options
+        </span>
+      </label>
+      {trackOptionStock && (
+        <p className="text-xs text-gray-500 -mt-2">
+          Pick one required group below to set the price (e.g. Size: Small $5,
+          Large $7). Every combination of the required groups gets its own stock
+          count, which you&rsquo;ll fill in after saving.
+        </p>
+      )}
 
       <div className="space-y-4">
         {groups.map((group, gi) => (
@@ -98,6 +134,24 @@ export default function OptionGroupsEditor({ groups, onChange, idSuffix }) {
                   Customers can pick more than one.
                 </span>
               )}
+              {trackOptionStock && (
+                <label
+                  className={`flex items-center gap-2 min-h-11 text-xs ${
+                    canSetPrice(group)
+                      ? "cursor-pointer text-gray-600"
+                      : "text-gray-300"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={`pricing-group-${idSuffix}`}
+                    checked={group.setsPrice}
+                    onChange={() => setPricingGroup(gi)}
+                    disabled={!canSetPrice(group)}
+                  />
+                  Sets the price
+                </label>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -114,6 +168,20 @@ export default function OptionGroupsEditor({ groups, onChange, idSuffix }) {
                     maxLength={80}
                     className={`${inputClass} flex-1 py-2`}
                   />
+                  {trackOptionStock && group.setsPrice && (
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={choice.price ?? ""}
+                      onChange={(e) =>
+                        setChoice(gi, ci, { price: e.target.value })
+                      }
+                      aria-label={`Price for ${choice.label || `choice ${ci + 1}`}`}
+                      placeholder="$"
+                      className={`${inputClass} w-24 py-2`}
+                    />
+                  )}
                   <button
                     type="button"
                     onClick={() =>
@@ -172,7 +240,10 @@ export default function OptionGroupsEditor({ groups, onChange, idSuffix }) {
                   type="button"
                   onClick={() =>
                     setGroup(gi, {
-                      choices: [...group.choices, { label: "", image: null }],
+                      choices: [
+                        ...group.choices,
+                        { label: "", image: null, price: "" },
+                      ],
                     })
                   }
                   className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
@@ -190,7 +261,7 @@ export default function OptionGroupsEditor({ groups, onChange, idSuffix }) {
           type="button"
           id={`add-option-group-${idSuffix}`}
           onClick={() => onChange([...groups, emptyGroup()])}
-          className="mt-3 min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
+          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
         >
           + Add option
         </button>

@@ -6,7 +6,11 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import ProductOptions from "@/components/ProductOptions";
-import { formatSelectedOptions } from "@/lib/options";
+import {
+  formatSelectedOptions,
+  allowsMultiple,
+  combinationKey,
+} from "@/lib/options";
 import StoreImage from "@/components/StoreImage";
 
 // Cover image plus any gallery extras. Clicking the photo advances to
@@ -117,24 +121,10 @@ function NutritionTable({ rows }) {
   );
 }
 
-function variantLabel(variant) {
-  // attributes is a JSON string of tags, e.g. {"size":"small","pattern":"plaid"}
-  try {
-    const attrs = JSON.parse(variant.attributes || "{}");
-    const dietary = Array.isArray(attrs.dietary)
-      ? ` (${attrs.dietary.join(", ")})`
-      : "";
-    return `${variant.name}${dietary}`;
-  } catch {
-    return variant.name;
-  }
-}
-
 export default function ProductDetailPage() {
   const { id } = useParams();
   const { addItem } = useCart();
   const [product, setProduct] = useState(null);
-  const [variantId, setVariantId] = useState(null);
   const [qty, setQuantity] = useState(1);
   const [imageIndex, setImageIndex] = useState(0);
   // { [groupId]: [choiceId, ...] }
@@ -159,27 +149,58 @@ export default function ProductDetailPage() {
     );
   }
 
-  const hasVariants = product.variants?.length > 0;
-  const variant = hasVariants
-    ? (product.variants.find((v) => v.id === variantId) ?? null)
-    : null;
-  const price = variant ? (variant.price ?? product.price) : product.price;
-  // Availability is boolean-only on the storefront; exact counts live on
-  // the admin side.
-  const inStock = hasVariants
-    ? variant
-      ? variant.inStock
-      : product.variants.some((v) => v.inStock)
-    : product.inStock;
-  const purchasable =
-    product.available && inStock && (!hasVariants || variant !== null);
-
   const optionGroups = product.optionGroups ?? [];
   // The order API re-checks all of this; answering here just saves the
   // customer a round trip.
   const missingGroup = optionGroups.find(
     (g) => g.required && !(optionChoices[g.id] ?? []).length
   );
+
+  // The groups that define a stock combination — the same rule the
+  // server uses (src/lib/options.js, src/lib/option-writes.js): required
+  // and single-select. Once every one of these is answered, `combination`
+  // resolves to the matching row in product.variants.
+  const matrixGroups = optionGroups.filter(
+    (g) => g.required && !allowsMultiple(g.inputType)
+  );
+  const matrixAnswered = matrixGroups.every(
+    (g) => (optionChoices[g.id] ?? []).length > 0
+  );
+  const combination =
+    product.trackOptionStock && matrixAnswered
+      ? (product.variants.find(
+          (v) =>
+            combinationKey(v.choices.map((c) => c.choiceId)) ===
+            combinationKey(matrixGroups.map((g) => optionChoices[g.id][0]))
+        ) ?? null)
+      : null;
+
+  const pricingGroup = optionGroups.find((g) => g.setsPrice) ?? null;
+  const pricingChoiceId = pricingGroup
+    ? (optionChoices[pricingGroup.id] ?? [])[0]
+    : null;
+  const pricingChoice =
+    pricingGroup && pricingChoiceId
+      ? pricingGroup.choices.find((c) => c.id === pricingChoiceId)
+      : null;
+  const price = product.trackOptionStock
+    ? (pricingChoice?.price ?? product.price)
+    : product.price;
+
+  // Availability is boolean-only on the storefront; exact counts live on
+  // the admin side. Before every matrix group is answered, "in stock"
+  // means "some combination is" — the same way it read before a variant
+  // was chosen under the old picker.
+  const inStock = product.trackOptionStock
+    ? combination
+      ? combination.inStock
+      : product.variants.some((v) => v.inStock)
+    : product.inStock;
+  const purchasable =
+    product.available &&
+    !missingGroup &&
+    (!product.trackOptionStock ||
+      (combination !== null && combination.inStock));
   // Labels for the cart line, resolved from the ids the customer picked.
   const chosenOptions = optionGroups
     .map((g) => ({
@@ -202,8 +223,10 @@ export default function ProductDetailPage() {
     addItem(
       {
         productId: product.id,
-        variantId: variant?.id,
-        name: variant ? `${product.name} — ${variant.name}` : product.name,
+        variantId: combination?.id,
+        name: combination
+          ? `${product.name} — ${combination.name}`
+          : product.name,
         price,
         image: product.image,
         options: chosenOptions.map((o) => ({
@@ -262,46 +285,10 @@ export default function ProductDetailPage() {
             {product.description}
           </p>
 
-          {hasVariants && (
-            <fieldset className="mt-6">
-              <legend className="text-sm font-medium text-gray-700 mb-2">
-                Options
-              </legend>
-              <div className="space-y-2">
-                {product.variants.map((v) => (
-                  <label
-                    key={v.id}
-                    className={`flex items-center justify-between gap-3 border rounded-lg px-4 py-3 cursor-pointer ${
-                      variantId === v.id
-                        ? "border-[#4A7C8A] bg-[#F5F0E8]"
-                        : "border-gray-300"
-                    } ${!v.inStock ? "opacity-50" : ""}`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="variant"
-                        value={v.id}
-                        checked={variantId === v.id}
-                        onChange={() => setVariantId(v.id)}
-                        disabled={!v.inStock}
-                      />
-                      <span className="text-sm font-medium">
-                        {variantLabel(v)}
-                      </span>
-                    </span>
-                    <span className="text-sm text-gray-600">
-                      ${(v.price ?? product.price).toFixed(2)}
-                      {!v.inStock && " · Sold out"}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          )}
-
           {/* Admin-defined choices — Size, Style, and so on — each shown
-              the way the admin picked. */}
+              the way the admin picked. When the product tracks option
+              stock, the price above and availability below both follow
+              these selections; there's no separate variant picker. */}
           <ProductOptions
             groups={optionGroups}
             selections={optionChoices}
@@ -349,10 +336,10 @@ export default function ProductDetailPage() {
           >
             {!product.available
               ? "Not Available"
-              : !inStock
-                ? "Out of Stock"
-                : hasVariants && !variant
-                  ? "Choose an Option"
+              : missingGroup
+                ? "Choose an Option"
+                : !purchasable
+                  ? "Out of Stock"
                   : "Add to Cart"}
           </button>
 

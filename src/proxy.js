@@ -30,7 +30,8 @@ function basicAuthGate(request) {
   if (!user || !password) return null;
 
   // Health stays open: Docker healthchecks and platform probes don't
-  // send credentials, and it exposes nothing sensitive.
+  // send credentials. It now also echoes the app version — no CVE
+  // surface for a bespoke app, so that's still nothing sensitive.
   if (request.nextUrl.pathname === "/api/health") return null;
 
   const header = request.headers.get("authorization") || "";

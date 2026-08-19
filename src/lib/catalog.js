@@ -4,11 +4,25 @@ import { z } from "zod";
 // wherever a product's full storefront detail is read: admin forms, the
 // product page, and order creation. One shared shape so those reads
 // can't drift apart.
+//
+// Archived variants and choices — retired combinations/options that
+// still anchor order history — are excluded here, not filtered later.
+// That's a correctness boundary, not just tidiness: it's what stops a
+// customer from ever re-selecting a retired combination, since
+// validateSelections only ever sees what this include returns.
 export const PRODUCT_DETAIL_INCLUDE = {
-  variants: true,
+  variants: {
+    where: { archivedAt: null },
+    include: { choices: true },
+  },
   optionGroups: {
     orderBy: { sortOrder: "asc" },
-    include: { choices: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      choices: {
+        where: { archivedAt: null },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
   },
 };
 
@@ -25,10 +39,33 @@ export function isWithinWindow(product, now = new Date()) {
 }
 
 export function totalStock(product) {
+  if (product.trackOptionStock) {
+    return (product.variants ?? []).reduce((sum, v) => sum + v.quantity, 0);
+  }
   if (product.variants?.length) {
+    // Legacy hand-named variants (no linked choices) — stock still
+    // lives per-variant even though trackOptionStock is off.
     return product.variants.reduce((sum, v) => sum + v.quantity, 0);
   }
   return product.quantity;
+}
+
+/**
+ * The authoritative price for one cart line — resolved entirely
+ * server-side, since a price sent by the client is never trusted.
+ *
+ *   - trackOptionStock product: the pricing group's chosen choice price,
+ *     falling back to the product's base price (no pricing group, or
+ *     the choice itself has none set).
+ *   - legacy variant product: the chosen variant's price, falling back
+ *     to the product's base price.
+ *   - plain product: the product's base price.
+ */
+export function resolveLinePrice(product, { pricingChoice, variant } = {}) {
+  if (product.trackOptionStock) {
+    return pricingChoice?.price ?? product.price;
+  }
+  return variant?.price ?? product.price;
 }
 
 export function visibleInListing(product, now = new Date()) {

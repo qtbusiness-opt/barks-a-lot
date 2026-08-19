@@ -248,9 +248,7 @@ test("guest checkout requires an email", async () => {
 
 test("guest pickup order succeeds without address and decrements stock", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 2
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 2);
 
   const res = await api("POST", "/orders", {
     body: {
@@ -289,9 +287,7 @@ test("shipping orders are rejected while the store is pickup-only", async () => 
 
 test("ordering more than available stock is rejected and nothing is written", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 1
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 1);
 
   const res = await api("POST", "/orders", {
     body: {
@@ -313,7 +309,7 @@ test("logged-in customer order is linked to the account", async () => {
 
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
 
   const created = await api("POST", "/orders", {
@@ -366,13 +362,17 @@ test("admin can list orders and update status", async () => {
   assert.equal(invalid.status, 400);
 });
 
-test("variant products require an option and track per-variant stock", async () => {
+test("trackOptionStock products price and decrement by the chosen combination", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find((p) => p.variants.length > 0);
-  assert.ok(product, "seeded variant product exists");
+  const product = catalog.find(
+    (p) => p.trackOptionStock && p.variants.length > 1
+  );
+  assert.ok(product, "seeded trackOptionStock product exists");
 
-  // Ordering a variant product without choosing an option is rejected.
-  const noVariant = await api("POST", "/orders", {
+  // Ordering without answering the required option groups is rejected —
+  // there's no variantId shortcut anymore, the combination is derived
+  // entirely from `options`.
+  const noOptions = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
@@ -380,35 +380,59 @@ test("variant products require an option and track per-variant stock", async () 
       guestEmail: "guest@test.local",
     },
   });
-  assert.equal(noVariant.status, 400);
+  assert.equal(noOptions.status, 400);
 
-  const variant = product.variants.find((v) => v.quantity >= 2);
+  // Pick one combination with room for two orders, and reconstruct the
+  // `options` payload a customer's selections would produce: one choice
+  // id per group that combination belongs to.
+  const target = product.variants.find((v) => v.quantity >= 3);
+  assert.ok(target, "seeded combination has enough stock for this test");
+  const options = target.choices.map(({ choiceId }) => {
+    const group = product.optionGroups.find((g) =>
+      g.choices.some((c) => c.id === choiceId)
+    );
+    return { groupId: group.id, choiceIds: [choiceId] };
+  });
+  const pricingGroup = product.optionGroups.find((g) => g.setsPrice);
+  const pricingChoiceId = target.choices
+    .map((c) => c.choiceId)
+    .find((id) => pricingGroup.choices.some((pc) => pc.id === id));
+  const expectedPrice = pricingGroup.choices.find(
+    (c) => c.id === pricingChoiceId
+  ).price;
+
   const res = await api("POST", "/orders", {
     body: {
-      items: [{ productId: product.id, variantId: variant.id, quantity: 2 }],
+      items: [{ productId: product.id, quantity: 2, options }],
       fulfillmentType: "pickup",
       pickupEventId: "next",
       guestEmail: "guest@test.local",
     },
   });
-  assert.equal(res.status, 201);
+  assert.equal(res.status, 201, JSON.stringify(res.data));
   const line = res.data.order.items[0];
-  assert.equal(line.variantId, variant.id);
-  assert.equal(line.price, variant.price ?? product.price);
+  assert.equal(line.variantId, target.id);
+  // Price follows the pricing group's chosen choice — not the product's
+  // base price, and not anything the client could have sent.
+  assert.equal(line.price, expectedPrice);
 
-  // Only the chosen variant's stock is decremented.
+  // Only the chosen combination's stock is decremented; a sibling
+  // combination for the same product is untouched.
   const after = await adminStock(product.id);
-  const afterVariant = after.variants.find((v) => v.id === variant.id);
-  assert.equal(afterVariant.quantity, variant.quantity - 2);
+  const afterTarget = after.variants.find((v) => v.id === target.id);
+  assert.equal(afterTarget.quantity, target.quantity - 2);
+  const sibling = product.variants.find((v) => v.id !== target.id);
+  const afterSibling = after.variants.find((v) => v.id === sibling.id);
+  assert.equal(afterSibling.quantity, sibling.quantity);
 
-  // Overselling a single variant is rejected.
+  // Overselling that specific combination is rejected.
   const oversell = await api("POST", "/orders", {
     body: {
       items: [
         {
           productId: product.id,
-          variantId: variant.id,
-          quantity: afterVariant.quantity + 1,
+          quantity: afterTarget.quantity + 1,
+          options,
         },
       ],
       fulfillmentType: "pickup",
@@ -417,6 +441,33 @@ test("variant products require an option and track per-variant stock", async () 
     },
   });
   assert.equal(oversell.status, 409);
+
+  // A combination that belongs to a different product is rejected, not
+  // silently matched.
+  const otherProduct = catalog.find(
+    (p) => p.trackOptionStock && p.id !== product.id
+  );
+  if (otherProduct) {
+    const foreignOptions = otherProduct.variants[0].choices.map(
+      ({ choiceId }) => {
+        const group = otherProduct.optionGroups.find((g) =>
+          g.choices.some((c) => c.id === choiceId)
+        );
+        return { groupId: group.id, choiceIds: [choiceId] };
+      }
+    );
+    const foreign = await api("POST", "/orders", {
+      body: {
+        items: [
+          { productId: product.id, quantity: 1, options: foreignOptions },
+        ],
+        fulfillmentType: "pickup",
+        pickupEventId: "next",
+        guestEmail: "guest@test.local",
+      },
+    });
+    assert.equal(foreign.status, 400);
+  }
 });
 
 test("public catalog exposes availability booleans, never stock counts", async () => {
@@ -626,7 +677,7 @@ test("status changes record a notification tied to the order email", async () =>
   const email = "notify-me@test.local";
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
 
   const order = await api("POST", "/orders", {
@@ -887,9 +938,7 @@ test("events: admin CRUD, public read-only calendar queries", async () => {
 
 test("pickup orders require an event; Next Event resolves to the nearest selectable event", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 2
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 2);
 
   // Upcoming endpoint lists the seeded events for the dropdown.
   const upcoming = await api("GET", "/events?upcoming=true");
@@ -1333,7 +1382,7 @@ test("admins can look up customers, send resets, and delete accounts", async () 
   // Give them an order so deletion has history to preserve.
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
   const customerCookie = await loginAs("lookup@test.local", "secret123");
   const order = await api("POST", "/orders", {
@@ -1407,9 +1456,7 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
 
   // Needs two units: this test places the same order twice.
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 2
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 2);
   // Address fields sent alongside a pickup order must NOT be recorded —
   // the store is pickup-only and collects no customer addresses.
   const order = await api("POST", "/orders", {
@@ -1470,9 +1517,7 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
 test("customer can cancel an order until pickup; stock is restored", async () => {
   const cookie = await loginAs("user@test.local", "secret123");
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 2
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 2);
 
   const order = await api("POST", "/orders", {
     body: {
@@ -1529,7 +1574,7 @@ test("picked-up orders can't be cancelled by the customer", async () => {
   const cookie = await loginAs("user@test.local", "secret123");
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
 
   const order = await api("POST", "/orders", {
@@ -1588,7 +1633,7 @@ test("the Refunded tag is rejected on orders that aren't picked up", async () =>
   const adminCookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
   const order = await api("POST", "/orders", {
     body: {
@@ -1610,9 +1655,7 @@ test("the Refunded tag is rejected on orders that aren't picked up", async () =>
 
 test("admin cancellation of an active order restores stock", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 1
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 1);
 
   const order = await api("POST", "/orders", {
     body: {
@@ -1649,7 +1692,7 @@ test("customers can delete their own account; orders survive as guest records", 
 
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
   const order = await api("POST", "/orders", {
     body: {
@@ -1716,7 +1759,7 @@ test("no same-day pickup — an event must be at least a day out to be reserved"
   const catalog = await adminCatalog();
   const product = catalog.find(
     (p) =>
-      p.variants.length === 0 &&
+      !p.trackOptionStock &&
       p.quantity >= 5 &&
       !p.limitedQuantity &&
       !p.availableFrom &&
@@ -1994,7 +2037,7 @@ test("promotions: admin CRUD, code + bundle discounts, and server-authoritative 
   const bundleProducts = catalog
     .filter(
       (p) =>
-        p.variants.length === 0 &&
+        !p.trackOptionStock &&
         p.quantity >= 2 &&
         !p.limitedQuantity &&
         !p.availableFrom &&
@@ -2136,7 +2179,7 @@ test("stacking rules: bundles stack without limit; only one discount code applie
   // A single always-available product with enough stock for two bundle sets.
   const p = catalog.find(
     (x) =>
-      x.variants.length === 0 &&
+      !x.trackOptionStock &&
       x.quantity >= 4 &&
       !x.limitedQuantity &&
       !x.availableFrom &&
@@ -2346,4 +2389,235 @@ test("About page photos: admin-only settings with a key whitelist", async () => 
     cookie,
   });
   assert.equal(bad.status, 400);
+});
+
+test("editing options preserves stock on unchanged combinations and starts new ones at zero", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Stock Edit Test Bandana",
+      description: "Sizes",
+      price: 9.0,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 0,
+      trackOptionStock: true,
+      optionGroups: [
+        {
+          name: "Size",
+          inputType: "select",
+          required: true,
+          setsPrice: true,
+          choices: [
+            { label: "Small", price: 5 },
+            { label: "Large", price: 7 },
+          ],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const productId = created.data.product.id;
+  const group = created.data.product.optionGroups[0];
+  assert.equal(created.data.product.variants.length, 2);
+
+  const [small, large] = created.data.product.variants;
+  const stocked = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      variantStock: [
+        { variantId: small.id, quantity: 10 },
+        { variantId: large.id, quantity: 5 },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(stocked.status, 200);
+
+  // Keep both existing choices by id and add a third — the two originals
+  // must keep their combination id (and stock), and the new one starts
+  // at zero. A wholesale delete-and-recreate would fail this: every
+  // combination would come back as new, at zero.
+  const smallChoice = group.choices.find((c) => c.label === "Small");
+  const largeChoice = group.choices.find((c) => c.label === "Large");
+  const edited = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      optionGroups: [
+        {
+          id: group.id,
+          name: "Size",
+          inputType: "select",
+          required: true,
+          setsPrice: true,
+          choices: [
+            { id: smallChoice.id, label: "Small", price: 5 },
+            { id: largeChoice.id, label: "Large", price: 7 },
+            { label: "Extra Large", price: 9 },
+          ],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.data.product.variants.length, 3);
+  const editedSmall = edited.data.product.variants.find(
+    (v) => v.id === small.id
+  );
+  const editedLarge = edited.data.product.variants.find(
+    (v) => v.id === large.id
+  );
+  const xl = edited.data.product.variants.find((v) => v.name === "Extra Large");
+  assert.ok(editedSmall, "the Small combination kept its id");
+  assert.equal(editedSmall.quantity, 10, "existing stock survived the edit");
+  assert.equal(editedLarge.quantity, 5, "existing stock survived the edit");
+  assert.equal(xl.quantity, 0, "a brand new combination starts at zero");
+
+  // Removing a choice that's never been ordered deletes its combination
+  // outright, leaving no orphan behind.
+  const removed = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      optionGroups: [
+        {
+          id: group.id,
+          name: "Size",
+          inputType: "select",
+          required: true,
+          setsPrice: true,
+          choices: [{ id: smallChoice.id, label: "Small", price: 5 }],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(removed.status, 200);
+  assert.equal(removed.data.product.variants.length, 1);
+  assert.equal(removed.data.product.variants[0].id, small.id);
+});
+
+test("two order lines for the identical combination decrement cumulatively, not independently", async () => {
+  const catalog = await adminCatalog();
+  const product = catalog.find(
+    (p) => p.trackOptionStock && p.variants.some((v) => v.quantity >= 4)
+  );
+  assert.ok(product, "seeded combination has enough stock for this test");
+  const target = product.variants.find((v) => v.quantity >= 4);
+  const options = target.choices.map(({ choiceId }) => {
+    const group = product.optionGroups.find((g) =>
+      g.choices.some((c) => c.id === choiceId)
+    );
+    return { groupId: group.id, choiceIds: [choiceId] };
+  });
+
+  // Two separate line items for the same combination in one order. Each
+  // line alone fits the available stock; together they might not — the
+  // check has to weigh them against each other, not each against the
+  // same pre-order snapshot (that gap would let the second line's
+  // decrement drive quantity negative).
+  const half = Math.ceil(target.quantity / 2);
+  const res = await api("POST", "/orders", {
+    body: {
+      items: [
+        { productId: product.id, quantity: half, options },
+        { productId: product.id, quantity: half, options },
+      ],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "double-line@test.local",
+    },
+  });
+  assert.equal(res.status, 201, JSON.stringify(res.data));
+
+  const after = await adminStock(product.id);
+  const afterTarget = after.variants.find((v) => v.id === target.id);
+  assert.equal(
+    afterTarget.quantity,
+    target.quantity - half * 2,
+    "both lines decremented the same combination, and it never went negative"
+  );
+  assert.ok(afterTarget.quantity >= 0, "stock never goes negative");
+
+  // A second order whose two lines together exceed what's left is
+  // rejected. Quantities are always >= 1 (the schema requires it, and
+  // stock may already be at 0 here) — the point is the sum, not either
+  // line's size alone.
+  const remaining = afterTarget.quantity;
+  const oversell = await api("POST", "/orders", {
+    body: {
+      items: [
+        { productId: product.id, quantity: remaining + 1, options },
+        { productId: product.id, quantity: 1, options },
+      ],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "double-line@test.local",
+    },
+  });
+  assert.equal(oversell.status, 409);
+
+  // The failed order changed nothing.
+  const unchanged = await adminStock(product.id);
+  assert.equal(
+    unchanged.variants.find((v) => v.id === target.id).quantity,
+    remaining
+  );
+});
+
+test("the public catalog includes option groups, not just variants", async () => {
+  // ProductCard decides whether a product needs the detail page (rather
+  // than quick-adding with no options at all) from this response — it
+  // used to fetch only variants, so a product with required option
+  // groups but no variants was invisible to that check.
+  const { data } = await api("GET", "/products");
+  const optioned = data.products.find(
+    (p) => !p.trackOptionStock && (p.optionGroups?.length ?? 0) > 0
+  );
+  assert.ok(optioned, "a seeded product has plain option groups");
+  assert.ok(optioned.optionGroups[0].choices.length > 0);
+
+  const priced = data.products.find((p) => p.trackOptionStock);
+  assert.ok(priced, "a seeded product tracks option stock");
+  const pricingGroup = priced.optionGroups.find((g) => g.setsPrice);
+  assert.ok(pricingGroup, "its pricing group is included");
+  assert.ok(
+    pricingGroup.choices.every((c) => typeof c.price === "number"),
+    "choice prices are public"
+  );
+  assert.ok(
+    priced.variants.every((v) => typeof v.inStock === "boolean"),
+    "combination availability is a boolean, not a count"
+  );
+});
+
+test("turning on option stock without a participating group is rejected, even sent alone", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  // No option groups at all yet.
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Bare Product For Stock Toggle Test",
+      description: "no options",
+      price: 5,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 3,
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const productId = created.data.product.id;
+
+  // Flipping the toggle in its own save, with no optionGroups in the
+  // payload at all — this is the path writeOptionGroups never runs for,
+  // so its own "add a group first" check can't be the thing catching it.
+  const toggled = await api("PATCH", `/admin/products/${productId}`, {
+    body: { trackOptionStock: true },
+    cookie,
+  });
+  assert.equal(toggled.status, 400);
+  assert.match(toggled.data.error, /option group/i);
+
+  // The product is untouched — still off, not stranded half-configured.
+  const after = await api("GET", `/products/${created.data.product.slug}`);
+  assert.equal(after.data.product.trackOptionStock, false);
 });

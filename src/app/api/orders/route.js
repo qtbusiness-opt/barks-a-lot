@@ -4,8 +4,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { isWithinWindow, PRODUCT_DETAIL_INCLUDE } from "@/lib/catalog";
-import { validateSelections } from "@/lib/options";
+import {
+  isWithinWindow,
+  PRODUCT_DETAIL_INCLUDE,
+  resolveLinePrice,
+} from "@/lib/catalog";
+import { validateSelections, combinationKey } from "@/lib/options";
 import { isPickupSelectable } from "@/lib/pickup-window";
 import {
   sendOrderConfirmationEmail,
@@ -209,6 +213,17 @@ export async function POST(req) {
       // Track per-product/variant decrements before applying them, so a
       // failure on any line item aborts the whole transaction untouched.
       const decrements = [];
+      // How much of each variant/product this order has already claimed,
+      // keyed by variant id (or product id when there's no variant) — two
+      // cart lines for the identical combination must be checked against
+      // each other, not both against the same pre-order stock count, or
+      // the second line's decrement can push quantity negative.
+      const claimed = new Map();
+      const claim = (key, quantity) => {
+        const already = claimed.get(key) ?? 0;
+        claimed.set(key, already + quantity);
+        return already;
+      };
 
       for (const item of items) {
         const product = productMap[item.productId];
@@ -227,18 +242,48 @@ export async function POST(req) {
             ? JSON.stringify(chosen.selections)
             : null;
 
-        if (product.variants.length > 0) {
-          const variant = product.variants.find((v) => v.id === item.variantId);
-          if (!variant) {
+        if (product.trackOptionStock) {
+          if (chosen.combinationChoiceIds.length === 0) {
             throw fail(400, `Please choose an option for ${product.name}`);
           }
-          if (variant.quantity < item.quantity) {
+          const key = combinationKey(chosen.combinationChoiceIds);
+          const variant = product.variants.find(
+            (v) => combinationKey(v.choices.map((c) => c.choiceId)) === key
+          );
+          if (!variant) {
+            throw fail(400, `Please re-check the options for ${product.name}`);
+          }
+          const alreadyClaimed = claim(variant.id, item.quantity);
+          if (variant.quantity - alreadyClaimed < item.quantity) {
             throw fail(
               409,
               `Not enough stock for ${product.name} (${variant.name})`
             );
           }
-          const price = variant.price ?? product.price;
+          const price = resolveLinePrice(product, {
+            pricingChoice: chosen.pricingChoice,
+          });
+          orderItems.push({
+            productId: product.id,
+            variantId: variant.id,
+            quantity: item.quantity,
+            price,
+            options,
+          });
+          decrements.push({ product, variant, quantity: item.quantity });
+        } else if (product.variants.length > 0) {
+          const variant = product.variants.find((v) => v.id === item.variantId);
+          if (!variant) {
+            throw fail(400, `Please choose an option for ${product.name}`);
+          }
+          const alreadyClaimed = claim(variant.id, item.quantity);
+          if (variant.quantity - alreadyClaimed < item.quantity) {
+            throw fail(
+              409,
+              `Not enough stock for ${product.name} (${variant.name})`
+            );
+          }
+          const price = resolveLinePrice(product, { variant });
           orderItems.push({
             productId: product.id,
             variantId: variant.id,
@@ -248,13 +293,17 @@ export async function POST(req) {
           });
           decrements.push({ product, variant, quantity: item.quantity });
         } else {
-          if (!product.inStock || product.quantity < item.quantity) {
+          const alreadyClaimed = claim(product.id, item.quantity);
+          if (
+            !product.inStock ||
+            product.quantity - alreadyClaimed < item.quantity
+          ) {
             throw fail(409, `Not enough stock for ${product.name}`);
           }
           orderItems.push({
             productId: product.id,
             quantity: item.quantity,
-            price: product.price,
+            price: resolveLinePrice(product, {}),
             options,
           });
           decrements.push({ product, quantity: item.quantity });

@@ -3,7 +3,7 @@ module.exports = [
     name: "Peanut Butter Biscuits",
     description:
       "Crunchy, all-natural peanut butter biscuits made with whole wheat flour and real peanut butter. A classic treat your dog will love!",
-    // Stock lives on the variants below.
+    // Stock lives on the option combinations below (trackOptionStock).
     quantity: 0,
     price: 12.99,
     image: "/images/products/peanut-butter-biscuits.svg",
@@ -12,7 +12,7 @@ module.exports = [
       "/images/products/chicken-jerky.svg",
     ]),
     itemDetails:
-      "Whole wheat flour, natural peanut butter (no xylitol), eggs, honey, baking powder. Grain-free variant: chickpea flour instead of wheat.",
+      "Whole wheat flour, natural peanut butter (no xylitol), eggs, honey, baking powder. Grain-free bags use chickpea flour instead of wheat.",
     nutritionFacts: JSON.stringify([
       { label: "Crude Protein (min)", value: "9%" },
       { label: "Crude Fat (min)", value: "8%" },
@@ -22,30 +22,33 @@ module.exports = [
     ]),
     category: "treats",
     featured: true,
-    variants: [
+    trackOptionStock: true,
+    optionGroups: [
       {
-        name: "Small Bag (8 oz)",
-        attributes: JSON.stringify({ flavor: "peanut butter", size: "small" }),
-        price: 12.99,
-        quantity: 60,
+        name: "Bag Size",
+        inputType: "radio",
+        required: true,
+        setsPrice: true,
+        choices: [
+          { label: "Small (8 oz)", price: 12.99 },
+          { label: "Large (16 oz)", price: 21.99 },
+        ],
       },
       {
-        name: "Large Bag (16 oz)",
-        attributes: JSON.stringify({ flavor: "peanut butter", size: "large" }),
-        price: 21.99,
-        quantity: 30,
-      },
-      {
-        name: "Grain-Free Small Bag (8 oz)",
-        attributes: JSON.stringify({
-          flavor: "peanut butter",
-          size: "small",
-          dietary: ["grain-free"],
-        }),
-        price: 14.99,
-        quantity: 25,
+        name: "Recipe",
+        inputType: "radio",
+        required: true,
+        choices: [{ label: "Classic" }, { label: "Grain-Free" }],
       },
     ],
+    // Stock per combination, keyed the same way the write path names one
+    // ("<choice> / <choice>" in group order) — see seed-products.js.
+    variantStock: {
+      "Small (8 oz) / Classic": 60,
+      "Small (8 oz) / Grain-Free": 25,
+      "Large (16 oz) / Classic": 30,
+      "Large (16 oz) / Grain-Free": 15,
+    },
   },
   {
     name: "Sweet Potato Chews",
@@ -172,6 +175,7 @@ module.exports = [
     name: "Bandana Set (3-Pack)",
     description:
       "Adorable, adjustable bandanas in three stylish patterns. Snap-on design makes them easy to put on and take off.",
+    // Stock lives on the option combinations below (trackOptionStock).
     quantity: 0,
     price: 15.99,
     image: "/images/products/bandana-set.svg",
@@ -179,24 +183,37 @@ module.exports = [
       "100% cotton, machine washable (cold, gentle). Snap closure — measure your pup's neck and add two finger-widths for the right size.",
     category: "accessories",
     featured: false,
-    variants: [
+    trackOptionStock: true,
+    optionGroups: [
       {
-        name: "Small / Plaid",
-        attributes: JSON.stringify({ size: "small", pattern: "plaid" }),
-        quantity: 20,
+        name: "Size",
+        inputType: "select",
+        required: true,
+        setsPrice: true,
+        choices: [
+          { label: "Small", price: 12.99 },
+          { label: "Medium", price: 14.99 },
+          { label: "Large", price: 17.99 },
+        ],
       },
       {
-        name: "Medium / Floral",
-        attributes: JSON.stringify({ size: "medium", pattern: "floral" }),
-        quantity: 18,
-      },
-      {
-        name: "Large / Bones",
-        attributes: JSON.stringify({ size: "large", pattern: "bones" }),
-        price: 17.99,
-        quantity: 12,
+        name: "Style",
+        inputType: "radio",
+        required: true,
+        choices: [{ label: "Plaid" }, { label: "Floral" }, { label: "Bones" }],
       },
     ],
+    variantStock: {
+      "Small / Plaid": 8,
+      "Small / Floral": 6,
+      "Small / Bones": 5,
+      "Medium / Plaid": 7,
+      "Medium / Floral": 6,
+      "Medium / Bones": 4,
+      "Large / Plaid": 3,
+      "Large / Floral": 2,
+      "Large / Bones": 12,
+    },
   },
   {
     name: "Premium Grain-Free Kibble",

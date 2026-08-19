@@ -43,6 +43,19 @@ function loadSquareSdk(appId) {
   });
 }
 
+// One shared line shape for every call that sends the cart to the
+// server — the two promo-preview calls and the real order submit. Built
+// once so options can't quietly drop from one of the three and make a
+// preview disagree with the price checkout actually charges.
+const orderLinePayload = (i) => ({
+  productId: i.productId,
+  ...(i.variantId ? { variantId: i.variantId } : {}),
+  quantity: i.quantity,
+  // The server re-resolves these ids to labels and prices, and re-checks
+  // required groups, before the order is written.
+  ...(i.options?.length ? { options: i.options } : {}),
+});
+
 const eventDay = (event) => String(event.date).slice(0, 10);
 
 const formatEventDate = (event) =>
@@ -218,11 +231,7 @@ export default function CheckoutPage() {
     }
     api
       .post("/promotions/validate", {
-        items: items.map((i) => ({
-          productId: i.productId,
-          ...(i.variantId ? { variantId: i.variantId } : {}),
-          quantity: i.quantity,
-        })),
+        items: items.map(orderLinePayload),
         ...(appliedCode ? { code: appliedCode } : {}),
       })
       .then((res) => {
@@ -246,11 +255,7 @@ export default function CheckoutPage() {
     setCheckingCode(true);
     try {
       const res = await api.post("/promotions/validate", {
-        items: items.map((i) => ({
-          productId: i.productId,
-          ...(i.variantId ? { variantId: i.variantId } : {}),
-          quantity: i.quantity,
-        })),
+        items: items.map(orderLinePayload),
         code,
       });
       if (res.data.codeError) {
@@ -434,14 +439,7 @@ export default function CheckoutPage() {
 
     try {
       const res = await api.post("/orders", {
-        items: items.map((i) => ({
-          productId: i.productId,
-          ...(i.variantId ? { variantId: i.variantId } : {}),
-          quantity: i.quantity,
-          // The server re-resolves these ids to labels and re-checks
-          // required groups before the order is written.
-          ...(i.options?.length ? { options: i.options } : {}),
-        })),
+        items: items.map(orderLinePayload),
         fulfillmentType,
         ...(fulfillmentType === "shipping"
           ? {

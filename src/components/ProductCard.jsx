@@ -13,19 +13,37 @@ export default function ProductCard({
   category,
   inStock: productInStock = true,
   variants = [],
+  optionGroups = [],
+  trackOptionStock = false,
   limitedQuantity = null,
 }) {
   const { addItem } = useCart();
 
+  // Anything the customer must choose before a price or an "add to
+  // cart" makes sense routes to the detail page instead of quick-adding.
+  // Checking variants alone used to miss option groups entirely — a
+  // product with a required group but no variants would quick-add with
+  // no options at all, then fail at checkout with nothing on the cart
+  // page able to fix it.
+  const needsSelection =
+    variants.length > 0 || optionGroups.length > 0 || trackOptionStock;
+
   // The public API exposes availability as booleans only — exact stock
   // counts are admin-side business data.
-  const hasVariants = variants.length > 0;
-  const inStock = hasVariants
+  const inStock = trackOptionStock
     ? variants.some((v) => v.inStock)
-    : productInStock;
-  const prices = hasVariants ? variants.map((v) => v.price ?? price) : [price];
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
+    : variants.length > 0
+      ? variants.some((v) => v.inStock)
+      : productInStock;
+  const prices = trackOptionStock
+    ? (optionGroups.find((g) => g.setsPrice)?.choices ?? [])
+        .map((c) => c.price)
+        .filter((p) => p != null)
+    : variants.length > 0
+      ? variants.map((v) => v.price ?? price)
+      : [price];
+  const minPrice = prices.length > 0 ? Math.min(...prices) : price;
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : price;
 
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition group">
@@ -69,7 +87,7 @@ export default function ProductCard({
               ? `$${minPrice.toFixed(2)}`
               : `From $${minPrice.toFixed(2)}`}
           </span>
-          {hasVariants ? (
+          {needsSelection ? (
             <Link
               href={`/products/${slug ?? id}`}
               className="bg-[#4A7C8A] text-white px-3 py-2.5 sm:py-1.5 rounded-lg text-sm font-medium text-center hover:bg-[#3A6270] active:bg-[#2A4A52] transition"

@@ -16,6 +16,13 @@ export const OPTION_INPUT_LABELS = {
 
 export const allowsMultiple = (inputType) => inputType === "checkbox";
 
+// Canonical key for a set of choice ids that defines one stock
+// combination — order-independent, so {Size, Style} and {Style, Size}
+// land on the same key. Shared by the admin write path
+// (src/lib/option-writes.js, building combinations) and order creation
+// (matching a customer's selection to one), so they can't drift apart.
+export const combinationKey = (choiceIds) => [...choiceIds].sort().join("+");
+
 // Selections travel as [{ group, values: [...] }] and are stored on the
 // order item as a JSON snapshot of the labels, so renaming or deleting an
 // option later can't rewrite what was actually ordered.
@@ -43,20 +50,41 @@ export function formatSelectedOptions(selections) {
 }
 
 /**
- * Checks a customer's selections against the product's groups.
- * Returns { ok: true, selections } with labels resolved from the
- * database, or { ok: false, error } with a customer-safe message.
- * Never trusts the labels sent by the browser — they're matched against
- * the stored choices by id.
+ * Checks a customer's selections against the product's groups. Never
+ * trusts the labels sent by the browser — they're matched against the
+ * stored choices by id. On success returns:
+ *
+ *   - selections: [{group, values}] — labels only, unchanged shape, the
+ *     exact snapshot stored on the order (renaming/deleting an option
+ *     later can't rewrite what was actually ordered).
+ *   - combinationChoiceIds: the chosen choice id from every REQUIRED,
+ *     SINGLE-SELECT group (select/radio/carousel) — the same groups
+ *     that make up a product's stock combinations (see
+ *     src/lib/option-writes.js) — for matching against a
+ *     ProductVariantChoice set. Empty when the product has no such
+ *     groups.
+ *   - pricingChoice: the chosen {id, price} from the group flagged
+ *     setsPrice, or null if there isn't one or it wasn't required.
+ *
+ * On failure: { ok: false, error } with a customer-safe message.
  */
 export function validateSelections(product, submitted) {
   const groups = product.optionGroups ?? [];
-  if (groups.length === 0) return { ok: true, selections: [] };
+  if (groups.length === 0) {
+    return {
+      ok: true,
+      selections: [],
+      combinationChoiceIds: [],
+      pricingChoice: null,
+    };
+  }
 
   const byGroup = new Map(
     (submitted ?? []).map((s) => [String(s.groupId), s.choiceIds ?? []])
   );
   const selections = [];
+  const combinationChoiceIds = [];
+  let pricingChoice = null;
 
   for (const group of groups) {
     const chosenIds = byGroup.get(group.id) ?? [];
@@ -81,7 +109,14 @@ export function validateSelections(product, submitted) {
         .filter((c) => chosenIds.includes(c.id))
         .map((c) => c.label),
     });
+
+    if (group.required && !allowsMultiple(group.inputType)) {
+      combinationChoiceIds.push(valid[0].id);
+    }
+    if (group.setsPrice) {
+      pricingChoice = { id: valid[0].id, price: valid[0].price ?? null };
+    }
   }
 
-  return { ok: true, selections };
+  return { ok: true, selections, combinationChoiceIds, pricingChoice };
 }

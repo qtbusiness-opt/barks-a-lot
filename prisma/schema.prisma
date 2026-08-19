@@ -61,6 +61,12 @@ model Product {
   // stock lives on each variant and this stays 0.
   quantity    Int
   price       Float
+  // When true, stock lives on this product's option combinations
+  // (ProductVariant rows linked via ProductVariantChoice) instead of on
+  // `quantity` directly. Explicit rather than inferred from
+  // variants.length, so a product can start with an empty variant list
+  // and still declare its stock model.
+  trackOptionStock Boolean @default(false)
   // Cover image, shown on cards/cart/orders. Additional gallery images
   // live in `images` as a JSON-encoded array of URLs; the detail page
   // shows [image, ...images].
@@ -108,6 +114,11 @@ model ProductOptionGroup {
   inputType String   @default("radio")
   // When true the customer must answer before adding to the cart.
   required  Boolean  @default(true)
+  // At most one group per product may be true. Its choices' `price`
+  // becomes the product's price once trackOptionStock is on — e.g. a
+  // bandana's Size group sets price while Style only affects stock.
+  // Enforced in the write path (src/lib/option-writes.js), not the DB.
+  setsPrice Boolean  @default(false)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -123,7 +134,16 @@ model ProductOptionChoice {
   label     String
   // Thumbnail for "carousel" groups; ignored by the other input types.
   image     String?
+  // Only meaningful when the parent group is the pricing group
+  // (setsPrice). Absolute price for this choice — not an adjustment.
+  price     Float?
   sortOrder Int      @default(0)
+  // Set instead of deleting when this choice still anchors an archived
+  // combination with order history — ProductVariantChoice.choice is ON
+  // DELETE RESTRICT specifically so that case can't be hard-deleted.
+  // Archived choices are excluded from admin editing and the storefront.
+  archivedAt DateTime?
+  variantChoices ProductVariantChoice[]
 
   @@index([groupId])
 }
@@ -132,18 +152,47 @@ model ProductVariant {
   id         String   @id @default(cuid())
   productId  String
   product    Product  @relation(fields: [productId], references: [id])
+  // Auto-generated from its choices' labels (e.g. "Small / Plaid") for
+  // trackOptionStock products; hand-entered otherwise (legacy variants
+  // with no linked choices).
   name       String
-  // JSON-encoded attribute tags, e.g.
-  // {"flavor":"peanut butter","size":"large","dietary":["grain-free"]} for
-  // treats or {"size":"medium","pattern":"plaid"} for bandanas — keeps
-  // cart/inventory logic generic instead of hardcoding product types.
-  attributes String?
-  // null = inherit the product's base price
+  // null = inherit the product's base price. For a trackOptionStock
+  // product this is normally left null — price comes from the pricing
+  // group's choice instead (see ProductOptionChoice.price).
   price      Float?
   quantity   Int      @default(0)
+  // A combination with order history is archived rather than deleted
+  // when its choices change, since OrderItem.variantId is ON DELETE SET
+  // NULL — deleting it would silently detach past orders from what was
+  // actually bought. Archived combinations are excluded from stock and
+  // from the storefront.
+  archivedAt DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   orderItems OrderItem[]
+  // The set of choices (one per participating option group) that
+  // defines this combination. Empty for a legacy hand-named variant.
+  choices    ProductVariantChoice[]
+
+  @@index([productId])
+}
+
+// Links a combination (ProductVariant) to the specific choice it picked
+// from each participating option group — e.g. {Size: Medium} +
+// {Style: Plaid}. One row per (variant, group) pair.
+model ProductVariantChoice {
+  id        String              @id @default(cuid())
+  variantId String
+  variant   ProductVariant      @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  choiceId  String
+  // Restrict, not Cascade: deleting a choice that still anchors a live
+  // combination should fail loudly rather than silently dissolve the
+  // combination and its stock. The write path archives the combination
+  // first when a choice is actually being removed.
+  choice    ProductOptionChoice @relation(fields: [choiceId], references: [id], onDelete: Restrict)
+
+  @@unique([variantId, choiceId])
+  @@index([choiceId])
 }
 
 model Order {
@@ -325,8 +374,9 @@ model Event {
   // Calendar day of the event, stored as midnight UTC and compared by
   // YYYY-MM-DD key so it renders the same in every timezone.
   date        DateTime
-  // Wall-clock hours at the event ("HH:MM", 24h, store-local time).
-  // endTime drives the same-day pickup cutoff (2 hours before close).
+  // Wall-clock hours at the event ("HH:MM", 24h, store-local time),
+  // shown to customers. Pickup eligibility is a day-level rule (see
+  // src/lib/pickup-window.js) — these times are display only.
   startTime   String?
   endTime     String?
   // Badge color key from the fixed palette, chosen by the admin.
