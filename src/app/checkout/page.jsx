@@ -7,8 +7,14 @@ import { useCart } from "@/context/CartContext";
 import api from "@/lib/api";
 import Link from "next/link";
 import { SHIPPING_ENABLED } from "@/lib/features";
-import { isPickupSelectable, formatTimeRange } from "@/lib/pickup-window";
+import {
+  isPickupSelectable,
+  formatTimeRange,
+  eventDayKey,
+  dayKeyOf,
+} from "@/lib/pickup-window";
 import { getPublicConfig } from "@/lib/public-config";
+import { formatCalendarDay } from "@/lib/format-date";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -37,10 +43,23 @@ function loadSquareSdk(appId) {
   });
 }
 
+// One shared line shape for every call that sends the cart to the
+// server — the two promo-preview calls and the real order submit. Built
+// once so options can't quietly drop from one of the three and make a
+// preview disagree with the price checkout actually charges.
+const orderLinePayload = (i) => ({
+  productId: i.productId,
+  ...(i.variantId ? { variantId: i.variantId } : {}),
+  quantity: i.quantity,
+  // The server re-resolves these ids to labels and prices, and re-checks
+  // required groups, before the order is written.
+  ...(i.options?.length ? { options: i.options } : {}),
+});
+
 const eventDay = (event) => String(event.date).slice(0, 10);
 
 const formatEventDate = (event) =>
-  new Date(`${eventDay(event)}T00:00:00`).toLocaleDateString(undefined, {
+  formatCalendarDay(eventDay(event), {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -102,6 +121,11 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
           <div key={item.key} className="flex justify-between text-sm">
             <span>
               {item.name} x {item.quantity}
+              {item.optionsLabel && (
+                <span className="block text-xs text-gray-500">
+                  {item.optionsLabel}
+                </span>
+              )}
             </span>
             <span className="font-medium">
               ${(item.price * item.quantity).toFixed(2)}
@@ -207,11 +231,7 @@ export default function CheckoutPage() {
     }
     api
       .post("/promotions/validate", {
-        items: items.map((i) => ({
-          productId: i.productId,
-          ...(i.variantId ? { variantId: i.variantId } : {}),
-          quantity: i.quantity,
-        })),
+        items: items.map(orderLinePayload),
         ...(appliedCode ? { code: appliedCode } : {}),
       })
       .then((res) => {
@@ -235,11 +255,7 @@ export default function CheckoutPage() {
     setCheckingCode(true);
     try {
       const res = await api.post("/promotions/validate", {
-        items: items.map((i) => ({
-          productId: i.productId,
-          ...(i.variantId ? { variantId: i.variantId } : {}),
-          quantity: i.quantity,
-        })),
+        items: items.map(orderLinePayload),
         code,
       });
       if (res.data.codeError) {
@@ -297,9 +313,8 @@ export default function CheckoutPage() {
     };
   }, [step, square]);
 
-  // Same-day events stay selectable until two hours before they end
-  // (shared rule with the orders API). "Next Event" is simply the
-  // nearest event still open for pickup — today's included.
+  // No same-day pickup (shared rule with the orders API). "Next Event"
+  // is the nearest event still open for pickup.
   const events = (upcomingEvents ?? []).filter((e) => isPickupSelectable(e));
   const hasEvents = events.length > 0;
   const nextEvent = events[0] ?? null;
@@ -307,6 +322,11 @@ export default function CheckoutPage() {
     pickupMode === "next"
       ? nextEvent
       : events.find((e) => e.id === pickupChoice);
+  // True only when today's own event is the thing missing from the list
+  // above, so the note doesn't show for an ordinary quiet week.
+  const hasSameDayEvent = (upcomingEvents ?? []).some(
+    (e) => eventDayKey(e) === dayKeyOf()
+  );
 
   // Guest orders finish here (guests have no orders page), so show the
   // confirmation inline after the cart has been cleared.
@@ -419,11 +439,7 @@ export default function CheckoutPage() {
 
     try {
       const res = await api.post("/orders", {
-        items: items.map((i) => ({
-          productId: i.productId,
-          ...(i.variantId ? { variantId: i.variantId } : {}),
-          quantity: i.quantity,
-        })),
+        items: items.map(orderLinePayload),
         fulfillmentType,
         ...(fulfillmentType === "shipping"
           ? {
@@ -593,6 +609,13 @@ export default function CheckoutPage() {
                   </p>
                 )}
               </div>
+            )}
+
+            {hasSameDayEvent && (
+              <p className="text-sm text-amber-800 bg-amber-50 p-3 rounded-lg">
+                Same-day pickup isn’t available. Reserve by the day before an
+                event.
+              </p>
             )}
 
             {fulfillmentType === "shipping" ? (

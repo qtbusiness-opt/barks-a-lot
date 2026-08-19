@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -9,6 +9,7 @@ import { EVENT_COLORS, EVENT_COLOR_KEYS, badgeClass } from "@/lib/event-colors";
 import { formatTimeRange } from "@/lib/pickup-window";
 import LocationInput from "@/components/LocationInput";
 import EventMap from "@/components/EventMap";
+import { formatCalendarDay } from "@/lib/format-date";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -28,6 +29,7 @@ function ColorPicker({ value, onChange }) {
               value={key}
               checked={value === key}
               onChange={() => onChange(key)}
+              aria-label={EVENT_COLORS[key].label}
               className="sr-only"
             />
             <span
@@ -45,6 +47,9 @@ function ColorPicker({ value, onChange }) {
 
 // Admins edit in place; customers get the read-only card.
 function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
+  // A day can list several events, each with its own edit form open, so
+  // field ids must be unique per card for labels to point correctly.
+  const fieldId = useId();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
@@ -101,12 +106,14 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
       <h2 className="text-xl font-bold text-[#2A4A52] mt-3">{event.title}</h2>
       {formatTimeRange(event) && (
         <p className="text-sm text-[#4A7C8A] font-medium mt-1">
-          <span aria-hidden="true">🕒 </span>{formatTimeRange(event)}
+          <span aria-hidden="true">🕒 </span>
+          {formatTimeRange(event)}
         </p>
       )}
       {event.location && (
         <p className="text-sm text-[#4A7C8A] font-medium mt-1">
-          <span aria-hidden="true">📍 </span>{event.location}
+          <span aria-hidden="true">📍 </span>
+          {event.location}
         </p>
       )}
       <p className="text-gray-600 mt-3 leading-relaxed">{event.description}</p>
@@ -130,12 +137,19 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
           </div>
 
           {editing && form && (
-            <form onSubmit={save} className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+            <form
+              onSubmit={save}
+              className="mt-4 pt-4 border-t border-gray-100 space-y-4"
+            >
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor={`${fieldId}-title`}
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Title
                 </label>
                 <input
+                  id={`${fieldId}-title`}
                   type="text"
                   value={form.title}
                   onChange={(e) => update("title", e.target.value)}
@@ -144,10 +158,14 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor={`${fieldId}-description`}
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Description
                 </label>
                 <textarea
+                  id={`${fieldId}-description`}
                   value={form.description}
                   onChange={(e) => update("description", e.target.value)}
                   required
@@ -157,20 +175,28 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor={`${fieldId}-location`}
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Location
                   </label>
                   <LocationInput
+                    id={`${fieldId}-location`}
                     value={form.location}
                     onChange={(v) => update("location", v)}
                     className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor={`${fieldId}-date`}
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Date
                   </label>
                   <input
+                    id={`${fieldId}-date`}
                     type="date"
                     value={form.date}
                     onChange={(e) => update("date", e.target.value)}
@@ -181,10 +207,14 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor={`${fieldId}-start`}
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Start time
                   </label>
                   <input
+                    id={`${fieldId}-start`}
                     type="time"
                     value={form.startTime}
                     onChange={(e) => update("startTime", e.target.value)}
@@ -192,10 +222,14 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor={`${fieldId}-end`}
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     End time
                   </label>
                   <input
+                    id={`${fieldId}-end`}
                     type="time"
                     value={form.endTime}
                     onChange={(e) => update("endTime", e.target.value)}
@@ -206,7 +240,10 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
                   </p>
                 </div>
               </div>
-              <ColorPicker value={form.color} onChange={(c) => update("color", c)} />
+              <ColorPicker
+                value={form.color}
+                onChange={(c) => update("color", c)}
+              />
               <button
                 type="submit"
                 disabled={saving}
@@ -246,7 +283,7 @@ export default function EventDayPage() {
     setFetched(typeof updater === "function" ? updater : () => updater);
 
   const dayLabel = validDate
-    ? new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    ? formatCalendarDay(date, {
         weekday: "long",
         month: "long",
         day: "numeric",
@@ -267,7 +304,12 @@ export default function EventDayPage() {
       </h1>
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
+          {error}
+        </p>
       )}
 
       {events === null ? (

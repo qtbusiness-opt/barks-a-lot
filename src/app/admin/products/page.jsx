@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
 import ImageUpload from "@/components/ImageUpload";
+import OptionGroupsEditor from "@/components/OptionGroupsEditor";
+import VariantStockGrid from "@/components/VariantStockGrid";
+import StoreImage from "@/components/StoreImage";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -17,6 +20,9 @@ const EMPTY_FORM = {
   images: [],
   itemDetails: "",
   nutritionFacts: [],
+  optionGroups: [],
+  trackOptionStock: false,
+  variantStock: {},
   category: "treats",
   quantity: "",
   featured: false,
@@ -25,7 +31,27 @@ const EMPTY_FORM = {
 const MAX_NUTRITION_ROWS = 30;
 
 // A half-filled row would fail server validation and sink the whole
-// save, so incomplete rows are dropped on the way out instead.
+// save, so incomplete rows are dropped on the way out instead. A
+// choice's price only travels with the group flagged setsPrice — the
+// form still tracks a price string on every choice so it isn't lost if
+// the admin switches which group prices the product, but only the
+// pricing group's is meaningful to send.
+const cleanOptionGroups = (groups) =>
+  groups
+    .map((g) => ({
+      ...g,
+      name: g.name.trim(),
+      choices: g.choices
+        .map((c) => ({
+          ...c,
+          label: c.label.trim(),
+          image: c.image || null,
+          price: g.setsPrice && c.price !== "" ? Number(c.price) : null,
+        }))
+        .filter((c) => c.label !== ""),
+    }))
+    .filter((g) => g.name !== "" && g.choices.length > 0);
+
 const cleanNutrition = (rows) =>
   rows
     .map((r) => ({ label: r.label.trim(), value: r.value.trim() }))
@@ -116,20 +142,27 @@ function NutritionFactsFields({ rows, onChange, idSuffix }) {
 }
 
 const stockOf = (p) =>
-  p.variants.length > 0
+  p.trackOptionStock
     ? p.variants.reduce((sum, v) => sum + v.quantity, 0)
     : p.quantity;
 
-function ProductFields({ form, update, variantProduct, categories }) {
+function ProductFields({ form, update, variantProduct, variants, categories }) {
+  // Rendered by the create form and by every open edit form, so field
+  // ids have to be unique per instance for labels to resolve.
+  const fieldId = useId();
   const showsIngredients =
     categories.find((c) => c.slug === form.category)?.showsIngredients ?? false;
   return (
     <>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor={`${fieldId}-name`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Name
         </label>
         <input
+          id={`${fieldId}-name`}
           type="text"
           value={form.name}
           onChange={(e) => update("name", e.target.value)}
@@ -138,10 +171,14 @@ function ProductFields({ form, update, variantProduct, categories }) {
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor={`${fieldId}-description`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Description
         </label>
         <textarea
+          id={`${fieldId}-description`}
           value={form.description}
           onChange={(e) => update("description", e.target.value)}
           required
@@ -151,10 +188,14 @@ function ProductFields({ form, update, variantProduct, categories }) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor={`${fieldId}-price`}
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Price ($)
           </label>
           <input
+            id={`${fieldId}-price`}
             type="number"
             min="0.01"
             step="0.01"
@@ -165,10 +206,14 @@ function ProductFields({ form, update, variantProduct, categories }) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor={`${fieldId}-quantity`}
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Quantity in stock
           </label>
           <input
+            id={`${fieldId}-quantity`}
             type="number"
             min="0"
             step="1"
@@ -186,10 +231,14 @@ function ProductFields({ form, update, variantProduct, categories }) {
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor={`${fieldId}-category`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Category
         </label>
         <select
+          id={`${fieldId}-category`}
           value={form.category}
           onChange={(e) => update("category", e.target.value)}
           className={inputClass}
@@ -214,9 +263,11 @@ function ProductFields({ form, update, variantProduct, categories }) {
           <div className="flex flex-wrap gap-3 mb-2">
             {form.images.map((src, i) => (
               <div key={`${src}-${i}`} className="relative">
-                <img
+                <StoreImage
                   src={src}
                   alt={`Additional photo ${i + 1}`}
+                  width={64}
+                  height={64}
                   className="w-16 h-16 rounded-lg object-cover bg-[#F5F0E8]"
                 />
                 <button
@@ -303,6 +354,27 @@ function ProductFields({ form, update, variantProduct, categories }) {
         )
       )}
 
+      <OptionGroupsEditor
+        groups={form.optionGroups}
+        onChange={(next) => update("optionGroups", next)}
+        idSuffix={variantProduct ? "edit" : "new"}
+        trackOptionStock={form.trackOptionStock}
+        onTrackOptionStockChange={(v) => update("trackOptionStock", v)}
+      />
+
+      {form.trackOptionStock && variants && (
+        <VariantStockGrid
+          variants={variants}
+          stock={form.variantStock}
+          onChange={(variantId, quantity) =>
+            update("variantStock", {
+              ...form.variantStock,
+              [variantId]: quantity,
+            })
+          }
+        />
+      )}
+
       <label className="flex items-center gap-3 min-h-11 cursor-pointer">
         <input
           type="checkbox"
@@ -322,7 +394,8 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(null);
 
-  const variantProduct = product.variants.length > 0;
+  const trackOptionStock = product.trackOptionStock;
+  const variantProduct = trackOptionStock || product.variants.length > 0;
 
   const startEdit = () => {
     setForm({
@@ -333,6 +406,28 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
       images: product.images ?? [],
       itemDetails: product.itemDetails ?? "",
       nutritionFacts: product.nutritionFacts ?? [],
+      // ids preserved so the save below edits these groups/choices in
+      // place instead of the write path seeing an all-new set and
+      // orphaning whatever stock the old ones anchored.
+      optionGroups: (product.optionGroups ?? []).map((g) => ({
+        id: g.id,
+        name: g.name,
+        inputType: g.inputType,
+        required: g.required,
+        setsPrice: g.setsPrice,
+        choices: (g.choices ?? []).map((c) => ({
+          id: c.id,
+          label: c.label,
+          image: c.image ?? null,
+          price: c.price != null ? String(c.price) : "",
+        })),
+      })),
+      trackOptionStock,
+      // One entry per existing combination; the grid only shows what's
+      // already here, so nothing needs adding for a brand-new choice.
+      variantStock: Object.fromEntries(
+        (product.variants ?? []).map((v) => [v.id, String(v.quantity)])
+      ),
       category: product.category,
       quantity: String(product.quantity),
       featured: product.featured,
@@ -357,8 +452,19 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
         images: form.images,
         itemDetails: form.itemDetails,
         nutritionFacts: cleanNutrition(form.nutritionFacts),
+        optionGroups: cleanOptionGroups(form.optionGroups),
+        trackOptionStock: form.trackOptionStock,
+        ...(form.trackOptionStock
+          ? {
+              variantStock: Object.entries(form.variantStock).map(
+                ([variantId, quantity]) => ({
+                  variantId,
+                  quantity: Number(quantity) || 0,
+                })
+              ),
+            }
+          : { quantity: Number(form.quantity) }),
         category: form.category,
-        ...(variantProduct ? {} : { quantity: Number(form.quantity) }),
         featured: form.featured,
         inStock: form.inStock,
       });
@@ -386,9 +492,11 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-3">
       <div className="flex items-center gap-3">
-        <img
+        <StoreImage
           src={product.image}
           alt={product.name}
+          width={56}
+          height={56}
           className="w-14 h-14 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
         />
         <div className="flex-1 min-w-0">
@@ -438,6 +546,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
             form={form}
             update={update}
             variantProduct={variantProduct}
+            variants={product.variants}
             categories={categories}
           />
           <label className="flex items-center gap-3 min-h-11 cursor-pointer">
@@ -505,6 +614,8 @@ export default function AdminProductsPage() {
         images: form.images,
         itemDetails: form.itemDetails,
         nutritionFacts: cleanNutrition(form.nutritionFacts),
+        optionGroups: cleanOptionGroups(form.optionGroups),
+        trackOptionStock: form.trackOptionStock,
         category: form.category,
         quantity: Number(form.quantity),
         featured: form.featured,
@@ -547,7 +658,7 @@ export default function AdminProductsPage() {
           <ProductFields
             form={form}
             update={update}
-            variantProduct={false}
+            variantProduct={form.trackOptionStock}
             categories={categories}
           />
           <p className="text-xs text-gray-500">

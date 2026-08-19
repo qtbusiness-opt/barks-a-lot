@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { adminProduct, nutritionRowSchema } from "@/lib/catalog";
+import {
+  adminProduct,
+  nutritionRowSchema,
+  PRODUCT_DETAIL_INCLUDE,
+} from "@/lib/catalog";
+import { uniqueProductSlug } from "@/lib/slug";
+import { optionGroupsSchema, writeOptionGroups } from "@/lib/option-writes";
 
 // The fields that make up a product card. inStock is derived from
 // quantity rather than trusted from the client. Categories are
@@ -18,6 +24,11 @@ const productSchema = z.object({
   itemDetails: z.string().trim().max(5000).optional(),
   // Nutrition facts table rows, for edible categories.
   nutritionFacts: z.array(nutritionRowSchema).max(30).default([]),
+  // Customer-facing choices (Size, Style, ...) shown on the product page.
+  optionGroups: optionGroupsSchema.default([]),
+  // When true, stock lives on the option combinations below instead of
+  // `quantity` — set by an admin who wants per-size/per-style counts.
+  trackOptionStock: z.boolean().default(false),
   category: z.string().trim().min(1).max(60),
   quantity: z.number().int().min(0).max(100000),
   featured: z.boolean().default(false),
@@ -32,7 +43,7 @@ export async function GET() {
   // Admins see the full catalog: expired drops and sold-out limited items
   // included, unlike the public listing.
   const products = await prisma.product.findMany({
-    include: { variants: true },
+    include: PRODUCT_DETAIL_INCLUDE,
     orderBy: { createdAt: "desc" },
   });
 
@@ -65,17 +76,37 @@ export async function POST(req) {
       );
     }
 
-    const { images, itemDetails, nutritionFacts, ...rest } = data;
-    const product = await prisma.product.create({
-      data: {
-        ...rest,
-        images: images.length > 0 ? JSON.stringify(images) : null,
-        itemDetails: itemDetails || null,
-        nutritionFacts:
-          nutritionFacts.length > 0 ? JSON.stringify(nutritionFacts) : null,
-        inStock: data.quantity > 0,
-      },
-      include: { variants: true },
+    const { images, itemDetails, nutritionFacts, optionGroups, trackOptionStock, ...rest } =
+      data;
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          ...rest,
+          trackOptionStock,
+          slug: await uniqueProductSlug(tx, data.name),
+          images: images.length > 0 ? JSON.stringify(images) : null,
+          itemDetails: itemDetails || null,
+          nutritionFacts:
+            nutritionFacts.length > 0 ? JSON.stringify(nutritionFacts) : null,
+          // Combinations always start at 0 stock — there's nothing to
+          // decide here yet, the admin sets quantities in a follow-up
+          // save once the matrix exists.
+          quantity: trackOptionStock ? 0 : data.quantity,
+          inStock: trackOptionStock ? false : data.quantity > 0,
+        },
+      });
+      if (optionGroups.length > 0) {
+        await writeOptionGroups(tx, created.id, optionGroups, trackOptionStock);
+      } else if (trackOptionStock) {
+        throw Object.assign(
+          new Error("Add option groups before turning on option stock"),
+          { code: 400 }
+        );
+      }
+      return tx.product.findUnique({
+        where: { id: created.id },
+        include: PRODUCT_DETAIL_INCLUDE,
+      });
     });
 
     console.info(`[admin] product created id=${product.id} by=${auth.userId}`);
@@ -84,6 +115,9 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (err) {
+    if (err.code === 400) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     console.error("[admin] product create error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -38,7 +39,7 @@ function LoginForm() {
     }
   };
 
-  const handleResend = async () => {
+  const [handleResend, resending] = useAsyncAction(async () => {
     setResent(false);
     try {
       await api.post("/auth/resend-verification", { email });
@@ -46,7 +47,7 @@ function LoginForm() {
     } catch {
       setError("Couldn't resend the email — please try again in a minute.");
     }
-  };
+  });
 
   return (
     <div className="max-w-md mx-auto safe-x py-10 sm:py-16">
@@ -74,9 +75,10 @@ function LoginForm() {
           <button
             type="button"
             onClick={handleResend}
-            className="w-full border-2 border-[#C8722A] text-[#C8722A] py-2.5 rounded-lg font-semibold hover:bg-[#C8722A] hover:text-white transition mb-4"
+            disabled={resending}
+            className="w-full border-2 border-[#C8722A] text-[#C8722A] py-2.5 rounded-lg font-semibold hover:bg-[#C8722A] hover:text-white transition mb-4 disabled:opacity-50"
           >
-            Resend Verification Email
+            {resending ? "Sending…" : "Resend Verification Email"}
           </button>
         )}
         {resent && (

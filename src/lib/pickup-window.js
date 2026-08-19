@@ -1,9 +1,7 @@
 // Shared by the orders API and the checkout UI so the pickup rules can't
-// drift apart. Event times are wall-clock strings ("HH:MM") in the
-// store's timezone — set TZ (e.g. America/Boise) in production so the
-// server's local clock matches the events'.
+// drift apart.
 
-export const PICKUP_CUTOFF_MS = 2 * 60 * 60 * 1000;
+import { STORE_TIME_ZONE } from "@/lib/format-date";
 
 // event.date is a Date object straight from Prisma on the server and an
 // ISO string after JSON on the client — handle both. Events are stored
@@ -13,25 +11,25 @@ export const eventDayKey = (event) =>
     ? event.date.toISOString().slice(0, 10)
     : String(event.date).slice(0, 10);
 
-const pad = (n) => String(n).padStart(2, "0");
+// en-CA renders as YYYY-MM-DD, directly comparable with eventDayKey.
+// Computed in STORE_TIME_ZONE explicitly rather than the process's own
+// clock — the container runs in UTC in production, and "today" needs to
+// mean the store's today, not the server's.
+const storeDayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: STORE_TIME_ZONE,
+});
 
 export function dayKeyOf(now = new Date()) {
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return storeDayFormatter.format(now);
 }
 
-// An event can be chosen for pickup (manually or via "Next Event") on
-// any future day, and on the event day itself until two hours before it
-// wraps up. Events without an end time keep the older behaviour: the
-// whole event day counts.
+const pad = (n) => String(n).padStart(2, "0");
+
+// No same-day reservations: an event can be chosen for pickup (manually
+// or via "Next Event") only on a day strictly after today, so every
+// pickup has at least until midnight, store time, to be prepared for.
 export function isPickupSelectable(event, now = new Date()) {
-  const day = eventDayKey(event);
-  const today = dayKeyOf(now);
-  if (day > today) return true;
-  if (day < today) return false;
-  if (!event.endTime) return true;
-  // Parsed without a zone suffix → local wall-clock time.
-  const end = new Date(`${day}T${event.endTime}:00`);
-  return now.getTime() <= end.getTime() - PICKUP_CUTOFF_MS;
+  return eventDayKey(event) > dayKeyOf(now);
 }
 
 // "14:30" -> "2:30 PM" for customer-facing display.

@@ -1,10 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
+import StoreImage from "@/components/StoreImage";
 
 // Product image picker: click to browse or drag & drop. Uploads to the
 // admin uploads API and hands the served URL back to the form.
-export default function ImageUpload({ value, onChange, label = "Product image" }) {
+export default function ImageUpload({
+  value,
+  onChange,
+  label = "Product image",
+}) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -19,7 +24,10 @@ export default function ImageUpload({ value, onChange, label = "Product image" }
       fd.append("file", file);
       // Plain fetch: the shared axios instance forces a JSON content type,
       // but multipart needs the browser-set boundary header.
-      const res = await fetch("/api/admin/uploads", { method: "POST", body: fd });
+      const res = await fetch("/api/admin/uploads", {
+        method: "POST",
+        body: fd,
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
       onChange(data.url);
@@ -58,9 +66,11 @@ export default function ImageUpload({ value, onChange, label = "Product image" }
         }`}
       >
         {value ? (
-          <img
+          <StoreImage
             src={value}
             alt="Product preview"
+            width={64}
+            height={64}
             className="w-16 h-16 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
           />
         ) : (
@@ -73,10 +83,10 @@ export default function ImageUpload({ value, onChange, label = "Product image" }
             {uploading
               ? "Uploading…"
               : dragging
-              ? "Drop it here!"
-              : value
-              ? "Click or drop a new image to replace"
-              : "Click to upload, or drag & drop"}
+                ? "Drop it here!"
+                : value
+                  ? "Click or drop a new image to replace"
+                  : "Click to upload, or drag & drop"}
           </span>
           <span className="block text-xs text-gray-500 mt-0.5">
             PNG, JPEG, WebP, or GIF · up to 5 MB
@@ -94,7 +104,12 @@ export default function ImageUpload({ value, onChange, label = "Product image" }
         }}
       />
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-2 rounded-lg mt-2">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-2 rounded-lg mt-2"
+        >
+          {error}
+        </p>
       )}
     </div>
   );

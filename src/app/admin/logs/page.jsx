@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { formatDateTime } from "@/lib/format-date";
 
 // Friendly labels for the raw event keys.
 const EVENT_LABELS = {
@@ -172,7 +173,7 @@ export default function AdminLogsPage() {
               {events?.map((e) => (
                 <tr key={e.id} className="border-b border-gray-100 align-top">
                   <td className="py-2 pr-4 whitespace-nowrap text-gray-500">
-                    {new Date(e.createdAt).toLocaleString()}
+                    {formatDateTime(e.createdAt)}
                   </td>
                   <td className="py-2 pr-4 whitespace-nowrap">
                     <span

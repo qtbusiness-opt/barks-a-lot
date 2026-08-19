@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
+import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -35,7 +36,7 @@ export default function RegisterPage() {
     }
   };
 
-  const handleResend = async () => {
+  const [handleResend, resending] = useAsyncAction(async () => {
     setResent(false);
     try {
       await api.post("/auth/resend-verification", { email });
@@ -43,7 +44,7 @@ export default function RegisterPage() {
     } catch {
       setError("Couldn't resend the email — please try again in a minute.");
     }
-  };
+  });
 
   if (registered) {
     return (
@@ -80,9 +81,10 @@ export default function RegisterPage() {
           <div className="mt-6 space-y-3">
             <button
               onClick={handleResend}
-              className="w-full border-2 border-[#4A7C8A] text-[#4A7C8A] py-2.5 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white transition"
+              disabled={resending}
+              className="w-full border-2 border-[#4A7C8A] text-[#4A7C8A] py-2.5 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white transition disabled:opacity-50"
             >
-              Resend Verification Email
+              {resending ? "Sending…" : "Resend Verification Email"}
             </button>
             <Link
               href="/login"

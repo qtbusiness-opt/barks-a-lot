@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
 import { orderStatusLabel } from "@/lib/order-status";
+import { formatCalendarDay, formatDateTime } from "@/lib/format-date";
 
 const STATUSES = ["pending", "shipped", "delivered", "cancelled"];
 
@@ -53,7 +54,12 @@ export default function AdminOrdersPage() {
   return (
     <AdminShell title="Orders" backTo="/admin">
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
+          {error}
+        </p>
       )}
 
       {orders === null && !error ? (
@@ -63,14 +69,17 @@ export default function AdminOrdersPage() {
       ) : (
         <div className="space-y-6">
           {orderList.map((order) => (
-            <div key={order.id} className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+            <div
+              key={order.id}
+              className="bg-white rounded-xl shadow-sm p-4 sm:p-6"
+            >
               <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                 <div>
                   <p className="font-semibold text-[#2A4A52]">
                     {order.confirmationNumber}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {new Date(order.createdAt).toLocaleString()}
+                    {formatDateTime(order.createdAt)}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
                     {order.user
@@ -80,9 +89,9 @@ export default function AdminOrdersPage() {
                   <p className="text-sm text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
                       ? order.pickupEvent
-                        ? `Pickup at ${order.pickupEvent.title} — ${new Date(
-                            `${String(order.pickupEvent.date).slice(0, 10)}T00:00:00`
-                          ).toLocaleDateString()}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
+                        ? `Pickup at ${order.pickupEvent.title} — ${formatCalendarDay(
+                            order.pickupEvent.date
+                          )}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
                         : "Pickup at market/event"
                       : `Ship to: ${order.address}, ${order.city}, ${order.state} ${order.zip}`}
                     {order.channel === "market" && " · Market sale"}
@@ -135,7 +144,10 @@ export default function AdminOrdersPage() {
               </div>
               <div className="space-y-2">
                 {order.items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 text-sm">
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-4 text-sm"
+                  >
                     <span className="flex-1">
                       {item.product.name}
                       {item.variant && ` — ${item.variant.name}`}
@@ -152,10 +164,12 @@ export default function AdminOrdersPage() {
                 {order.discountTotal > 0 && (
                   <>
                     <p className="text-sm text-gray-500">
-                      Subtotal: ${(order.total + order.discountTotal).toFixed(2)}
+                      Subtotal: $
+                      {(order.total + order.discountTotal).toFixed(2)}
                     </p>
                     <p className="text-sm text-green-700">
-                      Discount{order.promoCode ? ` (${order.promoCode})` : ""}: −$
+                      Discount{order.promoCode ? ` (${order.promoCode})` : ""}:
+                      −$
                       {order.discountTotal.toFixed(2)}
                     </p>
                   </>

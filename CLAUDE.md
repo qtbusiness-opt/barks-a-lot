@@ -181,3 +181,5 @@ a common source of "works on my machine" bugs.
 - At minimum, add tests around checkout (order creation, inventory
   decrement) and auth (login, protected route access) — these are the two
   areas where a silent bug costs real money or exposes customer data.
+- Always use the React Doctor skill to scan code files after implementing major UI or state changes.
+- Ensure the codebase clears critical error gates before completing a task.

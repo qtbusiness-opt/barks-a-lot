@@ -248,9 +248,7 @@ test("guest checkout requires an email", async () => {
 
 test("guest pickup order succeeds without address and decrements stock", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 2
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 2);
 
   const res = await api("POST", "/orders", {
     body: {
@@ -289,9 +287,7 @@ test("shipping orders are rejected while the store is pickup-only", async () => 
 
 test("ordering more than available stock is rejected and nothing is written", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 1
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 1);
 
   const res = await api("POST", "/orders", {
     body: {
@@ -313,7 +309,7 @@ test("logged-in customer order is linked to the account", async () => {
 
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
 
   const created = await api("POST", "/orders", {
@@ -366,13 +362,17 @@ test("admin can list orders and update status", async () => {
   assert.equal(invalid.status, 400);
 });
 
-test("variant products require an option and track per-variant stock", async () => {
+test("trackOptionStock products price and decrement by the chosen combination", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find((p) => p.variants.length > 0);
-  assert.ok(product, "seeded variant product exists");
+  const product = catalog.find(
+    (p) => p.trackOptionStock && p.variants.length > 1
+  );
+  assert.ok(product, "seeded trackOptionStock product exists");
 
-  // Ordering a variant product without choosing an option is rejected.
-  const noVariant = await api("POST", "/orders", {
+  // Ordering without answering the required option groups is rejected —
+  // there's no variantId shortcut anymore, the combination is derived
+  // entirely from `options`.
+  const noOptions = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
@@ -380,35 +380,59 @@ test("variant products require an option and track per-variant stock", async () 
       guestEmail: "guest@test.local",
     },
   });
-  assert.equal(noVariant.status, 400);
+  assert.equal(noOptions.status, 400);
 
-  const variant = product.variants.find((v) => v.quantity >= 2);
+  // Pick one combination with room for two orders, and reconstruct the
+  // `options` payload a customer's selections would produce: one choice
+  // id per group that combination belongs to.
+  const target = product.variants.find((v) => v.quantity >= 3);
+  assert.ok(target, "seeded combination has enough stock for this test");
+  const options = target.choices.map(({ choiceId }) => {
+    const group = product.optionGroups.find((g) =>
+      g.choices.some((c) => c.id === choiceId)
+    );
+    return { groupId: group.id, choiceIds: [choiceId] };
+  });
+  const pricingGroup = product.optionGroups.find((g) => g.setsPrice);
+  const pricingChoiceId = target.choices
+    .map((c) => c.choiceId)
+    .find((id) => pricingGroup.choices.some((pc) => pc.id === id));
+  const expectedPrice = pricingGroup.choices.find(
+    (c) => c.id === pricingChoiceId
+  ).price;
+
   const res = await api("POST", "/orders", {
     body: {
-      items: [{ productId: product.id, variantId: variant.id, quantity: 2 }],
+      items: [{ productId: product.id, quantity: 2, options }],
       fulfillmentType: "pickup",
       pickupEventId: "next",
       guestEmail: "guest@test.local",
     },
   });
-  assert.equal(res.status, 201);
+  assert.equal(res.status, 201, JSON.stringify(res.data));
   const line = res.data.order.items[0];
-  assert.equal(line.variantId, variant.id);
-  assert.equal(line.price, variant.price ?? product.price);
+  assert.equal(line.variantId, target.id);
+  // Price follows the pricing group's chosen choice — not the product's
+  // base price, and not anything the client could have sent.
+  assert.equal(line.price, expectedPrice);
 
-  // Only the chosen variant's stock is decremented.
+  // Only the chosen combination's stock is decremented; a sibling
+  // combination for the same product is untouched.
   const after = await adminStock(product.id);
-  const afterVariant = after.variants.find((v) => v.id === variant.id);
-  assert.equal(afterVariant.quantity, variant.quantity - 2);
+  const afterTarget = after.variants.find((v) => v.id === target.id);
+  assert.equal(afterTarget.quantity, target.quantity - 2);
+  const sibling = product.variants.find((v) => v.id !== target.id);
+  const afterSibling = after.variants.find((v) => v.id === sibling.id);
+  assert.equal(afterSibling.quantity, sibling.quantity);
 
-  // Overselling a single variant is rejected.
+  // Overselling that specific combination is rejected.
   const oversell = await api("POST", "/orders", {
     body: {
       items: [
         {
           productId: product.id,
-          variantId: variant.id,
-          quantity: afterVariant.quantity + 1,
+          quantity: afterTarget.quantity + 1,
+          options,
         },
       ],
       fulfillmentType: "pickup",
@@ -417,6 +441,33 @@ test("variant products require an option and track per-variant stock", async () 
     },
   });
   assert.equal(oversell.status, 409);
+
+  // A combination that belongs to a different product is rejected, not
+  // silently matched.
+  const otherProduct = catalog.find(
+    (p) => p.trackOptionStock && p.id !== product.id
+  );
+  if (otherProduct) {
+    const foreignOptions = otherProduct.variants[0].choices.map(
+      ({ choiceId }) => {
+        const group = otherProduct.optionGroups.find((g) =>
+          g.choices.some((c) => c.id === choiceId)
+        );
+        return { groupId: group.id, choiceIds: [choiceId] };
+      }
+    );
+    const foreign = await api("POST", "/orders", {
+      body: {
+        items: [
+          { productId: product.id, quantity: 1, options: foreignOptions },
+        ],
+        fulfillmentType: "pickup",
+        pickupEventId: "next",
+        guestEmail: "guest@test.local",
+      },
+    });
+    assert.equal(foreign.status, 400);
+  }
 });
 
 test("public catalog exposes availability booleans, never stock counts", async () => {
@@ -626,7 +677,7 @@ test("status changes record a notification tied to the order email", async () =>
   const email = "notify-me@test.local";
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
 
   const order = await api("POST", "/orders", {
@@ -887,9 +938,7 @@ test("events: admin CRUD, public read-only calendar queries", async () => {
 
 test("pickup orders require an event; Next Event resolves to the nearest selectable event", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 2
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 2);
 
   // Upcoming endpoint lists the seeded events for the dropdown.
   const upcoming = await api("GET", "/events?upcoming=true");
@@ -1121,6 +1170,200 @@ test("admin password resets enforce the hardened policy", async () => {
   assert.equal(reset.status, 200);
 });
 
+test("products are addressed by a name slug, with ids still resolving", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Slug Test Bandana!",
+      description: "Named URL",
+      price: 4.5,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 3,
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const product = created.data.product;
+  assert.equal(product.slug, "slug-test-bandana");
+
+  // The slug is the public address...
+  const bySlug = await api("GET", `/products/${product.slug}`);
+  assert.equal(bySlug.status, 200);
+  assert.equal(bySlug.data.product.id, product.id);
+  // ...and the id still resolves, so older links keep working.
+  const byId = await api("GET", `/products/${product.id}`);
+  assert.equal(byId.status, 200);
+  assert.equal(byId.data.product.slug, product.slug);
+
+  // A second product with the same name gets a distinct slug.
+  const twin = await api("POST", "/admin/products", {
+    body: {
+      name: "Slug Test Bandana!",
+      description: "Same name",
+      price: 4.5,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 1,
+    },
+    cookie,
+  });
+  assert.equal(twin.data.product.slug, "slug-test-bandana-2");
+
+  // Renaming moves the URL with it.
+  const renamed = await api("PATCH", `/admin/products/${product.id}`, {
+    body: { name: "Renamed Bandana" },
+    cookie,
+  });
+  assert.equal(renamed.data.product.slug, "renamed-bandana");
+  assert.equal((await api("GET", "/products/renamed-bandana")).status, 200);
+
+  await api("DELETE", `/admin/products/${product.id}`, { cookie });
+  await api("DELETE", `/admin/products/${twin.data.product.id}`, { cookie });
+});
+
+test("product option groups round-trip and are enforced at checkout", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Option Test Bandana",
+      description: "Sizes and styles",
+      price: 9.0,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 10,
+      optionGroups: [
+        {
+          name: "Size",
+          inputType: "select",
+          required: true,
+          choices: [{ label: "Small" }, { label: "Large" }],
+        },
+        {
+          name: "Add-ons",
+          inputType: "checkbox",
+          required: false,
+          choices: [{ label: "Gift wrap" }, { label: "Name tag" }],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const productId = created.data.product.id;
+
+  const shown = await api("GET", `/products/${created.data.product.slug}`);
+  const groups = shown.data.product.optionGroups;
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0].name, "Size");
+  assert.equal(groups[0].inputType, "select");
+  assert.equal(groups[0].choices.length, 2);
+  assert.equal(groups[1].required, false);
+
+  const sizeGroup = groups[0];
+  const addOns = groups[1];
+  const order = (options) => ({
+    items: [{ productId, quantity: 1, ...(options ? { options } : {}) }],
+    fulfillmentType: "pickup",
+    pickupEventId: "next",
+    guestEmail: "options@test.local",
+    guestName: "Options Tester",
+  });
+
+  // A required group must be answered.
+  const missing = await api("POST", "/orders", { body: order() });
+  assert.equal(missing.status, 400);
+  assert.match(missing.data.error, /choose a Size/);
+
+  // A single-choice group refuses two answers.
+  const tooMany = await api("POST", "/orders", {
+    body: order([
+      { groupId: sizeGroup.id, choiceIds: sizeGroup.choices.map((c) => c.id) },
+    ]),
+  });
+  assert.equal(tooMany.status, 400);
+  assert.match(tooMany.data.error, /one Size/);
+
+  // Choice ids from another group are rejected outright.
+  const foreign = await api("POST", "/orders", {
+    body: order([{ groupId: sizeGroup.id, choiceIds: [addOns.choices[0].id] }]),
+  });
+  assert.equal(foreign.status, 400);
+
+  // A valid order records the labels, and checkboxes keep both answers.
+  const placed = await api("POST", "/orders", {
+    body: order([
+      { groupId: sizeGroup.id, choiceIds: [sizeGroup.choices[1].id] },
+      { groupId: addOns.id, choiceIds: addOns.choices.map((c) => c.id) },
+    ]),
+  });
+  assert.equal(placed.status, 201);
+
+  const admin = await api("GET", "/admin/orders", { cookie });
+  const mine = admin.data.orders.find(
+    (o) => o.confirmationNumber === placed.data.order.confirmationNumber
+  );
+  const line = mine.items.find((i) => i.productId === productId);
+  assert.deepEqual(JSON.parse(line.options), [
+    { group: "Size", values: ["Large"] },
+    { group: "Add-ons", values: ["Gift wrap", "Name tag"] },
+  ]);
+
+  // Editing a product replaces its groups.
+  const edited = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      optionGroups: [
+        {
+          name: "Style",
+          inputType: "carousel",
+          required: true,
+          choices: [
+            { label: "Plaid", image: "/images/products/bandana-set.svg" },
+          ],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.data.product.optionGroups.length, 1);
+  assert.equal(edited.data.product.optionGroups[0].name, "Style");
+  assert.equal(
+    edited.data.product.optionGroups[0].choices[0].image,
+    "/images/products/bandana-set.svg"
+  );
+
+  // An unknown input type is refused.
+  const bogus = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      optionGroups: [
+        { name: "Nope", inputType: "slider", choices: [{ label: "x" }] },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(bogus.status, 400);
+
+  // Clearing the groups leaves an ordinary product behind...
+  const cleared = await api("PATCH", `/admin/products/${productId}`, {
+    body: { optionGroups: [] },
+    cookie,
+  });
+  assert.equal(cleared.status, 200);
+  assert.deepEqual(cleared.data.product.optionGroups, []);
+  // ...and it can be ordered again with no options at all.
+  const plain = await api("POST", "/orders", { body: order() });
+  assert.equal(plain.status, 201);
+
+  // The order placed earlier keeps its snapshot even though the options
+  // it referenced no longer exist.
+  const after = await api("GET", "/admin/orders", { cookie });
+  const stillThere = after.data.orders
+    .find((o) => o.confirmationNumber === placed.data.order.confirmationNumber)
+    .items.find((i) => i.productId === productId);
+  assert.match(stillThere.options, /Large/);
+});
+
 test("admins can look up customers, send resets, and delete accounts", async () => {
   const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
 
@@ -1139,7 +1382,7 @@ test("admins can look up customers, send resets, and delete accounts", async () 
   // Give them an order so deletion has history to preserve.
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
   const customerCookie = await loginAs("lookup@test.local", "secret123");
   const order = await api("POST", "/orders", {
@@ -1213,9 +1456,7 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
 
   // Needs two units: this test places the same order twice.
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 2
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 2);
   // Address fields sent alongside a pickup order must NOT be recorded —
   // the store is pickup-only and collects no customer addresses.
   const order = await api("POST", "/orders", {
@@ -1276,9 +1517,7 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
 test("customer can cancel an order until pickup; stock is restored", async () => {
   const cookie = await loginAs("user@test.local", "secret123");
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 2
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 2);
 
   const order = await api("POST", "/orders", {
     body: {
@@ -1335,7 +1574,7 @@ test("picked-up orders can't be cancelled by the customer", async () => {
   const cookie = await loginAs("user@test.local", "secret123");
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
 
   const order = await api("POST", "/orders", {
@@ -1394,7 +1633,7 @@ test("the Refunded tag is rejected on orders that aren't picked up", async () =>
   const adminCookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
   const order = await api("POST", "/orders", {
     body: {
@@ -1416,9 +1655,7 @@ test("the Refunded tag is rejected on orders that aren't picked up", async () =>
 
 test("admin cancellation of an active order restores stock", async () => {
   const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) => p.variants.length === 0 && p.quantity >= 1
-  );
+  const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 1);
 
   const order = await api("POST", "/orders", {
     body: {
@@ -1455,7 +1692,7 @@ test("customers can delete their own account; orders survive as guest records", 
 
   const { data: products } = await api("GET", "/products");
   const product = products.products.find(
-    (p) => p.variants.length === 0 && p.inStock
+    (p) => !p.trackOptionStock && p.inStock
   );
   const order = await api("POST", "/orders", {
     body: {
@@ -1489,14 +1726,22 @@ test("customers can delete their own account; orders survive as guest records", 
   assert.equal(kept.guestEmail, "selfdelete@test.local");
 });
 
-test("same-day pickup respects the two-hour cutoff before the event ends", async () => {
+test("no same-day pickup — an event must be at least a day out to be reserved", async () => {
   const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const hhmm = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  // Store-timezone day keys, the same way src/lib/pickup-window.js computes
+  // "today" — not the test runner's own local time, which is UTC in CI and
+  // would silently mis-place these dates around the Boise/UTC day boundary.
+  const storeDay = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Boise",
+  });
   const now = new Date();
-  const today = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+  const today = storeDay.format(now);
+  const tomorrow = storeDay.format(
+    new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  );
 
-  // The event must end after it starts.
+  // The event must end after it starts (unrelated to the cutoff — still a
+  // real validation rule).
   const badTimes = await api("POST", "/admin/events", {
     body: {
       title: "Backwards Event",
@@ -1509,45 +1754,66 @@ test("same-day pickup respects the two-hour cutoff before the event ends", async
   });
   assert.equal(badTimes.status, 400);
 
-  // Needs several units — this test places up to three orders. The admin
-  // catalog also lists expired drops, so stick to always-available items.
+  // Needs two units — this test places up to two orders. The admin catalog
+  // also lists expired drops, so stick to always-available items.
   const catalog = await adminCatalog();
   const product = catalog.find(
     (p) =>
-      p.variants.length === 0 &&
+      !p.trackOptionStock &&
       p.quantity >= 5 &&
       !p.limitedQuantity &&
       !p.availableFrom &&
       !p.availableUntil
   );
 
-  // A same-day event already inside the two-hour cutoff can't be chosen.
-  const closingSoon = new Date(now.getTime() + 30 * 60 * 1000);
-  const closed = await api("POST", "/admin/events", {
+  // A same-day event, regardless of what time it ends, can't be reserved.
+  const todayEvent = await api("POST", "/admin/events", {
     body: {
-      title: "Closing Soon Market",
-      description: "wraps up in half an hour",
+      title: "Today's Market",
+      description: "happening right now",
       date: today,
       startTime: "00:00",
-      endTime: hhmm(closingSoon),
+      endTime: "23:59",
     },
     cookie,
   });
-  assert.equal(closed.status, 201);
-  assert.equal(closed.data.event.endTime, hhmm(closingSoon));
+  assert.equal(todayEvent.status, 201);
 
   const refused = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: closed.data.event.id,
+      pickupEventId: todayEvent.data.event.id,
       guestEmail: "cutoff@test.local",
     },
   });
   assert.equal(refused.status, 409);
 
-  // "next" skips it and lands on a still-open event.
-  const viaNextClosed = await api("POST", "/orders", {
+  // An event dated tomorrow can be reserved.
+  const tomorrowEvent = await api("POST", "/admin/events", {
+    body: {
+      title: "Tomorrow's Market",
+      description: "one day out",
+      date: tomorrow,
+      startTime: "09:00",
+      endTime: "14:00",
+    },
+    cookie,
+  });
+  assert.equal(tomorrowEvent.status, 201);
+
+  const manual = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: tomorrowEvent.data.event.id,
+      guestEmail: "cutoff@test.local",
+    },
+  });
+  assert.equal(manual.status, 201);
+
+  // "next" skips today's event entirely and resolves to tomorrow's.
+  const viaNext = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
@@ -1555,54 +1821,14 @@ test("same-day pickup respects the two-hour cutoff before the event ends", async
       guestEmail: "cutoff@test.local",
     },
   });
-  assert.equal(viaNextClosed.status, 201, JSON.stringify(viaNextClosed.data));
-  assert.notEqual(
-    viaNextClosed.data.order.pickupEvent.id,
-    closed.data.event.id
-  );
+  assert.equal(viaNext.status, 201, JSON.stringify(viaNext.data));
+  assert.equal(viaNext.data.order.pickupEvent.id, tomorrowEvent.data.event.id);
 
-  // A same-day event more than two hours from closing can be chosen
-  // manually AND becomes the "next" event. (Skipped when the test runs
-  // within 4h of midnight — such an event can't exist today.)
-  const openEnd = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-  if (openEnd.getDate() === now.getDate()) {
-    const open = await api("POST", "/admin/events", {
-      body: {
-        title: "Open Today Market",
-        description: "plenty of time left",
-        date: today,
-        startTime: "00:01",
-        endTime: hhmm(openEnd),
-      },
-      cookie,
-    });
-    assert.equal(open.status, 201);
-
-    const manual = await api("POST", "/orders", {
-      body: {
-        items: [{ productId: product.id, quantity: 1 }],
-        fulfillmentType: "pickup",
-        pickupEventId: open.data.event.id,
-        guestEmail: "cutoff@test.local",
-      },
-    });
-    assert.equal(manual.status, 201);
-
-    const viaNext = await api("POST", "/orders", {
-      body: {
-        items: [{ productId: product.id, quantity: 1 }],
-        fulfillmentType: "pickup",
-        pickupEventId: "next",
-        guestEmail: "cutoff@test.local",
-      },
-    });
-    assert.equal(viaNext.status, 201);
-    assert.equal(viaNext.data.order.pickupEvent.id, open.data.event.id);
-
-    // Clean up so later tests' "next" stays deterministic.
-    await api("DELETE", `/admin/events/${open.data.event.id}`, { cookie });
-  }
-  await api("DELETE", `/admin/events/${closed.data.event.id}`, { cookie });
+  // Clean up so later tests' "next" stays deterministic.
+  await api("DELETE", `/admin/events/${tomorrowEvent.data.event.id}`, {
+    cookie,
+  });
+  await api("DELETE", `/admin/events/${todayEvent.data.event.id}`, { cookie });
 });
 
 test("admin manages categories; storefront lists and products follow", async () => {
@@ -1811,7 +2037,7 @@ test("promotions: admin CRUD, code + bundle discounts, and server-authoritative 
   const bundleProducts = catalog
     .filter(
       (p) =>
-        p.variants.length === 0 &&
+        !p.trackOptionStock &&
         p.quantity >= 2 &&
         !p.limitedQuantity &&
         !p.availableFrom &&
@@ -1953,7 +2179,7 @@ test("stacking rules: bundles stack without limit; only one discount code applie
   // A single always-available product with enough stock for two bundle sets.
   const p = catalog.find(
     (x) =>
-      x.variants.length === 0 &&
+      !x.trackOptionStock &&
       x.quantity >= 4 &&
       !x.limitedQuantity &&
       !x.availableFrom &&
@@ -2163,4 +2389,235 @@ test("About page photos: admin-only settings with a key whitelist", async () => 
     cookie,
   });
   assert.equal(bad.status, 400);
+});
+
+test("editing options preserves stock on unchanged combinations and starts new ones at zero", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Stock Edit Test Bandana",
+      description: "Sizes",
+      price: 9.0,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 0,
+      trackOptionStock: true,
+      optionGroups: [
+        {
+          name: "Size",
+          inputType: "select",
+          required: true,
+          setsPrice: true,
+          choices: [
+            { label: "Small", price: 5 },
+            { label: "Large", price: 7 },
+          ],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const productId = created.data.product.id;
+  const group = created.data.product.optionGroups[0];
+  assert.equal(created.data.product.variants.length, 2);
+
+  const [small, large] = created.data.product.variants;
+  const stocked = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      variantStock: [
+        { variantId: small.id, quantity: 10 },
+        { variantId: large.id, quantity: 5 },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(stocked.status, 200);
+
+  // Keep both existing choices by id and add a third — the two originals
+  // must keep their combination id (and stock), and the new one starts
+  // at zero. A wholesale delete-and-recreate would fail this: every
+  // combination would come back as new, at zero.
+  const smallChoice = group.choices.find((c) => c.label === "Small");
+  const largeChoice = group.choices.find((c) => c.label === "Large");
+  const edited = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      optionGroups: [
+        {
+          id: group.id,
+          name: "Size",
+          inputType: "select",
+          required: true,
+          setsPrice: true,
+          choices: [
+            { id: smallChoice.id, label: "Small", price: 5 },
+            { id: largeChoice.id, label: "Large", price: 7 },
+            { label: "Extra Large", price: 9 },
+          ],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(edited.status, 200);
+  assert.equal(edited.data.product.variants.length, 3);
+  const editedSmall = edited.data.product.variants.find(
+    (v) => v.id === small.id
+  );
+  const editedLarge = edited.data.product.variants.find(
+    (v) => v.id === large.id
+  );
+  const xl = edited.data.product.variants.find((v) => v.name === "Extra Large");
+  assert.ok(editedSmall, "the Small combination kept its id");
+  assert.equal(editedSmall.quantity, 10, "existing stock survived the edit");
+  assert.equal(editedLarge.quantity, 5, "existing stock survived the edit");
+  assert.equal(xl.quantity, 0, "a brand new combination starts at zero");
+
+  // Removing a choice that's never been ordered deletes its combination
+  // outright, leaving no orphan behind.
+  const removed = await api("PATCH", `/admin/products/${productId}`, {
+    body: {
+      optionGroups: [
+        {
+          id: group.id,
+          name: "Size",
+          inputType: "select",
+          required: true,
+          setsPrice: true,
+          choices: [{ id: smallChoice.id, label: "Small", price: 5 }],
+        },
+      ],
+    },
+    cookie,
+  });
+  assert.equal(removed.status, 200);
+  assert.equal(removed.data.product.variants.length, 1);
+  assert.equal(removed.data.product.variants[0].id, small.id);
+});
+
+test("two order lines for the identical combination decrement cumulatively, not independently", async () => {
+  const catalog = await adminCatalog();
+  const product = catalog.find(
+    (p) => p.trackOptionStock && p.variants.some((v) => v.quantity >= 4)
+  );
+  assert.ok(product, "seeded combination has enough stock for this test");
+  const target = product.variants.find((v) => v.quantity >= 4);
+  const options = target.choices.map(({ choiceId }) => {
+    const group = product.optionGroups.find((g) =>
+      g.choices.some((c) => c.id === choiceId)
+    );
+    return { groupId: group.id, choiceIds: [choiceId] };
+  });
+
+  // Two separate line items for the same combination in one order. Each
+  // line alone fits the available stock; together they might not — the
+  // check has to weigh them against each other, not each against the
+  // same pre-order snapshot (that gap would let the second line's
+  // decrement drive quantity negative).
+  const half = Math.ceil(target.quantity / 2);
+  const res = await api("POST", "/orders", {
+    body: {
+      items: [
+        { productId: product.id, quantity: half, options },
+        { productId: product.id, quantity: half, options },
+      ],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "double-line@test.local",
+    },
+  });
+  assert.equal(res.status, 201, JSON.stringify(res.data));
+
+  const after = await adminStock(product.id);
+  const afterTarget = after.variants.find((v) => v.id === target.id);
+  assert.equal(
+    afterTarget.quantity,
+    target.quantity - half * 2,
+    "both lines decremented the same combination, and it never went negative"
+  );
+  assert.ok(afterTarget.quantity >= 0, "stock never goes negative");
+
+  // A second order whose two lines together exceed what's left is
+  // rejected. Quantities are always >= 1 (the schema requires it, and
+  // stock may already be at 0 here) — the point is the sum, not either
+  // line's size alone.
+  const remaining = afterTarget.quantity;
+  const oversell = await api("POST", "/orders", {
+    body: {
+      items: [
+        { productId: product.id, quantity: remaining + 1, options },
+        { productId: product.id, quantity: 1, options },
+      ],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "double-line@test.local",
+    },
+  });
+  assert.equal(oversell.status, 409);
+
+  // The failed order changed nothing.
+  const unchanged = await adminStock(product.id);
+  assert.equal(
+    unchanged.variants.find((v) => v.id === target.id).quantity,
+    remaining
+  );
+});
+
+test("the public catalog includes option groups, not just variants", async () => {
+  // ProductCard decides whether a product needs the detail page (rather
+  // than quick-adding with no options at all) from this response — it
+  // used to fetch only variants, so a product with required option
+  // groups but no variants was invisible to that check.
+  const { data } = await api("GET", "/products");
+  const optioned = data.products.find(
+    (p) => !p.trackOptionStock && (p.optionGroups?.length ?? 0) > 0
+  );
+  assert.ok(optioned, "a seeded product has plain option groups");
+  assert.ok(optioned.optionGroups[0].choices.length > 0);
+
+  const priced = data.products.find((p) => p.trackOptionStock);
+  assert.ok(priced, "a seeded product tracks option stock");
+  const pricingGroup = priced.optionGroups.find((g) => g.setsPrice);
+  assert.ok(pricingGroup, "its pricing group is included");
+  assert.ok(
+    pricingGroup.choices.every((c) => typeof c.price === "number"),
+    "choice prices are public"
+  );
+  assert.ok(
+    priced.variants.every((v) => typeof v.inStock === "boolean"),
+    "combination availability is a boolean, not a count"
+  );
+});
+
+test("turning on option stock without a participating group is rejected, even sent alone", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+
+  // No option groups at all yet.
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Bare Product For Stock Toggle Test",
+      description: "no options",
+      price: 5,
+      image: "/images/products/squeaky-bone.svg",
+      category: "accessories",
+      quantity: 3,
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const productId = created.data.product.id;
+
+  // Flipping the toggle in its own save, with no optionGroups in the
+  // payload at all — this is the path writeOptionGroups never runs for,
+  // so its own "add a group first" check can't be the thing catching it.
+  const toggled = await api("PATCH", `/admin/products/${productId}`, {
+    body: { trackOptionStock: true },
+    cookie,
+  });
+  assert.equal(toggled.status, 400);
+  assert.match(toggled.data.error, /option group/i);
+
+  // The product is untouched — still off, not stranded half-configured.
+  const after = await api("GET", `/products/${created.data.product.slug}`);
+  assert.equal(after.data.product.trackOptionStock, false);
 });

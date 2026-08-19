@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { formatDateTime } from "@/lib/format-date";
 
 function MessageCard({ message, onChanged, onDeleted, onError }) {
   const [busy, setBusy] = useState(false);
@@ -59,7 +60,7 @@ function MessageCard({ message, onChanged, onDeleted, onError }) {
           </a>
         </div>
         <p className="text-xs text-gray-500 shrink-0">
-          {new Date(message.createdAt).toLocaleString()}
+          {formatDateTime(message.createdAt)}
         </p>
       </div>
       <p className="text-sm text-gray-700 mt-3 whitespace-pre-line">
@@ -114,7 +115,10 @@ export default function AdminMessagesPage() {
         {unread > 0 ? ` — ${unread} unread.` : "."}
       </p>
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
           {error}
         </p>
       )}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { formatDate } from "@/lib/format-date";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -59,18 +60,31 @@ export default function AdminUsersPage() {
         >
           <h2 className="text-xl font-semibold text-[#2A4A52]">New Admin</h2>
           <p className="text-sm text-gray-500">
-            Admin accounts can manage products, orders, events,
-            announcements, and other admins. No email verification needed —
-            they can log in immediately.
+            Admin accounts can manage products, orders, events, announcements,
+            and other admins. No email verification needed — they can log in
+            immediately.
           </p>
           {error && (
-            <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">{error}</p>
+            <p
+              role="alert"
+              className="text-red-500 text-sm bg-red-50 p-3 rounded-lg"
+            >
+              {error}
+            </p>
           )}
           {success && (
-            <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg">{success}</p>
+            <p
+              role="status"
+              className="text-green-700 text-sm bg-green-50 p-3 rounded-lg"
+            >
+              {success}
+            </p>
           )}
           <div>
-            <label htmlFor="u-name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="u-name"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Name
             </label>
             <input
@@ -83,7 +97,10 @@ export default function AdminUsersPage() {
             />
           </div>
           <div>
-            <label htmlFor="u-email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="u-email"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Email
             </label>
             <input
@@ -96,7 +113,10 @@ export default function AdminUsersPage() {
             />
           </div>
           <div>
-            <label htmlFor="u-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="u-password"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Password
             </label>
             <input
@@ -146,7 +166,7 @@ export default function AdminUsersPage() {
                     <p className="text-sm text-gray-500 truncate">{a.email}</p>
                   </div>
                   <p className="text-xs text-gray-500 shrink-0">
-                    Since {new Date(a.createdAt).toLocaleDateString()}
+                    Since {formatDate(a.createdAt)}
                   </p>
                 </div>
               ))}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 import { SHIPPING_ENABLED } from "@/lib/features";
+import StoreImage from "@/components/StoreImage";
 
 export default function HomePage() {
   const [featured, setFeatured] = useState([]);
@@ -12,8 +13,12 @@ export default function HomePage() {
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
-    api.get("/products?featured=true").then((res) => setFeatured(res.data.products));
-    api.get("/announcements").then((res) => setAnnouncement(res.data.announcement));
+    api
+      .get("/products?featured=true")
+      .then((res) => setFeatured(res.data.products));
+    api
+      .get("/announcements")
+      .then((res) => setAnnouncement(res.data.announcement));
     api.get("/categories").then((res) => setCategories(res.data.categories));
   }, []);
 
@@ -32,9 +37,12 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="bg-linear-to-br from-[#4A7C8A] to-[#3A6270] text-white">
         <div className="max-w-7xl mx-auto safe-x py-12 sm:py-28 flex flex-col items-center text-center">
-          <img
+          <StoreImage
             src="/images/Barks-A-Lot Logo.png"
             alt="Barks-A-Lot Treats & More"
+            width={160}
+            height={160}
+            priority
             className="h-28 w-28 sm:h-40 sm:w-40 mb-6 rounded-full shadow-xl"
           />
           <h1 className="text-3xl sm:text-5xl font-bold mb-4">
@@ -65,8 +73,12 @@ export default function HomePage() {
               href={`/products?category=${cat.slug}`}
               className="w-[calc(50%-0.375rem)] sm:w-56 bg-white rounded-xl shadow-md p-5 sm:p-8 text-center hover:shadow-lg hover:-translate-y-1 active:translate-y-0 transition"
             >
-              <span aria-hidden="true" className="text-4xl mb-3 block">{cat.icon}</span>
-              <h3 className="text-lg font-semibold text-[#2A4A52]">{cat.name}</h3>
+              <span aria-hidden="true" className="text-4xl mb-3 block">
+                {cat.icon}
+              </span>
+              <h3 className="text-lg font-semibold text-[#2A4A52]">
+                {cat.name}
+              </h3>
             </Link>
           ))}
         </div>
@@ -100,32 +112,48 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto safe-x py-10 sm:py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
           <div>
-            <div aria-hidden="true" className="text-3xl mb-2">🐾</div>
-            <h3 className="font-semibold text-[#2A4A52] text-lg">All Natural</h3>
+            <div aria-hidden="true" className="text-3xl mb-2">
+              🐾
+            </div>
+            <h3 className="font-semibold text-[#2A4A52] text-lg">
+              All Natural
+            </h3>
             <p className="text-sm text-gray-600 mt-1">
               Only the finest, natural ingredients for your pup
             </p>
           </div>
           {SHIPPING_ENABLED ? (
             <div>
-              <div aria-hidden="true" className="text-3xl mb-2">🚚</div>
-              <h3 className="font-semibold text-[#2A4A52] text-lg">Free Shipping</h3>
+              <div aria-hidden="true" className="text-3xl mb-2">
+                🚚
+              </div>
+              <h3 className="font-semibold text-[#2A4A52] text-lg">
+                Free Shipping
+              </h3>
               <p className="text-sm text-gray-600 mt-1">
                 Orders over $50 ship at no cost
               </p>
             </div>
           ) : (
             <div>
-              <div aria-hidden="true" className="text-3xl mb-2">🎪</div>
-              <h3 className="font-semibold text-[#2A4A52] text-lg">Easy Local Pickup</h3>
+              <div aria-hidden="true" className="text-3xl mb-2">
+                🎪
+              </div>
+              <h3 className="font-semibold text-[#2A4A52] text-lg">
+                Easy Local Pickup
+              </h3>
               <p className="text-sm text-gray-600 mt-1">
                 Order online, pick up at our next market or event
               </p>
             </div>
           )}
           <div>
-            <div aria-hidden="true" className="text-3xl mb-2">❤️</div>
-            <h3 className="font-semibold text-[#2A4A52] text-lg">Made with Love</h3>
+            <div aria-hidden="true" className="text-3xl mb-2">
+              ❤️
+            </div>
+            <h3 className="font-semibold text-[#2A4A52] text-lg">
+              Made with Love
+            </h3>
             <p className="text-sm text-gray-600 mt-1">
               Every product crafted with your pet&rsquo;s happiness in mind
             </p>

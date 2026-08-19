@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { visibleInListing, publicProduct } from "@/lib/catalog";
+import {
+  visibleInListing,
+  publicProduct,
+  PRODUCT_DETAIL_INCLUDE,
+} from "@/lib/catalog";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
@@ -11,9 +15,12 @@ export async function GET(req) {
   if (category) where.category = category;
   if (featured === "true") where.featured = true;
 
+  // Option groups are fetched here (not just variants) so the listing
+  // card knows a product has required choices before it ever renders —
+  // otherwise a quick-add button could skip them entirely.
   const products = await prisma.product.findMany({
     where,
-    include: { variants: true },
+    include: PRODUCT_DETAIL_INCLUDE,
     orderBy: { createdAt: "desc" },
   });
 

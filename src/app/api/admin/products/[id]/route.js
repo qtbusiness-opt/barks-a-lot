@@ -2,7 +2,18 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { adminProduct, nutritionRowSchema } from "@/lib/catalog";
+import {
+  adminProduct,
+  nutritionRowSchema,
+  PRODUCT_DETAIL_INCLUDE,
+} from "@/lib/catalog";
+import { uniqueProductSlug } from "@/lib/slug";
+import {
+  optionGroupsSchema,
+  writeOptionGroups,
+  writeVariantStock,
+  variantStockSchema,
+} from "@/lib/option-writes";
 
 // All card fields optional — PATCH applies only what was sent. inStock
 // unchecked wipes the stock: quantity goes to 0 (all variant quantities
@@ -18,6 +29,15 @@ const updateSchema = z.object({
   itemDetails: z.string().trim().max(5000).optional(),
   // An empty array clears the nutrition table.
   nutritionFacts: z.array(nutritionRowSchema).max(30).optional(),
+  // Omitted leaves the option groups alone; an empty array removes them.
+  // The admin form always sends this alongside trackOptionStock when
+  // either changes — the combination matrix is regenerated from both
+  // together, never from trackOptionStock in isolation.
+  optionGroups: optionGroupsSchema.optional(),
+  trackOptionStock: z.boolean().optional(),
+  // Quantities for existing combinations only — new ones from this same
+  // save aren't addressable yet, so those are set in a follow-up edit.
+  variantStock: variantStockSchema.optional(),
   category: z.string().trim().min(1).max(60).optional(),
   quantity: z.number().int().min(0).max(100000).optional(),
   featured: z.boolean().optional(),
@@ -54,18 +74,59 @@ export async function PATCH(req, { params }) {
       }
     }
 
-    const existing = await prisma.product.findUnique({
-      where: { id },
-      include: { variants: true },
-    });
+    const existing = await prisma.product.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    const hasVariants = existing.variants.length > 0;
+    // The effective flag for this save: either what's being set now, or
+    // what the product already had.
+    const trackOptionStock =
+      fields.trackOptionStock ?? existing.trackOptionStock;
 
     const product = await prisma.$transaction(async (tx) => {
-      const data = { ...fields };
+      const {
+        optionGroups,
+        trackOptionStock: _tos,
+        variantStock,
+        ...rest
+      } = fields;
+      const data = { ...rest, trackOptionStock };
+      // Renaming a product moves its URL with it; old links keep working
+      // because the detail route still resolves a bare id.
+      if (fields.name !== undefined && fields.name !== existing.name) {
+        data.slug = await uniqueProductSlug(tx, fields.name, id);
+      } else if (!existing.slug) {
+        // Backfill anything that predates slugs.
+        data.slug = await uniqueProductSlug(tx, existing.name, id);
+      }
+      if (optionGroups !== undefined) {
+        await writeOptionGroups(tx, id, optionGroups, trackOptionStock);
+      } else if (trackOptionStock && !existing.trackOptionStock) {
+        // Turning tracking on without also sending optionGroups this
+        // save — writeOptionGroups never runs, so its "at least one
+        // participating group" check doesn't either. Check the
+        // product's already-saved groups here instead, or a product
+        // with none ends up trackOptionStock: true with zero
+        // combinations and can never be bought.
+        const currentGroups = await tx.productOptionGroup.findMany({
+          where: { productId: id },
+        });
+        const hasParticipatingGroup = currentGroups.some(
+          (g) => g.required && g.inputType !== "checkbox"
+        );
+        if (!hasParticipatingGroup) {
+          throw Object.assign(
+            new Error(
+              "Add at least one required option group (not checkboxes) before turning on option stock"
+            ),
+            { code: 400 }
+          );
+        }
+      }
+      if (variantStock !== undefined) {
+        await writeVariantStock(tx, id, variantStock);
+      }
       // Arrays/blank strings map to the stored representation.
       if (fields.images !== undefined) {
         data.images =
@@ -85,31 +146,39 @@ export async function PATCH(req, { params }) {
         // Unchecking In Stock wipes the stock everywhere.
         data.quantity = 0;
         data.inStock = false;
-        if (hasVariants) {
+        if (trackOptionStock) {
           await tx.productVariant.updateMany({
-            where: { productId: id },
+            where: { productId: id, archivedAt: null },
             data: { quantity: 0 },
           });
         }
+      } else if (trackOptionStock) {
+        // Re-read rather than trust the pre-transaction snapshot:
+        // writeOptionGroups above may just have changed which
+        // combinations exist.
+        const variants = await tx.productVariant.findMany({
+          where: { productId: id, archivedAt: null },
+          select: { quantity: true },
+        });
+        data.inStock = variants.some((v) => v.quantity > 0);
       } else {
-        // Otherwise the flag follows the actual stock level.
         const quantity = data.quantity ?? existing.quantity;
-        const variantStock = hasVariants
-          ? existing.variants.reduce((sum, v) => sum + v.quantity, 0)
-          : 0;
-        data.inStock = hasVariants ? variantStock > 0 : quantity > 0;
+        data.inStock = quantity > 0;
       }
 
       return tx.product.update({
         where: { id },
         data,
-        include: { variants: true },
+        include: PRODUCT_DETAIL_INCLUDE,
       });
     });
 
     console.info(`[admin] product updated id=${id} by=${auth.userId}`);
     return NextResponse.json({ product: adminProduct(product) });
   } catch (err) {
+    if (err.code === 400) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     console.error("[admin] product update error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
