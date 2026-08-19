@@ -6,5 +6,19 @@
     "cursor-team-kit@cursor-plugins-claude": true,
     "thermos@cursor-plugins-claude": true,
     "ralph-loop@cursor-plugins-claude": true
+  },
+  "extraKnownMarketplaces": {
+    "cursor-plugins-claude": {
+      "source": {
+        "source": "github",
+        "repo": "kdoroszewicz/cursor-plugins-claude"
+      }
+    },
+    "mattpocock": {
+      "source": {
+        "source": "github",
+        "repo": "mattpocock/skills"
+      }
+    }
   }
 }
