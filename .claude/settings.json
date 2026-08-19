@@ -1,0 +1,10 @@
+{
+  "enabledPlugins": {
+    "mattpocock-skills@mattpocock": true,
+    "teaching@cursor-plugins-claude": true,
+    "continual-learning@cursor-plugins-claude": true,
+    "cursor-team-kit@cursor-plugins-claude": true,
+    "thermos@cursor-plugins-claude": true,
+    "ralph-loop@cursor-plugins-claude": true
+  }
+}
