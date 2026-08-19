@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isWithinWindow, publicProduct } from "@/lib/catalog";
-
-const withDetail = {
-  variants: true,
-  optionGroups: {
-    orderBy: { sortOrder: "asc" },
-    include: { choices: { orderBy: { sortOrder: "asc" } } },
-  },
-};
+import {
+  isWithinWindow,
+  publicProduct,
+  PRODUCT_DETAIL_INCLUDE,
+} from "@/lib/catalog";
 
 export async function GET(_req, { params }) {
   const { id } = await params;
@@ -19,9 +15,12 @@ export async function GET(_req, { params }) {
   const product =
     (await prisma.product.findUnique({
       where: { slug: id },
-      include: withDetail,
+      include: PRODUCT_DETAIL_INCLUDE,
     })) ??
-    (await prisma.product.findUnique({ where: { id }, include: withDetail }));
+    (await prisma.product.findUnique({
+      where: { id },
+      include: PRODUCT_DETAIL_INCLUDE,
+    }));
 
   if (!product) {
     return NextResponse.json({ error: "Product not found" }, { status: 404 });

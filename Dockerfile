@@ -1,5 +1,10 @@
 FROM node:20-slim AS base
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Store timezone, for anything that reads the process's local clock.
+# Date logic that must be correct regardless (src/lib/pickup-window.js)
+# computes it explicitly instead of relying on this — this is defense in
+# depth, not the only thing making that logic correct.
+ENV TZ="America/Boise"
 
 # Install dependencies
 FROM base AS deps

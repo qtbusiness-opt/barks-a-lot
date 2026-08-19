@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { isWithinWindow } from "@/lib/catalog";
+import { isWithinWindow, PRODUCT_DETAIL_INCLUDE } from "@/lib/catalog";
 import { validateSelections } from "@/lib/options";
 import { isPickupSelectable } from "@/lib/pickup-window";
 import {
@@ -148,10 +148,10 @@ export async function POST(req) {
       );
     }
 
-    // Pickup orders are tied to a specific market/expo. Same-day pickup
-    // is allowed until two hours before the event ends (shared rule in
+    // Pickup orders are tied to a specific market/expo. No same-day
+    // pickup — the event must be at least a day out (shared rule in
     // src/lib/pickup-window.js); "next" resolves to the nearest event
-    // that's still selectable — which can be today's.
+    // that's still selectable.
     let pickupEvent = null;
     if (fulfillmentType === "pickup") {
       if (!pickupEventId) {
@@ -197,13 +197,7 @@ export async function POST(req) {
       const productIds = items.map((i) => i.productId);
       const products = await tx.product.findMany({
         where: { id: { in: productIds } },
-        include: {
-          variants: true,
-          optionGroups: {
-            orderBy: { sortOrder: "asc" },
-            include: { choices: { orderBy: { sortOrder: "asc" } } },
-          },
-        },
+        include: PRODUCT_DETAIL_INCLUDE,
       });
       const productMap = {};
       for (const p of products) productMap[p.id] = p;

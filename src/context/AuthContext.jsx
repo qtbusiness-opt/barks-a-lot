@@ -17,10 +17,10 @@ import {
   signOut,
 } from "next-auth/react";
 import api, { setUnauthorizedHandler } from "@/lib/api";
+import { CART_KEY } from "@/lib/cart-storage";
 
 const AuthContext = createContext(undefined);
 
-const CART_KEY = "barks-cart";
 // The session cookie is httpOnly, so the browser can't see whether a
 // stale one is still being sent. This marker records "we were signed in"
 // in a place client code CAN read, which is what lets a page loaded with

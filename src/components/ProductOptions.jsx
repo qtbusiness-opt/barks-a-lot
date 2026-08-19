@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { allowsMultiple } from "@/lib/options";
 import StoreImage from "@/components/StoreImage";
+
+// Thumbnail (w-16 = 64px) plus the row's gap-3 (12px). One step scrolls
+// exactly one thumbnail into view.
+const THUMB_STRIDE = 76;
 
 // One option group, rendered the way the admin chose: a dropdown, a
 // carousel of thumbnails, radio buttons, or checkboxes. Every variation
@@ -11,8 +15,21 @@ import StoreImage from "@/components/StoreImage";
 function OptionGroup({ group, selected, onChange }) {
   // Thumbnails scroll rather than wrap, so a long style list stays one row.
   const [index, setIndex] = useState(0);
+  // Declared unconditionally even though only the carousel branch uses it —
+  // every branch below is a separate `return`, and hooks can't follow that
+  // branching without breaking React's hook-order rule.
+  const scrollRef = useRef(null);
   const legendId = `opt-${group.id}-label`;
   const multiple = allowsMultiple(group.inputType);
+
+  // The buttons only move `index`; this is what actually moves the row.
+  // No-ops on every non-carousel render, since the ref is never attached.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      left: index * THUMB_STRIDE,
+      behavior: "smooth",
+    });
+  }, [index]);
 
   const toggle = (choiceId) => {
     if (multiple) {
@@ -68,7 +85,11 @@ function OptionGroup({ group, selected, onChange }) {
         Math.min(Math.max(0, i + delta), Math.max(0, visible.length - 1))
       );
     return (
-      <fieldset className="mt-6">
+      // min-w-0: browsers give <fieldset> a default min-width of
+      // min-content, so without this it refuses to be narrower than the
+      // thumbnail row and drags the whole page wider instead of letting
+      // the row clip and scroll in place.
+      <fieldset className="mt-6 min-w-0">
         <legend
           id={legendId}
           className="block text-sm font-medium text-gray-700 mb-2"
@@ -91,7 +112,10 @@ function OptionGroup({ group, selected, onChange }) {
           >
             ‹
           </button>
-          <div className="flex-1 overflow-x-auto">
+          {/* min-w-0: a flex child won't shrink below its content's
+              intrinsic width otherwise, so the whole row (and page) would
+              stretch wider instead of clipping and scrolling in place. */}
+          <div ref={scrollRef} className="flex-1 min-w-0 overflow-x-auto">
             <div className="flex gap-3 py-1">
               {visible.map((choice) => {
                 const isOn = selected.includes(choice.id);

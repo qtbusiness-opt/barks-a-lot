@@ -1683,14 +1683,22 @@ test("customers can delete their own account; orders survive as guest records", 
   assert.equal(kept.guestEmail, "selfdelete@test.local");
 });
 
-test("same-day pickup respects the two-hour cutoff before the event ends", async () => {
+test("no same-day pickup — an event must be at least a day out to be reserved", async () => {
   const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const hhmm = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  // Store-timezone day keys, the same way src/lib/pickup-window.js computes
+  // "today" — not the test runner's own local time, which is UTC in CI and
+  // would silently mis-place these dates around the Boise/UTC day boundary.
+  const storeDay = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Boise",
+  });
   const now = new Date();
-  const today = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+  const today = storeDay.format(now);
+  const tomorrow = storeDay.format(
+    new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  );
 
-  // The event must end after it starts.
+  // The event must end after it starts (unrelated to the cutoff — still a
+  // real validation rule).
   const badTimes = await api("POST", "/admin/events", {
     body: {
       title: "Backwards Event",
@@ -1703,8 +1711,8 @@ test("same-day pickup respects the two-hour cutoff before the event ends", async
   });
   assert.equal(badTimes.status, 400);
 
-  // Needs several units — this test places up to three orders. The admin
-  // catalog also lists expired drops, so stick to always-available items.
+  // Needs two units — this test places up to two orders. The admin catalog
+  // also lists expired drops, so stick to always-available items.
   const catalog = await adminCatalog();
   const product = catalog.find(
     (p) =>
@@ -1715,33 +1723,54 @@ test("same-day pickup respects the two-hour cutoff before the event ends", async
       !p.availableUntil
   );
 
-  // A same-day event already inside the two-hour cutoff can't be chosen.
-  const closingSoon = new Date(now.getTime() + 30 * 60 * 1000);
-  const closed = await api("POST", "/admin/events", {
+  // A same-day event, regardless of what time it ends, can't be reserved.
+  const todayEvent = await api("POST", "/admin/events", {
     body: {
-      title: "Closing Soon Market",
-      description: "wraps up in half an hour",
+      title: "Today's Market",
+      description: "happening right now",
       date: today,
       startTime: "00:00",
-      endTime: hhmm(closingSoon),
+      endTime: "23:59",
     },
     cookie,
   });
-  assert.equal(closed.status, 201);
-  assert.equal(closed.data.event.endTime, hhmm(closingSoon));
+  assert.equal(todayEvent.status, 201);
 
   const refused = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: closed.data.event.id,
+      pickupEventId: todayEvent.data.event.id,
       guestEmail: "cutoff@test.local",
     },
   });
   assert.equal(refused.status, 409);
 
-  // "next" skips it and lands on a still-open event.
-  const viaNextClosed = await api("POST", "/orders", {
+  // An event dated tomorrow can be reserved.
+  const tomorrowEvent = await api("POST", "/admin/events", {
+    body: {
+      title: "Tomorrow's Market",
+      description: "one day out",
+      date: tomorrow,
+      startTime: "09:00",
+      endTime: "14:00",
+    },
+    cookie,
+  });
+  assert.equal(tomorrowEvent.status, 201);
+
+  const manual = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: tomorrowEvent.data.event.id,
+      guestEmail: "cutoff@test.local",
+    },
+  });
+  assert.equal(manual.status, 201);
+
+  // "next" skips today's event entirely and resolves to tomorrow's.
+  const viaNext = await api("POST", "/orders", {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
@@ -1749,54 +1778,14 @@ test("same-day pickup respects the two-hour cutoff before the event ends", async
       guestEmail: "cutoff@test.local",
     },
   });
-  assert.equal(viaNextClosed.status, 201, JSON.stringify(viaNextClosed.data));
-  assert.notEqual(
-    viaNextClosed.data.order.pickupEvent.id,
-    closed.data.event.id
-  );
+  assert.equal(viaNext.status, 201, JSON.stringify(viaNext.data));
+  assert.equal(viaNext.data.order.pickupEvent.id, tomorrowEvent.data.event.id);
 
-  // A same-day event more than two hours from closing can be chosen
-  // manually AND becomes the "next" event. (Skipped when the test runs
-  // within 4h of midnight — such an event can't exist today.)
-  const openEnd = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-  if (openEnd.getDate() === now.getDate()) {
-    const open = await api("POST", "/admin/events", {
-      body: {
-        title: "Open Today Market",
-        description: "plenty of time left",
-        date: today,
-        startTime: "00:01",
-        endTime: hhmm(openEnd),
-      },
-      cookie,
-    });
-    assert.equal(open.status, 201);
-
-    const manual = await api("POST", "/orders", {
-      body: {
-        items: [{ productId: product.id, quantity: 1 }],
-        fulfillmentType: "pickup",
-        pickupEventId: open.data.event.id,
-        guestEmail: "cutoff@test.local",
-      },
-    });
-    assert.equal(manual.status, 201);
-
-    const viaNext = await api("POST", "/orders", {
-      body: {
-        items: [{ productId: product.id, quantity: 1 }],
-        fulfillmentType: "pickup",
-        pickupEventId: "next",
-        guestEmail: "cutoff@test.local",
-      },
-    });
-    assert.equal(viaNext.status, 201);
-    assert.equal(viaNext.data.order.pickupEvent.id, open.data.event.id);
-
-    // Clean up so later tests' "next" stays deterministic.
-    await api("DELETE", `/admin/events/${open.data.event.id}`, { cookie });
-  }
-  await api("DELETE", `/admin/events/${closed.data.event.id}`, { cookie });
+  // Clean up so later tests' "next" stays deterministic.
+  await api("DELETE", `/admin/events/${tomorrowEvent.data.event.id}`, {
+    cookie,
+  });
+  await api("DELETE", `/admin/events/${todayEvent.data.event.id}`, { cookie });
 });
 
 test("admin manages categories; storefront lists and products follow", async () => {

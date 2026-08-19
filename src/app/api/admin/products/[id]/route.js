@@ -2,17 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { adminProduct, nutritionRowSchema } from "@/lib/catalog";
+import {
+  adminProduct,
+  nutritionRowSchema,
+  PRODUCT_DETAIL_INCLUDE,
+} from "@/lib/catalog";
 import { uniqueProductSlug } from "@/lib/slug";
 import { optionGroupSchema, writeOptionGroups } from "@/lib/option-writes";
-
-const ADMIN_PRODUCT_INCLUDE = {
-  variants: true,
-  optionGroups: {
-    orderBy: { sortOrder: "asc" },
-    include: { choices: { orderBy: { sortOrder: "asc" } } },
-  },
-};
 
 // All card fields optional — PATCH applies only what was sent. inStock
 // unchecked wipes the stock: quantity goes to 0 (all variant quantities
@@ -127,7 +123,7 @@ export async function PATCH(req, { params }) {
       return tx.product.update({
         where: { id },
         data,
-        include: ADMIN_PRODUCT_INCLUDE,
+        include: PRODUCT_DETAIL_INCLUDE,
       });
     });
 

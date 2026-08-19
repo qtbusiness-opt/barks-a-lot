@@ -2,18 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { adminProduct, nutritionRowSchema } from "@/lib/catalog";
+import {
+  adminProduct,
+  nutritionRowSchema,
+  PRODUCT_DETAIL_INCLUDE,
+} from "@/lib/catalog";
 import { uniqueProductSlug } from "@/lib/slug";
 import { optionGroupSchema, writeOptionGroups } from "@/lib/option-writes";
-
-// Groups and their choices, newest-first ordering preserved by index.
-const ADMIN_PRODUCT_INCLUDE = {
-  variants: true,
-  optionGroups: {
-    orderBy: { sortOrder: "asc" },
-    include: { choices: { orderBy: { sortOrder: "asc" } } },
-  },
-};
 
 // The fields that make up a product card. inStock is derived from
 // quantity rather than trusted from the client. Categories are
@@ -45,7 +40,7 @@ export async function GET() {
   // Admins see the full catalog: expired drops and sold-out limited items
   // included, unlike the public listing.
   const products = await prisma.product.findMany({
-    include: ADMIN_PRODUCT_INCLUDE,
+    include: PRODUCT_DETAIL_INCLUDE,
     orderBy: { createdAt: "desc" },
   });
 
@@ -96,7 +91,7 @@ export async function POST(req) {
       }
       return tx.product.findUnique({
         where: { id: created.id },
-        include: ADMIN_PRODUCT_INCLUDE,
+        include: PRODUCT_DETAIL_INCLUDE,
       });
     });
 

@@ -7,7 +7,12 @@ import { useCart } from "@/context/CartContext";
 import api from "@/lib/api";
 import Link from "next/link";
 import { SHIPPING_ENABLED } from "@/lib/features";
-import { isPickupSelectable, formatTimeRange } from "@/lib/pickup-window";
+import {
+  isPickupSelectable,
+  formatTimeRange,
+  eventDayKey,
+  dayKeyOf,
+} from "@/lib/pickup-window";
 import { getPublicConfig } from "@/lib/public-config";
 import { formatCalendarDay } from "@/lib/format-date";
 
@@ -303,9 +308,8 @@ export default function CheckoutPage() {
     };
   }, [step, square]);
 
-  // Same-day events stay selectable until two hours before they end
-  // (shared rule with the orders API). "Next Event" is simply the
-  // nearest event still open for pickup — today's included.
+  // No same-day pickup (shared rule with the orders API). "Next Event"
+  // is the nearest event still open for pickup.
   const events = (upcomingEvents ?? []).filter((e) => isPickupSelectable(e));
   const hasEvents = events.length > 0;
   const nextEvent = events[0] ?? null;
@@ -313,6 +317,11 @@ export default function CheckoutPage() {
     pickupMode === "next"
       ? nextEvent
       : events.find((e) => e.id === pickupChoice);
+  // True only when today's own event is the thing missing from the list
+  // above, so the note doesn't show for an ordinary quiet week.
+  const hasSameDayEvent = (upcomingEvents ?? []).some(
+    (e) => eventDayKey(e) === dayKeyOf()
+  );
 
   // Guest orders finish here (guests have no orders page), so show the
   // confirmation inline after the cart has been cleared.
@@ -602,6 +611,13 @@ export default function CheckoutPage() {
                   </p>
                 )}
               </div>
+            )}
+
+            {hasSameDayEvent && (
+              <p className="text-sm text-amber-800 bg-amber-50 p-3 rounded-lg">
+                Same-day pickup isn’t available. Reserve by the day before an
+                event.
+              </p>
             )}
 
             {fulfillmentType === "shipping" ? (

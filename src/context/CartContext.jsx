@@ -8,12 +8,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { CART_KEY } from "@/lib/cart-storage";
 
 const CartContext = createContext(undefined);
-
-// Kept in step with the same constant in AuthContext, which clears the
-// cart on logout.
-const CART_KEY = "barks-cart";
 
 // A cart line is identified by product + chosen variant + chosen options,
 // so the same product in two sizes/patterns is two separate lines — and

@@ -1,5 +1,17 @@
 import { z } from "zod";
 
+// Variants and option groups (in display order), the shape needed
+// wherever a product's full storefront detail is read: admin forms, the
+// product page, and order creation. One shared shape so those reads
+// can't drift apart.
+export const PRODUCT_DETAIL_INCLUDE = {
+  variants: true,
+  optionGroups: {
+    orderBy: { sortOrder: "asc" },
+    include: { choices: { orderBy: { sortOrder: "asc" } } },
+  },
+};
+
 // Availability rules for limited/seasonal drops. A product is purchasable
 // only inside its availability window; sold-out limited drops disappear
 // from listings entirely (regular products stay visible as "out of stock").
