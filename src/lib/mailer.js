@@ -97,8 +97,15 @@ export async function sendEmail({ to, subject, text, html, branded = false }) {
   });
 
   if (!res.ok) {
-    console.error(`[mail] send failed status=${res.status}`);
-    throw new Error("Email delivery failed");
+    // Resend states the actual reason in the body — an unverified domain,
+    // a from-address that isn't yours, or the sandbox rule that only lets
+    // you mail your own account. Dropping it left every delivery problem
+    // looking identical from the outside: silence.
+    const detail = (await res.text().catch(() => "")).slice(0, 300);
+    console.error(`[mail] send failed status=${res.status} ${detail}`);
+    throw new Error(
+      `Email delivery failed (${res.status})${detail ? `: ${detail}` : ""}`
+    );
   }
   return { delivered: true };
 }
