@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import StoreImage from "@/components/StoreImage";
 import { orderStatusLabel } from "@/lib/order-status";
 import { formatCalendarDay, formatDateTime } from "@/lib/format-date";
 
@@ -146,8 +147,19 @@ export default function AdminOrdersPage() {
                 {order.items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center gap-4 text-sm"
+                    className="flex items-center gap-3 text-sm"
                   >
+                    {/* Decorative: the name sits right beside it, so an
+                        alt would only repeat what a screen reader just
+                        read. Shows the option the customer picked, which
+                        is what's being packed. */}
+                    <StoreImage
+                      src={item.image ?? item.product.image}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-md object-cover bg-[#F5F0E8] shrink-0"
+                    />
                     <span className="flex-1">
                       {item.product.name}
                       {item.variant && ` — ${item.variant.name}`}

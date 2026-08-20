@@ -103,6 +103,19 @@ export function formatSelectedOptions(selections) {
  *     groups.
  *   - pricingChoice: the chosen {id, price} from the group flagged
  *     setsPrice, or null if there isn't one or it wasn't required.
+ *   - chosenImage: the picture belonging to a chosen choice — what the
+ *     product page swapped its main image to — or null when nothing
+ *     picked carries one. The order snapshots this so the line keeps
+ *     showing the pattern that was bought.
+ *
+ *     Only single-select groups are considered: a checkbox group is a
+ *     list of add-ons, and an add-on's picture shouldn't stand in for
+ *     the thing itself. Groups are walked in sortOrder, so the first
+ *     one carrying a picture wins and the result doesn't depend on the
+ *     order the customer happened to click in. That can differ from the
+ *     product page, which shows whichever photo was clicked last, but
+ *     only for a product where two single-select groups both have
+ *     pictures — and either photo is a true picture of what was bought.
  *
  * On failure: { ok: false, error } with a customer-safe message.
  */
@@ -114,6 +127,7 @@ export function validateSelections(product, submitted) {
       selections: [],
       combinationChoiceIds: [],
       pricingChoice: null,
+      chosenImage: null,
     };
   }
 
@@ -123,6 +137,7 @@ export function validateSelections(product, submitted) {
   const selections = [];
   const combinationChoiceIds = [];
   let pricingChoice = null;
+  let chosenImage = null;
 
   for (const group of groups) {
     const chosenIds = byGroup.get(group.id) ?? [];
@@ -154,7 +169,16 @@ export function validateSelections(product, submitted) {
     if (group.setsPrice) {
       pricingChoice = { id: valid[0].id, price: valid[0].price ?? null };
     }
+    if (!chosenImage && !allowsMultiple(group.inputType) && valid[0].image) {
+      chosenImage = valid[0].image;
+    }
   }
 
-  return { ok: true, selections, combinationChoiceIds, pricingChoice };
+  return {
+    ok: true,
+    selections,
+    combinationChoiceIds,
+    pricingChoice,
+    chosenImage,
+  };
 }

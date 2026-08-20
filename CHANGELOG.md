@@ -10,6 +10,22 @@ breaking anything, and PATCH fixes a bug with no new capability.
 
 ### Added
 
+- Order lines remember the photo they were bought as. The picture the
+  customer picked — the bandana pattern, not just the product's cover —
+  is frozen onto the order at checkout and shown in order history, in
+  the admin Orders page, and in both order emails. Replacing a product
+  photo or retiring an option no longer changes what a past order looks
+  like, the same guarantee the option labels already had.
+- Item photos in the order emails, for the customer's confirmation as
+  well as the admin's heads-up. They appear only when `APP_URL` is set
+  and the photo is a raster: a message that has left the site can't load
+  a relative path, and mail clients won't draw SVG. Otherwise the emails
+  stay exactly as they were.
+
+## [1.1.0] — 2026-08-20
+
+### Added
+
 - Picking a product option that has a photo of its own — a carousel
   thumbnail, typically — brings that photo up as the main product image,
   and carries it through to the cart line and the added-to-cart notice.
