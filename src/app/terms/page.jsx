@@ -20,7 +20,7 @@ export default function TermsOfServicePage() {
         Terms of Service
       </h1>
       <p className="text-gray-500 mt-2">
-        Barks-A-Lot Treats &amp; More &middot; Effective Date: [Insert Date]
+        Barks-A-Lot Treats &amp; More &middot; Effective Date: Aug 19, 2024
       </p>
 
       <p className="mt-6 text-gray-700 leading-relaxed">
