@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { badgeClass, eventDayKey } from "@/lib/event-colors";
+import { formatMonth } from "@/lib/format-date";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -39,7 +40,11 @@ export default function EventsCalendarPage() {
 
   const firstWeekday = new Date(view.year, view.month, 1).getDay();
   const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-  const todayKey = dayKey(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayKey = dayKey(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
 
   const cells = [
     ...Array.from({ length: firstWeekday }, () => null),
@@ -52,10 +57,7 @@ export default function EventsCalendarPage() {
       return { year: d.getFullYear(), month: d.getMonth() };
     });
 
-  const monthLabel = new Date(view.year, view.month, 1).toLocaleDateString(
-    undefined,
-    { month: "long", year: "numeric" }
-  );
+  const monthLabel = formatMonth(view.year, view.month);
 
   return (
     <div className="max-w-7xl mx-auto safe-x py-6 sm:py-10">

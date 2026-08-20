@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import pkg from "../../package.json";
 
 // Shared frame for /admin pages: handles the loading/role gate once so
 // each page only renders its content. The real security boundary is the
@@ -49,6 +50,9 @@ export default function AdminShell({ title, backTo, children }) {
         {title}
       </h1>
       {children}
+      <p className="text-center text-xs text-gray-400 mt-10">
+        Barks-A-Lot v{pkg.version}
+      </p>
     </div>
   );
 }

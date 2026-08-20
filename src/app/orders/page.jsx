@@ -5,6 +5,9 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import Link from "next/link";
 import { orderStatusLabel } from "@/lib/order-status";
+import { parseSelectedOptions, formatSelectedOptions } from "@/lib/options";
+import { formatCalendarDay, formatDate } from "@/lib/format-date";
+import StoreImage from "@/components/StoreImage";
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
@@ -69,15 +72,24 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-4xl mx-auto safe-x py-6 sm:py-10">
-      <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">My Orders</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">
+        My Orders
+      </h1>
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
+          {error}
+        </p>
       )}
 
       {orderList.length === 0 ? (
         <div className="text-center py-10">
-          <p className="text-gray-500 mb-6">You haven&rsquo;t placed any orders yet.</p>
+          <p className="text-gray-500 mb-6">
+            You haven&rsquo;t placed any orders yet.
+          </p>
           <Link
             href="/products"
             className="bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] transition"
@@ -88,11 +100,14 @@ export default function OrdersPage() {
       ) : (
         <div className="space-y-6">
           {orderList.map((order) => (
-            <div key={order.id} className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+            <div
+              key={order.id}
+              className="bg-white rounded-xl shadow-sm p-4 sm:p-6"
+            >
               <div className="flex flex-wrap gap-2 justify-between items-start mb-4">
                 <div>
                   <p className="text-sm text-gray-500">
-                    Order placed {new Date(order.createdAt).toLocaleDateString()}
+                    Order placed {formatDate(order.createdAt)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     Confirmation #: {order.confirmationNumber}
@@ -100,9 +115,9 @@ export default function OrdersPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
                       ? order.pickupEvent
-                        ? `Pickup at ${order.pickupEvent.title} — ${new Date(
-                            `${String(order.pickupEvent.date).slice(0, 10)}T00:00:00`
-                          ).toLocaleDateString()}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
+                        ? `Pickup at ${order.pickupEvent.title} — ${formatCalendarDay(
+                            order.pickupEvent.date
+                          )}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
                         : "Pickup at market/event"
                       : "Ships to your address"}
                   </p>
@@ -112,10 +127,10 @@ export default function OrdersPage() {
                     order.status === "pending"
                       ? "bg-yellow-100 text-yellow-700"
                       : order.status === "shipped"
-                      ? "bg-blue-100 text-blue-700"
-                      : order.status === "delivered"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-700"
+                        ? "bg-blue-100 text-blue-700"
+                        : order.status === "delivered"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-700"
                   }`}
                 >
                   {orderStatusLabel(order.status)}
@@ -124,9 +139,11 @@ export default function OrdersPage() {
               <div className="space-y-3">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-4">
-                    <img
+                    <StoreImage
                       src={item.product.image}
                       alt={item.product.name}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 rounded-lg object-cover bg-[#F5F0E8]"
                     />
                     <div className="flex-1">
@@ -134,7 +151,18 @@ export default function OrdersPage() {
                         {item.product.name}
                         {item.variant && ` — ${item.variant.name}`}
                       </p>
-                      <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                      {formatSelectedOptions(
+                        parseSelectedOptions(item.options)
+                      ) && (
+                        <p className="text-xs text-gray-500">
+                          {formatSelectedOptions(
+                            parseSelectedOptions(item.options)
+                          )}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Qty: {item.quantity}
+                      </p>
                     </div>
                     <p className="text-sm font-medium">
                       ${(item.price * item.quantity).toFixed(2)}
@@ -162,7 +190,9 @@ export default function OrdersPage() {
                       Discount: −${order.discountTotal.toFixed(2)}
                     </p>
                   )}
-                  <p className="font-bold text-[#C8722A]">Total: ${order.total.toFixed(2)}</p>
+                  <p className="font-bold text-[#C8722A]">
+                    Total: ${order.total.toFixed(2)}
+                  </p>
                 </div>
               </div>
             </div>

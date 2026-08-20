@@ -1,13 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isWithinWindow, publicProduct } from "@/lib/catalog";
+import {
+  isWithinWindow,
+  publicProduct,
+  PRODUCT_DETAIL_INCLUDE,
+} from "@/lib/catalog";
 
 export async function GET(_req, { params }) {
   const { id } = await params;
-  const product = await prisma.product.findUnique({
-    where: { id },
-    include: { variants: true },
-  });
+
+  // Products are addressed by their name slug. Ids still resolve so
+  // links shared before slugs existed — and anything pointing at an
+  // order's product id — keep working.
+  const product =
+    (await prisma.product.findUnique({
+      where: { slug: id },
+      include: PRODUCT_DETAIL_INCLUDE,
+    })) ??
+    (await prisma.product.findUnique({
+      where: { id },
+      include: PRODUCT_DETAIL_INCLUDE,
+    }));
 
   if (!product) {
     return NextResponse.json({ error: "Product not found" }, { status: 404 });

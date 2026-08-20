@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useId } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -21,6 +22,9 @@ const EMPTY = {
 
 // Shared create/edit form fields for a promotion.
 function PromoFields({ form, update, products }) {
+  // Rendered by the create form and by each open edit form, so the ids
+  // tying labels to inputs have to be unique per instance.
+  const fieldId = useId();
   const toggleProduct = (id) =>
     update(
       "productIds",
@@ -32,10 +36,14 @@ function PromoFields({ form, update, products }) {
   return (
     <>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor={`${fieldId}-name`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Name / topic
         </label>
         <input
+          id={`${fieldId}-name`}
           type="text"
           value={form.name}
           onChange={(e) => update("name", e.target.value)}
@@ -47,7 +55,9 @@ function PromoFields({ form, update, products }) {
       </div>
 
       <div>
-        <span className="block text-sm font-medium text-gray-700 mb-1">Type</span>
+        <span className="block text-sm font-medium text-gray-700 mb-1">
+          Type
+        </span>
         <div className="flex gap-2">
           {[
             ["code", "Discount code (% off)"],
@@ -73,10 +83,14 @@ function PromoFields({ form, update, products }) {
       {form.type === "code" ? (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor={`${fieldId}-code`}
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Code
             </label>
             <input
+              id={`${fieldId}-code`}
               type="text"
               value={form.code}
               onChange={(e) => update("code", e.target.value.toUpperCase())}
@@ -86,10 +100,14 @@ function PromoFields({ form, update, products }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor={`${fieldId}-percent`}
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Percent off
             </label>
             <input
+              id={`${fieldId}-percent`}
               type="number"
               min="1"
               max="100"
@@ -104,10 +122,14 @@ function PromoFields({ form, update, products }) {
         <>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor={`${fieldId}-bundleqty`}
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Buy any (quantity)
               </label>
               <input
+                id={`${fieldId}-bundleqty`}
                 type="number"
                 min="2"
                 max="50"
@@ -117,10 +139,14 @@ function PromoFields({ form, update, products }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor={`${fieldId}-bundleprice`}
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 For price ($)
               </label>
               <input
+                id={`${fieldId}-bundleprice`}
                 type="number"
                 min="0.01"
                 step="0.01"
@@ -169,7 +195,11 @@ function PromoFields({ form, update, products }) {
 function toPayload(form) {
   const base = { name: form.name.trim(), type: form.type, active: form.active };
   if (form.type === "code") {
-    return { ...base, code: form.code.trim(), percentOff: Number(form.percentOff) };
+    return {
+      ...base,
+      code: form.code.trim(),
+      percentOff: Number(form.percentOff),
+    };
   }
   return {
     ...base,
@@ -187,7 +217,8 @@ function fromPromo(promo) {
     active: promo.active,
     code: promo.code ?? "",
     percentOff: promo.percentOff != null ? String(promo.percentOff) : "",
-    bundleQuantity: promo.bundleQuantity != null ? String(promo.bundleQuantity) : "2",
+    bundleQuantity:
+      promo.bundleQuantity != null ? String(promo.bundleQuantity) : "2",
     bundlePrice: promo.bundlePrice != null ? String(promo.bundlePrice) : "",
     productIds: promo.productIds ?? [],
   };
@@ -213,7 +244,10 @@ function PromoRow({ promo, products, onSaved, onDeleted, onError }) {
     setSaving(true);
     onError("");
     try {
-      const res = await api.patch(`/admin/promotions/${promo.id}`, toPayload(form));
+      const res = await api.patch(
+        `/admin/promotions/${promo.id}`,
+        toPayload(form)
+      );
       onSaved(res.data.promotion);
       setEditing(false);
     } catch (err) {
@@ -284,7 +318,10 @@ function PromoRow({ promo, products, onSaved, onDeleted, onError }) {
       </div>
 
       {editing && (
-        <form onSubmit={save} className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+        <form
+          onSubmit={save}
+          className="mt-4 pt-4 border-t border-gray-100 space-y-4"
+        >
           <PromoFields form={form} update={update} products={products} />
           <button
             type="submit"
@@ -305,7 +342,6 @@ export default function AdminPromotionsPage() {
   const [promotions, setPromotions] = useState(null);
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState(EMPTY);
-  const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -323,20 +359,17 @@ export default function AdminPromotionsPage() {
 
   const update = (field, value) => setForm((p) => ({ ...p, [field]: value }));
 
-  const create = async (e) => {
+  const [create, creating] = useAsyncAction(async (e) => {
     e.preventDefault();
     setError("");
-    setCreating(true);
     try {
       const res = await api.post("/admin/promotions", toPayload(form));
       setPromotions((prev) => [res.data.promotion, ...(prev ?? [])]);
       setForm(EMPTY);
     } catch (err) {
       setError(err.response?.data?.error || "Failed to create the promotion.");
-    } finally {
-      setCreating(false);
     }
-  };
+  });
 
   return (
     <AdminShell title="Promotions" backTo="/admin">
@@ -345,12 +378,18 @@ export default function AdminPromotionsPage() {
         bundles (mix &amp; match) apply automatically when the cart qualifies.
       </p>
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
           {error}
         </p>
       )}
 
-      <form onSubmit={create} className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6 max-w-xl space-y-4">
+      <form
+        onSubmit={create}
+        className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6 max-w-xl space-y-4"
+      >
         <h2 className="text-lg font-semibold text-[#2A4A52]">New Promotion</h2>
         <PromoFields form={form} update={update} products={products} />
         <button

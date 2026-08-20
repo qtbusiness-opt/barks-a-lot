@@ -3,7 +3,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { computeDiscounts } from "@/lib/promotions";
-import { isWithinWindow } from "@/lib/catalog";
+import {
+  isWithinWindow,
+  PRODUCT_DETAIL_INCLUDE,
+  resolveLinePrice,
+} from "@/lib/catalog";
+import { validateSelections, combinationKey } from "@/lib/options";
 
 const schema = z.object({
   items: z
@@ -12,6 +17,18 @@ const schema = z.object({
         productId: z.string().min(1),
         variantId: z.string().min(1).optional(),
         quantity: z.number().int().min(1).max(100),
+        // Same shape as the orders payload — needed here too now that
+        // options can change price, or a preview would quote the base
+        // price and disagree with checkout.
+        options: z
+          .array(
+            z.object({
+              groupId: z.string().min(1),
+              choiceIds: z.array(z.string().min(1)).max(20),
+            })
+          )
+          .max(6)
+          .optional(),
       })
     )
     .min(1),
@@ -37,21 +54,39 @@ export async function POST(req) {
 
   const products = await prisma.product.findMany({
     where: { id: { in: items.map((i) => i.productId) } },
-    include: { variants: true },
+    include: PRODUCT_DETAIL_INCLUDE,
   });
   const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
 
-  // Resolve each line to its server price; silently skip anything that no
-  // longer exists or is out of its availability window (a preview only).
+  // Resolve each line to its server price the same way order creation
+  // does; silently skip anything that no longer exists, is out of its
+  // availability window, or has an incomplete/invalid selection — this
+  // is a preview only, checkout re-validates for real.
   const lines = [];
   for (const item of items) {
     const product = productMap[item.productId];
     if (!product || !isWithinWindow(product)) continue;
-    let price = product.price;
-    if (product.variants.length > 0) {
+
+    const chosen = validateSelections(product, item.options);
+    if (!chosen.ok) continue;
+
+    let price;
+    if (product.trackOptionStock) {
+      if (chosen.combinationChoiceIds.length === 0) continue;
+      const key = combinationKey(chosen.combinationChoiceIds);
+      const variant = product.variants.find(
+        (v) => combinationKey(v.choices.map((c) => c.choiceId)) === key
+      );
+      if (!variant) continue;
+      price = resolveLinePrice(product, {
+        pricingChoice: chosen.pricingChoice,
+      });
+    } else if (product.variants.length > 0) {
       const variant = product.variants.find((v) => v.id === item.variantId);
       if (!variant) continue;
-      price = variant.price ?? product.price;
+      price = resolveLinePrice(product, { variant });
+    } else {
+      price = resolveLinePrice(product, {});
     }
     lines.push({ productId: product.id, price, quantity: item.quantity });
   }
@@ -66,7 +101,9 @@ export async function POST(req) {
     });
   }
 
-  const promotions = await prisma.promotion.findMany({ where: { active: true } });
+  const promotions = await prisma.promotion.findMany({
+    where: { active: true },
+  });
   const result = computeDiscounts({ lines, promotions, code });
   return NextResponse.json(result);
 }

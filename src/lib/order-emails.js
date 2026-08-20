@@ -1,5 +1,28 @@
 import { sendEmail, adminEmails } from "@/lib/mailer";
 import { formatTimeRange } from "@/lib/pickup-window";
+import { logEvent } from "@/lib/log";
+
+// Order mail used to fail only into the server console, which on a hosted
+// deployment means nobody sees it. These land in the admin Logs page
+// (Errors tab) instead, so "no email arrived" is answerable from the
+// dashboard rather than by reading container logs.
+// The recipient goes in the dedicated `email` column rather than being
+// baked into the message, matching how auth events already record one.
+const mailProblem = (event, message, email = null) =>
+  logEvent({
+    level: "error",
+    category: "error",
+    event,
+    message,
+    email,
+    path: "/api/orders",
+  });
+
+// sendEmail resolves with delivered:false when RESEND_API_KEY is unset —
+// the local-dev path, where mail is logged rather than sent. On a real
+// deployment that means the key is missing and nothing went out at all.
+const noteIfUndelivered = (result, event, message, email = null) =>
+  result?.delivered === false ? mailProblem(event, message, email) : undefined;
 
 // event.date is a Date object when the order comes straight from Prisma
 // and an ISO string when it has been through JSON — handle both.
@@ -49,35 +72,64 @@ export async function sendOrderConfirmationEmail(order) {
   if (!to) return;
 
   try {
-    await sendEmail({
+    const result = await sendEmail({
       to,
       subject: `Order confirmed — ${order.confirmationNumber}`,
       text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}\n${deliveryLine(order)}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
       branded: true,
     });
+    await noteIfUndelivered(
+      result,
+      "order_confirmation_not_sent",
+      `No confirmation sent for order ${order.confirmationNumber}: email is not configured (RESEND_API_KEY is unset).`,
+      to
+    );
   } catch (err) {
-    console.error(`[mail] order confirmation failed order=${order.id}:`, err);
+    await mailProblem(
+      "order_confirmation_failed",
+      `Confirmation for order ${order.confirmationNumber} failed: ${err?.message ?? "unknown error"}`,
+      to
+    );
   }
 }
 
 // Internal heads-up to every admin whenever an order is placed. Failures
 // are logged only — a mail hiccup must never fail a completed order.
 export async function sendAdminOrderAlert(order) {
+  // Declared outside the try so the catch below can still name the
+  // recipients when the failure happens partway through the send.
+  let to = [];
   try {
-    const to = await adminEmails();
-    if (to.length === 0) return;
+    to = await adminEmails();
+    if (to.length === 0) {
+      // Recipients are the login addresses of every admin-role account,
+      // so an empty list means there is no admin user to notify.
+      await mailProblem(
+        "admin_alert_no_recipients",
+        `Order ${order.confirmationNumber} placed, but no admin account exists to notify.`
+      );
+      return;
+    }
 
     const customer = order.user
       ? `${order.user.name} (${order.user.email})`
       : `${order.guestName ? `${order.guestName} — ` : ""}${order.guestEmail} (guest)`;
 
-    await sendEmail({
+    const result = await sendEmail({
       to,
       subject: `New order ${order.confirmationNumber} — $${order.total.toFixed(2)}`,
       text: `A new order just came in.\n\nConfirmation number: ${order.confirmationNumber}\nCustomer: ${customer}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${deliveryLine(order)}\n\nManage it in the admin dashboard under Orders.`,
     });
+    await noteIfUndelivered(
+      result,
+      "admin_alert_not_sent",
+      `No admin alert sent for order ${order.confirmationNumber}: email is not configured (RESEND_API_KEY is unset).`
+    );
   } catch (err) {
-    console.error(`[mail] admin order alert failed order=${order.id}:`, err);
+    await mailProblem(
+      "admin_alert_failed",
+      `Admin alert to ${to.join(", ")} for order ${order.confirmationNumber} failed: ${err?.message ?? "unknown error"}`
+    );
   }
 }
 
@@ -94,6 +146,10 @@ export async function sendOrderStatusEmail(order, message) {
       branded: true,
     });
   } catch (err) {
-    console.error(`[mail] status email failed order=${order.id}:`, err);
+    await mailProblem(
+      "order_status_email_failed",
+      `Status email for order ${order.confirmationNumber} failed: ${err?.message ?? "unknown error"}`,
+      to
+    );
   }
 }

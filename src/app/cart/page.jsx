@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import StoreImage from "@/components/StoreImage";
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, total } = useCart();
@@ -32,14 +33,23 @@ export default function CartPage() {
           <div key={item.key} className="bg-white rounded-xl shadow-sm p-4">
             {/* Two rows on phones (details, then controls); one row from sm up. */}
             <div className="flex items-center gap-3 sm:gap-4">
-              <img
+              <StoreImage
                 src={item.image}
                 alt={item.name}
+                width={80}
+                height={80}
                 className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-[#2A4A52] truncate">{item.name}</h3>
-                <p className="text-[#C8722A] font-bold">${item.price.toFixed(2)}</p>
+                <h3 className="font-semibold text-[#2A4A52] truncate">
+                  {item.name}
+                </h3>
+                {item.optionsLabel && (
+                  <p className="text-xs text-gray-500">{item.optionsLabel}</p>
+                )}
+                <p className="text-[#C8722A] font-bold">
+                  ${item.price.toFixed(2)}
+                </p>
               </div>
               <div className="hidden sm:flex items-center gap-4">
                 <QtyControls item={item} updateQuantity={updateQuantity} />
@@ -68,7 +78,9 @@ export default function CartPage() {
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center text-lg">
             <span className="font-semibold text-[#2A4A52]">Total</span>
-            <span className="text-2xl font-bold text-[#C8722A]">${total.toFixed(2)}</span>
+            <span className="text-2xl font-bold text-[#C8722A]">
+              ${total.toFixed(2)}
+            </span>
           </div>
           <Link
             href="/checkout"
@@ -92,7 +104,9 @@ function QtyControls({ item, updateQuantity }) {
       >
         -
       </button>
-      <span className="w-10 sm:w-8 text-center font-medium">{item.quantity}</span>
+      <span className="w-10 sm:w-8 text-center font-medium">
+        {item.quantity}
+      </span>
       <button
         onClick={() => updateQuantity(item.key, item.quantity + 1)}
         aria-label={`Increase quantity of ${item.name}`}
@@ -111,8 +125,18 @@ function RemoveButton({ item, removeItem }) {
       aria-label={`Remove ${item.name} from cart`}
       className="flex items-center justify-center w-11 h-11 sm:w-auto sm:h-auto text-red-400 hover:text-red-600 active:text-red-700 transition"
     >
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+        />
       </svg>
     </button>
   );

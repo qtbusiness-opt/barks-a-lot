@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import StoreImage from "@/components/StoreImage";
 
 // Confirmation shown after adding to cart: a right-side drawer on desktop
 // (md+) and a bottom-sheet modal on phones. Driven by CartContext so it
@@ -50,8 +51,18 @@ export default function AddedToCartNotice() {
       >
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
           <h2 className="text-lg font-bold text-[#2A4A52] flex items-center gap-2">
-            <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-6 h-6 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             Added to Cart
           </h2>
@@ -60,21 +71,35 @@ export default function AddedToCartNotice() {
             aria-label="Close"
             className="flex items-center justify-center h-11 w-11 -mr-2 text-gray-500 hover:text-gray-700 active:text-gray-800"
           >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
 
         <div className="px-5 py-4 flex items-center gap-4 overflow-y-auto">
-          <img
+          <StoreImage
             src={lastAdded.image}
             alt={lastAdded.name}
+            width={80}
+            height={80}
             className="w-20 h-20 rounded-lg object-cover bg-[#F5F0E8] shrink-0"
           />
           <div className="min-w-0">
             <p className="font-semibold text-[#2A4A52]">{lastAdded.name}</p>
-            <p className="text-sm text-gray-500 mt-1">Qty: {lastAdded.quantity}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Qty: {lastAdded.quantity}
+            </p>
             <p className="text-[#C8722A] font-bold mt-1">
               ${(lastAdded.price * lastAdded.quantity).toFixed(2)}
             </p>
@@ -86,7 +111,9 @@ export default function AddedToCartNotice() {
             <span>
               Cart ({itemCount} {itemCount === 1 ? "item" : "items"})
             </span>
-            <span className="font-bold text-[#2A4A52]">${total.toFixed(2)}</span>
+            <span className="font-bold text-[#2A4A52]">
+              ${total.toFixed(2)}
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Link

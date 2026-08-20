@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import { SHIPPING_ENABLED } from "@/lib/features";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
+import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -77,7 +78,10 @@ function AddressRow({ addr, onSaved, onDeleted, onError }) {
         </div>
       </div>
       {editing && form && (
-        <form onSubmit={save} className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+        <form
+          onSubmit={save}
+          className="mt-3 pt-3 border-t border-gray-100 space-y-3"
+        >
           <input
             type="text"
             value={form.address}
@@ -128,7 +132,6 @@ function AddressRow({ addr, onSaved, onDeleted, onError }) {
 export default function ProfilePage() {
   const { user, loading, logout } = useAuth();
   const { update: updateSession } = useSession();
-  const [deleting, setDeleting] = useState(false);
   const [profile, setProfile] = useState(null);
   const [name, setName] = useState("");
   const [editingName, setEditingName] = useState(false);
@@ -148,6 +151,39 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  // Declared above the early returns below: hooks have to run in the same
+  // order on every render, and each of these calls hooks of its own.
+  const [sendReset, sendingReset] = useAsyncAction(async () => {
+    setError("");
+    setNotice("");
+    try {
+      await api.post("/auth/forgot-password", { email: profile.user.email });
+      setNotice(
+        `Password reset link sent to ${profile.user.email} — it expires in 1 hour.`
+      );
+    } catch {
+      setError("Couldn't send the reset email — please try again in a minute.");
+    }
+  });
+
+  const [deleteAccount, deleting] = useAsyncAction(async () => {
+    if (
+      !window.confirm(
+        "Delete your account? This removes your profile and login permanently and can't be undone. Records of past orders are kept for our bookkeeping."
+      )
+    ) {
+      return;
+    }
+    setError("");
+    try {
+      await api.delete("/profile");
+      // The account is gone — end the session and head home.
+      logout();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to delete your account.");
+    }
+  });
+
   if (loading || (user && profile === null && !error)) {
     return (
       <div className="max-w-2xl mx-auto safe-x py-20 text-center text-gray-500">
@@ -160,7 +196,9 @@ export default function ProfilePage() {
     return (
       <div className="max-w-2xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">My Profile</h1>
-        <p className="text-gray-500 mb-6">Please log in to view your profile.</p>
+        <p className="text-gray-500 mb-6">
+          Please log in to view your profile.
+        </p>
         <Link
           href="/login"
           className="inline-block bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] transition"
@@ -192,39 +230,6 @@ export default function ProfilePage() {
     }
   };
 
-  const sendReset = async () => {
-    setError("");
-    setNotice("");
-    try {
-      await api.post("/auth/forgot-password", { email: profile.user.email });
-      setNotice(
-        `Password reset link sent to ${profile.user.email} — it expires in 1 hour.`
-      );
-    } catch {
-      setError("Couldn't send the reset email — please try again in a minute.");
-    }
-  };
-
-  const deleteAccount = async () => {
-    if (
-      !window.confirm(
-        "Delete your account? This removes your profile and login permanently and can't be undone. Records of past orders are kept for our bookkeeping."
-      )
-    ) {
-      return;
-    }
-    setError("");
-    setDeleting(true);
-    try {
-      await api.delete("/profile");
-      // The account is gone — end the session and head home.
-      logout();
-    } catch (err) {
-      setError(err.response?.data?.error || "Failed to delete your account.");
-      setDeleting(false);
-    }
-  };
-
   const summary = profile?.orderSummary;
 
   return (
@@ -234,10 +239,20 @@ export default function ProfilePage() {
       </h1>
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4"
+        >
+          {error}
+        </p>
       )}
       {notice && (
-        <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4">{notice}</p>
+        <p
+          role="status"
+          className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4"
+        >
+          {notice}
+        </p>
       )}
 
       <div className="space-y-6">
@@ -249,7 +264,9 @@ export default function ProfilePage() {
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-500">Name</p>
               {editingName ? null : (
-                <p className="text-[#2A4A52] font-semibold">{profile.user.name}</p>
+                <p className="text-[#2A4A52] font-semibold">
+                  {profile.user.name}
+                </p>
               )}
             </div>
             {!editingName && (
@@ -288,9 +305,10 @@ export default function ProfilePage() {
 
           <button
             onClick={sendReset}
-            className="w-full sm:w-auto border-2 border-[#C8722A] text-[#C8722A] px-4 py-2.5 rounded-lg font-semibold hover:bg-[#C8722A] hover:text-white transition"
+            disabled={sendingReset}
+            className="w-full sm:w-auto border-2 border-[#C8722A] text-[#C8722A] px-4 py-2.5 rounded-lg font-semibold hover:bg-[#C8722A] hover:text-white transition disabled:opacity-50"
           >
-            Send Password Reset Email
+            {sendingReset ? "Sending…" : "Send Password Reset Email"}
           </button>
         </div>
 
@@ -310,23 +328,31 @@ export default function ProfilePage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
               <div className="bg-yellow-50 rounded-lg p-3">
-                <p className="text-2xl font-bold text-yellow-700">{summary.pending}</p>
+                <p className="text-2xl font-bold text-yellow-700">
+                  {summary.pending}
+                </p>
                 <p className="text-xs font-medium text-yellow-700">Pending</p>
               </div>
               <div className="bg-blue-50 rounded-lg p-3">
-                <p className="text-2xl font-bold text-blue-700">{summary.shipped}</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {summary.shipped}
+                </p>
                 <p className="text-xs font-medium text-blue-700">
                   {ORDER_STATUS_LABELS.shipped}
                 </p>
               </div>
               <div className="bg-green-50 rounded-lg p-3">
-                <p className="text-2xl font-bold text-green-700">{summary.delivered}</p>
+                <p className="text-2xl font-bold text-green-700">
+                  {summary.delivered}
+                </p>
                 <p className="text-xs font-medium text-green-700">
                   {ORDER_STATUS_LABELS.delivered}
                 </p>
               </div>
               <div className="bg-red-50 rounded-lg p-3">
-                <p className="text-2xl font-bold text-red-700">{summary.cancelled}</p>
+                <p className="text-2xl font-bold text-red-700">
+                  {summary.cancelled}
+                </p>
                 <p className="text-xs font-medium text-red-700">Cancelled</p>
               </div>
             </div>
@@ -384,9 +410,9 @@ export default function ProfilePage() {
               Delete Account
             </h2>
             <p className="text-sm text-gray-500 mb-4">
-              Permanently removes your profile and login. Past order records
-              are kept for our bookkeeping (required for taxes), but they
-              will no longer be linked to an account.
+              Permanently removes your profile and login. Past order records are
+              kept for our bookkeeping (required for taxes), but they will no
+              longer be linked to an account.
             </p>
             <button
               onClick={deleteAccount}

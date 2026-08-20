@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { formatDate } from "@/lib/format-date";
 
 const inputClass =
   "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
@@ -83,10 +84,20 @@ export default function AdminCustomersPage() {
       </form>
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4"
+        >
+          {error}
+        </p>
       )}
       {notice && (
-        <p role="status" className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4">{notice}</p>
+        <p
+          role="status"
+          className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4"
+        >
+          {notice}
+        </p>
       )}
 
       {customers === null && !error ? (
@@ -113,8 +124,8 @@ export default function AdminCustomersPage() {
                 </p>
                 <p className="text-sm text-gray-500 truncate">{c.email}</p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {c._count.orders} {c._count.orders === 1 ? "order" : "orders"} ·
-                  joined {new Date(c.createdAt).toLocaleDateString()}
+                  {c._count.orders} {c._count.orders === 1 ? "order" : "orders"}{" "}
+                  · joined {formatDate(c.createdAt)}
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">

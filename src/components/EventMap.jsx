@@ -33,6 +33,12 @@ export default function EventMap({ location }) {
     );
   }
 
+  // The sandbox grants the embed exactly what a map needs and nothing
+  // else. The permission deliberately left out is allow-top-navigation:
+  // without a sandbox a framed page can redirect the whole browser tab,
+  // so a compromised or spoofed embed could walk a customer off the site
+  // mid-checkout. allow-same-origin scopes the frame to *its* own origin
+  // (google.com), not ours, so it grants no access to this site.
   return (
     <iframe
       title={`Map of ${location}`}
@@ -41,6 +47,7 @@ export default function EventMap({ location }) {
       loading="lazy"
       allowFullScreen
       referrerPolicy="no-referrer-when-downgrade"
+      sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
     />
   );
 }
