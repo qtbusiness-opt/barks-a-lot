@@ -6,18 +6,38 @@ import { getPublicConfig } from "@/lib/public-config";
 let mapsPromise = null;
 
 // Load the Google Maps Places library once, shared across all inputs.
+// Resolves only when places.Autocomplete is actually constructible, so
+// every caller can treat a resolved promise as "safe to build from" and
+// a rejected one as "stay a plain input".
 function loadPlaces(mapsKey) {
   if (!mapsKey) return Promise.reject(new Error("no key"));
-  if (window.google?.maps?.places) return Promise.resolve();
+  if (window.google?.maps?.places?.Autocomplete) return Promise.resolve();
   if (!mapsPromise) {
     mapsPromise = new Promise((resolve, reject) => {
+      // The bootstrap is already on the page from an earlier mount.
+      if (window.google?.maps) return resolve();
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsKey}&libraries=places&loading=async`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
+        mapsKey
+      )}&libraries=places&loading=async`;
       script.async = true;
-      script.onload = resolve;
-      script.onerror = reject;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("maps script blocked"));
       document.head.appendChild(script);
-    });
+    })
+      // loading=async is why this second step exists. The script's onload
+      // only says the bootstrap loader ran; the libraries it names are
+      // still in flight, so google.maps.places is undefined for a moment
+      // afterwards. importLibrary is the documented way to wait for one,
+      // and it populates google.maps.places for the constructor below.
+      .then(() => window.google.maps.importLibrary?.("places"))
+      .then(() => {
+        // A key can load the API without entitling this widget, so prove
+        // the constructor exists rather than assuming it.
+        if (!window.google?.maps?.places?.Autocomplete) {
+          throw new Error("places autocomplete unavailable");
+        }
+      });
   }
   return mapsPromise;
 }
@@ -74,6 +94,12 @@ export default function LocationInput({
 
   useEffect(() => {
     if (!placesReady || !inputRef.current) return undefined;
+    // loadPlaces already proved this exists; re-reading it here keeps the
+    // component incapable of throwing during render-time effects, which
+    // is what turned a missing Places library into a blank error page
+    // instead of the plain input this is supposed to fall back to.
+    const Autocomplete = window.google?.maps?.places?.Autocomplete;
+    if (!Autocomplete) return undefined;
     const input = inputRef.current;
 
     // Places appends its suggestion dropdown to <body>, outside React's
@@ -83,7 +109,7 @@ export default function LocationInput({
       document.querySelectorAll(".pac-container")
     );
 
-    const autocomplete = new window.google.maps.places.Autocomplete(input, {
+    const autocomplete = new Autocomplete(input, {
       fields: ["formatted_address", "name"],
     });
     const listener = autocomplete.addListener("place_changed", () => {
