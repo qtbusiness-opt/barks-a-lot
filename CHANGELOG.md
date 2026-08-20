@@ -6,6 +6,18 @@ follows [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`,
 where MAJOR breaks how the site is used, MINOR adds a capability without
 breaking anything, and PATCH fixes a bug with no new capability.
 
+## [Unreleased]
+
+### Added
+
+- Picking a product option that has a photo of its own — a carousel
+  thumbnail, typically — brings that photo up as the main product image,
+  and carries it through to the cart line and the added-to-cart notice.
+  The product's own photos stay one click away in the strip beneath it.
+- Quantity stepper on product cards, so a product with nothing to choose
+  can be added from the listing page several at a time instead of one
+  click per unit.
+
 ## [1.0.0] — 2026-08-19
 
 Initial release.

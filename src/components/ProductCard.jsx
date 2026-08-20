@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import StoreImage from "@/components/StoreImage";
+import QuantityStepper from "@/components/QuantityStepper";
 
 export default function ProductCard({
   id,
@@ -18,6 +20,9 @@ export default function ProductCard({
   limitedQuantity = null,
 }) {
   const { addItem } = useCart();
+  // How many to quick-add. Resets after each add so the next card visit
+  // starts from 1 rather than inheriting the last order's count.
+  const [qty, setQty] = useState(1);
 
   // Anything the customer must choose before a price or an "add to
   // cart" makes sense routes to the detail page instead of quick-adding.
@@ -80,7 +85,8 @@ export default function ProductCard({
           </p>
         )}
         {/* Cards are ~140px wide in the 2-up phone grid, so the price and
-            button stack there and sit side by side from sm up. */}
+            the control beside it stack there and sit side by side from
+            sm up. */}
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between mt-3">
           <span className="text-lg font-bold text-[#C8722A]">
             {minPrice === maxPrice
@@ -95,15 +101,28 @@ export default function ProductCard({
               Choose Options
             </Link>
           ) : (
-            <button
-              onClick={() => addItem({ productId: id, name, price, image })}
+            <QuantityStepper
+              value={qty}
+              onChange={setQty}
+              label={`Quantity of ${name}`}
               disabled={!inStock}
-              className="bg-[#4A7C8A] text-white px-3 py-2.5 sm:py-1.5 rounded-lg text-sm font-medium hover:bg-[#3A6270] active:bg-[#2A4A52] transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Add to Cart
-            </button>
+            />
           )}
         </div>
+        {/* Full width under the price row: the stepper already takes the
+            space a side-by-side button would have used. */}
+        {!needsSelection && (
+          <button
+            onClick={() => {
+              addItem({ productId: id, name, price, image }, qty);
+              setQty(1);
+            }}
+            disabled={!inStock}
+            className="mt-2 w-full bg-[#4A7C8A] text-white px-3 py-2.5 sm:py-1.5 rounded-lg text-sm font-medium hover:bg-[#3A6270] active:bg-[#2A4A52] transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Add to Cart
+          </button>
+        )}
       </div>
     </div>
   );

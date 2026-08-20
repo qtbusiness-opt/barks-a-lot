@@ -42,6 +42,44 @@ export function parseSelectedOptions(raw) {
   }
 }
 
+/**
+ * The choice the customer just picked, when it carries a photo of its own
+ * — what the product page swaps its main image over to, the way a
+ * storefront swatch does.
+ *
+ * Compares the selections before and after a change rather than reading
+ * the current state, so the pick that just happened wins even when
+ * several groups have photos. Returns { choiceId, src, label } or null.
+ *
+ * `selections` on both sides is the page's { [groupId]: [choiceId, ...] }.
+ */
+export function pickedImageChoice(groups, before, after) {
+  for (const group of groups ?? []) {
+    const was = before?.[group.id] ?? [];
+    const now = after?.[group.id] ?? [];
+    const choice = (group.choices ?? []).find(
+      (c) => c.image && now.includes(c.id) && !was.includes(c.id)
+    );
+    if (choice) {
+      return {
+        choiceId: choice.id,
+        src: choice.image,
+        label: `${group.name}: ${choice.label}`,
+      };
+    }
+  }
+  return null;
+}
+
+// Whether a choice is still picked in any group — how the product page
+// knows a photo it swapped in belongs to a choice that has since been
+// unticked.
+export function isChoiceSelected(selections, choiceId) {
+  return Object.values(selections ?? {}).some((ids) =>
+    (ids ?? []).includes(choiceId)
+  );
+}
+
 // "Size: Large · Style: Plaid" — one line for carts, orders and emails.
 export function formatSelectedOptions(selections) {
   return (selections ?? [])
