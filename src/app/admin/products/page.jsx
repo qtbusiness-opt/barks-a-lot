@@ -141,6 +141,28 @@ function NutritionFactsFields({ rows, onChange, idSuffix }) {
   );
 }
 
+// True once a group is ticked as setting the price, which makes the
+// product's own price field a fallback rather than something to type.
+const pricingGroupOf = (form) =>
+  form.trackOptionStock
+    ? form.optionGroups.find((g) => g.setsPrice)
+    : undefined;
+
+// The product price stays meaningful even while the options price the
+// product: it's what a choice left without its own price falls back to
+// (choice.price is nullable server-side). So the disabled field keeps
+// sending its value rather than blanking it. A brand-new product can
+// reach Save without ever typing one, though — the field is disabled
+// before it's ever filled — so fall back to the cheapest choice instead
+// of posting a 0 the server rejects with a generic message.
+const priceToSave = (form) => {
+  if (form.price !== "") return form.price;
+  const prices = (pricingGroupOf(form)?.choices ?? [])
+    .map((c) => Number(c.price))
+    .filter((p) => Number.isFinite(p) && p > 0);
+  return prices.length > 0 ? String(Math.min(...prices)) : form.price;
+};
+
 const stockOf = (p) =>
   p.trackOptionStock
     ? p.variants.reduce((sum, v) => sum + v.quantity, 0)
@@ -152,6 +174,7 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
   const fieldId = useId();
   const showsIngredients =
     categories.find((c) => c.slug === form.category)?.showsIngredients ?? false;
+  const pricingGroup = pricingGroupOf(form);
   return (
     <>
       <div>
@@ -199,11 +222,18 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
             type="number"
             min="0.01"
             step="0.01"
-            value={form.price}
+            value={pricingGroup ? priceToSave(form) : form.price}
             onChange={(e) => update("price", e.target.value)}
-            required
-            className={inputClass}
+            required={!pricingGroup}
+            disabled={Boolean(pricingGroup)}
+            className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`}
           />
+          {pricingGroup && (
+            <p className="text-xs text-gray-500 mt-1">
+              Price comes from the {pricingGroup.name || "pricing"} options
+              below.
+            </p>
+          )}
         </div>
         <div>
           <label
@@ -301,13 +331,13 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
 
       <div>
         <label
-          htmlFor={`item-details-${variantProduct ? "edit" : "new"}`}
+          htmlFor={`${fieldId}-item-details`}
           className="block text-sm font-medium text-gray-700 mb-1"
         >
           {showsIngredients ? "Ingredients" : "Item Details"} (optional)
         </label>
         <textarea
-          id={`item-details-${variantProduct ? "edit" : "new"}`}
+          id={`${fieldId}-item-details`}
           value={form.itemDetails}
           onChange={(e) => update("itemDetails", e.target.value)}
           rows={3}
@@ -330,7 +360,7 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
         <NutritionFactsFields
           rows={form.nutritionFacts}
           onChange={(rows) => update("nutritionFacts", rows)}
-          idSuffix={variantProduct ? "edit" : "new"}
+          idSuffix={fieldId}
         />
       ) : (
         form.nutritionFacts.length > 0 && (
@@ -357,7 +387,7 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
       <OptionGroupsEditor
         groups={form.optionGroups}
         onChange={(next) => update("optionGroups", next)}
-        idSuffix={variantProduct ? "edit" : "new"}
+        idSuffix={fieldId}
         trackOptionStock={form.trackOptionStock}
         onTrackOptionStockChange={(v) => update("trackOptionStock", v)}
       />
@@ -447,7 +477,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
       const res = await api.patch(`/admin/products/${product.id}`, {
         name: form.name,
         description: form.description,
-        price: Number(form.price),
+        price: Number(priceToSave(form)),
         image: form.image,
         images: form.images,
         itemDetails: form.itemDetails,
@@ -609,7 +639,7 @@ export default function AdminProductsPage() {
       const res = await api.post("/admin/products", {
         name: form.name,
         description: form.description,
-        price: Number(form.price),
+        price: Number(priceToSave(form)),
         image: form.image,
         images: form.images,
         itemDetails: form.itemDetails,

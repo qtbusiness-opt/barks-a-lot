@@ -4,8 +4,13 @@ import ImageUpload from "@/components/ImageUpload";
 import { OPTION_INPUT_TYPES, OPTION_INPUT_LABELS } from "@/lib/options";
 import StoreImage from "@/components/StoreImage";
 
-const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+// Width is deliberately not baked in here. Tailwind emits w-full after the
+// fixed widths, so a class list ending "w-full … w-24" still resolves to
+// w-full — which is how the price field came to take the whole row and
+// squeeze the choice field beside it down to a couple of pixels of text.
+// Every field below states its own width instead.
+const controlClass =
+  "border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
 
 const MAX_GROUPS = 6;
 const MAX_CHOICES = 20;
@@ -46,9 +51,16 @@ export default function OptionGroupsEditor({
       ),
     });
 
-  // Only one group may set the price — picking a new one clears the rest.
-  const setPricingGroup = (gi) =>
-    onChange(groups.map((g, i) => ({ ...g, setsPrice: i === gi })));
+  // Only one group may set the price — picking a new one clears the rest,
+  // and ticking the current one again clears it altogether, handing
+  // pricing back to the product's own price field.
+  const togglePricingGroup = (gi) =>
+    onChange(
+      groups.map((g, i) => ({
+        ...g,
+        setsPrice: i === gi && !groups[gi].setsPrice,
+      }))
+    );
 
   return (
     <fieldset className="space-y-4">
@@ -73,9 +85,10 @@ export default function OptionGroupsEditor({
       </label>
       {trackOptionStock && (
         <p className="text-xs text-gray-500 -mt-2">
-          Pick one required group below to set the price (e.g. Size: Small $5,
-          Large $7). Every combination of the required groups gets its own stock
-          count, which you&rsquo;ll fill in after saving.
+          Tick one required group below to set the price (e.g. Size: Small $5,
+          Large $7) — untick it to go back to the single price at the top. Every
+          combination of the required groups gets its own stock count, which
+          you&rsquo;ll fill in after saving.
         </p>
       )}
 
@@ -93,7 +106,7 @@ export default function OptionGroupsEditor({
                 aria-label={`Option name, group ${gi + 1}`}
                 placeholder="Size"
                 maxLength={60}
-                className={`${inputClass} flex-1 py-2`}
+                className={`${controlClass} flex-1 min-w-0 py-2`}
               />
               <button
                 type="button"
@@ -143,10 +156,9 @@ export default function OptionGroupsEditor({
                   }`}
                 >
                   <input
-                    type="radio"
-                    name={`pricing-group-${idSuffix}`}
+                    type="checkbox"
                     checked={group.setsPrice}
-                    onChange={() => setPricingGroup(gi)}
+                    onChange={() => togglePricingGroup(gi)}
                     disabled={!canSetPrice(group)}
                   />
                   Sets the price
@@ -166,7 +178,7 @@ export default function OptionGroupsEditor({
                     aria-label={`Choice ${ci + 1} of ${group.name || `group ${gi + 1}`}`}
                     placeholder="Large"
                     maxLength={80}
-                    className={`${inputClass} flex-1 py-2`}
+                    className={`${controlClass} flex-1 min-w-0 py-2`}
                   />
                   {trackOptionStock && group.setsPrice && (
                     <input
@@ -178,8 +190,8 @@ export default function OptionGroupsEditor({
                         setChoice(gi, ci, { price: e.target.value })
                       }
                       aria-label={`Price for ${choice.label || `choice ${ci + 1}`}`}
-                      placeholder="$"
-                      className={`${inputClass} w-24 py-2`}
+                      placeholder="$0.00"
+                      className={`${controlClass} w-32 shrink-0 px-3 py-2`}
                     />
                   )}
                   <button
