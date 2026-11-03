@@ -6,7 +6,12 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { orderStatusLabel } from "@/lib/order-status";
 import { parseSelectedOptions, formatSelectedOptions } from "@/lib/options";
-import { formatCalendarDay, formatDate } from "@/lib/format-date";
+import {
+  formatCalendarDay,
+  formatDate,
+  formatPickupDayWithYear,
+} from "@/lib/format-date";
+import { WEEKDAY_PICKUP_FALLBACK } from "@/lib/pickup-window";
 import StoreImage from "@/components/StoreImage";
 
 export default function OrdersPage() {
@@ -14,10 +19,17 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState(null);
+  // The owner's weekday pickup details, shown on weekday orders still
+  // waiting to be collected. Empty until loaded (the fallback shows).
+  const [pickupDetails, setPickupDetails] = useState("");
 
   useEffect(() => {
     if (user) {
       api.get("/orders").then((res) => setOrders(res.data.orders));
+      api
+        .get("/pickup/weekdays")
+        .then((res) => setPickupDetails(res.data.details))
+        .catch(() => {});
     }
   }, [user]);
 
@@ -114,13 +126,21 @@ export default function OrdersPage() {
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
-                      ? order.pickupEvent
-                        ? `Pickup at ${order.pickupEvent.title} — ${formatCalendarDay(
-                            order.pickupEvent.date
-                          )}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
-                        : "Pickup at market/event"
+                      ? order.pickupDate
+                        ? `Weekday pickup — ${formatPickupDayWithYear(order.pickupDate)}`
+                        : order.pickupEvent
+                          ? `Pickup at ${order.pickupEvent.title} — ${formatCalendarDay(
+                              order.pickupEvent.date
+                            )}${order.pickupEvent.location ? ` · ${order.pickupEvent.location}` : ""}`
+                          : "Pickup at market/event"
                       : "Ships to your address"}
                   </p>
+                  {order.pickupDate &&
+                    ["pending", "shipped"].includes(order.status) && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {pickupDetails || WEEKDAY_PICKUP_FALLBACK}
+                      </p>
+                    )}
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-medium ${

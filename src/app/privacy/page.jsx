@@ -20,15 +20,16 @@ export default function PrivacyPolicyPage() {
         Privacy Policy
       </h1>
       <p className="text-gray-500 mt-2">
-        Barks-A-Lot Treats &amp; More &middot; Effective Date: Aug 19, 2024
+        Barks-A-Lot Treats &amp; More &middot; Effective Date: Nov 3, 2026
       </p>
 
       <p className="mt-6 text-gray-700 leading-relaxed">
-        Barks-A-Lot Treats &amp; More (&ldquo;Barks-A-Lot,&rdquo; &ldquo;we,&rdquo;
-        &ldquo;us,&rdquo; or &ldquo;our&rdquo;) respects your privacy. This Privacy
-        Policy explains what information we collect when you visit our website
-        or make a purchase, how we use it, and the choices you have. By using
-        our website, you agree to the practices described below.
+        Barks-A-Lot Treats &amp; More (&ldquo;Barks-A-Lot,&rdquo;
+        &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) respects your
+        privacy. This Privacy Policy explains what information we collect when
+        you visit our website or make a purchase, how we use it, and the choices
+        you have. By using our website, you agree to the practices described
+        below.
       </p>
 
       <Section title="1. Information We Collect">
@@ -43,18 +44,19 @@ export default function PrivacyPolicyPage() {
           </li>
           <li>
             <strong>Guest checkout:</strong> If you check out as a guest, we
-            collect your name, email address, and order details — including
-            the market or event you choose for pickup — for that transaction.
+            collect your name, email address, and order details — including the
+            market, event, or weekday pickup day you choose — for that
+            transaction.
           </li>
           <li>
             <strong>Payment information:</strong> Payment is processed by a
-            third-party payment processor. We do not store your full card
-            number on our servers.
+            third-party payment processor. We do not store your full card number
+            on our servers.
           </li>
           <li>
-            <strong>Communications:</strong> If you contact us directly
-            (email, contact form, in person at a market or event), we retain
-            that correspondence to respond to you.
+            <strong>Communications:</strong> If you contact us directly (email,
+            contact form, in person at a market or event), we retain that
+            correspondence to respond to you.
           </li>
         </ul>
         <p className="font-medium text-[#2A4A52]">
@@ -63,13 +65,13 @@ export default function PrivacyPolicyPage() {
         <ul className="list-disc pl-6 space-y-2">
           <li>
             Standard server logs, including your IP address, browser type,
-            device type, and pages visited. We use this information to keep
-            the site secure (for example, limiting repeated login attempts)
-            and to maintain and improve the site.
+            device type, and pages visited. We use this information to keep the
+            site secure (for example, limiting repeated login attempts) and to
+            maintain and improve the site.
           </li>
           <li>
-            Essential cookies and similar browser storage needed for the site
-            to work — see Section 4.
+            Essential cookies and similar browser storage needed for the site to
+            work — see Section 4.
           </li>
         </ul>
       </Section>
@@ -79,8 +81,8 @@ export default function PrivacyPolicyPage() {
         <ul className="list-disc pl-6 space-y-2">
           <li>Create and manage your account</li>
           <li>
-            Process and fulfill orders, including sending order confirmation
-            and order status emails (such as ready-for-pickup and cancellation
+            Process and fulfill orders, including sending order confirmation and
+            order status emails (such as ready-for-pickup and cancellation
             notices)
           </li>
           <li>Send account verification emails when you sign up</li>
@@ -111,8 +113,8 @@ export default function PrivacyPolicyPage() {
         </ul>
         <p>
           These providers are only given the information necessary to perform
-          their function and are not permitted to use it for their own
-          marketing purposes.
+          their function and are not permitted to use it for their own marketing
+          purposes.
         </p>
         <p>
           We may also disclose information if required by law, to protect our
@@ -133,8 +135,8 @@ export default function PrivacyPolicyPage() {
             automatically.
           </li>
           <li>
-            <strong>Security cookies</strong> protect forms and checkout
-            against cross-site request forgery.
+            <strong>Security cookies</strong> protect forms and checkout against
+            cross-site request forgery.
           </li>
           <li>
             <strong>Your shopping cart</strong> is saved in your browser&rsquo;s
@@ -144,30 +146,29 @@ export default function PrivacyPolicyPage() {
         </ul>
         <p>
           We do not use advertising cookies or third-party analytics trackers.
-          You can disable cookies through your browser settings, though you
-          will not be able to log in or check out with an account while they
-          are disabled.
+          You can disable cookies through your browser settings, though you will
+          not be able to log in or check out with an account while they are
+          disabled.
         </p>
       </Section>
 
       <Section title="5. Data Security">
         <p>
           We use reasonable administrative and technical safeguards to protect
-          your information, including secure password storage and encrypted
-          data transmission (HTTPS). No online system is 100% secure, but we
-          work to protect your data and will notify affected customers if we
-          become aware of a breach involving personal information, as required
-          by law.
+          your information, including secure password storage and encrypted data
+          transmission (HTTPS). No online system is 100% secure, but we work to
+          protect your data and will notify affected customers if we become
+          aware of a breach involving personal information, as required by law.
         </p>
       </Section>
 
       <Section title="6. Data Retention">
         <p>
-          We retain account and order information for as long as your account
-          is active or as needed to fulfill the purposes described in this
-          policy, including recordkeeping required for tax and accounting
-          purposes. You may request deletion of your account information at
-          any time (see Section 7).
+          We retain account and order information for as long as your account is
+          active or as needed to fulfill the purposes described in this policy,
+          including recordkeeping required for tax and accounting purposes. You
+          may request deletion of your account information at any time (see
+          Section 7).
         </p>
       </Section>
 
@@ -187,8 +188,8 @@ export default function PrivacyPolicyPage() {
             >
               info@barks-a-lot.com
             </a>
-            . We may retain certain information as required by law (e.g.,
-            order records for tax purposes).
+            . We may retain certain information as required by law (e.g., order
+            records for tax purposes).
           </li>
           <li>
             <strong>Marketing emails:</strong> If we send promotional emails,
@@ -196,10 +197,10 @@ export default function PrivacyPolicyPage() {
             will not affect transactional emails like order confirmations.
           </li>
           <li>
-            <strong>California residents:</strong> Depending on applicable
-            law, you may have additional rights regarding your personal
-            information, including the right to know what information we
-            collect and to request its deletion. Contact us at{" "}
+            <strong>California residents:</strong> Depending on applicable law,
+            you may have additional rights regarding your personal information,
+            including the right to know what information we collect and to
+            request its deletion. Contact us at{" "}
             <a
               href="mailto:info@barks-a-lot.com"
               className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
@@ -214,9 +215,9 @@ export default function PrivacyPolicyPage() {
       <Section title="8. Children's Privacy">
         <p>
           Our website is not directed to children under 13, and we do not
-          knowingly collect personal information from children under 13. If
-          you believe a child has provided us with personal information,
-          please contact us and we will delete it.
+          knowingly collect personal information from children under 13. If you
+          believe a child has provided us with personal information, please
+          contact us and we will delete it.
         </p>
       </Section>
 
@@ -239,8 +240,8 @@ export default function PrivacyPolicyPage() {
 
       <Section title="11. Contact Us">
         <p>
-          If you have questions about this Privacy Policy or how we handle
-          your information, please contact us:
+          If you have questions about this Privacy Policy or how we handle your
+          information, please contact us:
         </p>
         <p>
           Barks-A-Lot Treats &amp; More

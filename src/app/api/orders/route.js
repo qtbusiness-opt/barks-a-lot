@@ -10,7 +10,12 @@ import {
   resolveLinePrice,
 } from "@/lib/catalog";
 import { validateSelections, combinationKey } from "@/lib/options";
-import { isPickupSelectable } from "@/lib/pickup-window";
+import {
+  isPickupSelectable,
+  isWeekdayPickupSelectable,
+} from "@/lib/pickup-window";
+import { dayKeyToUtcDate } from "@/lib/calendar-days";
+import { getWeekdayPickupSettings } from "@/lib/site-settings";
 import {
   sendOrderConfirmationEmail,
   sendAdminOrderAlert,
@@ -62,6 +67,13 @@ const orderSchema = z
     guestName: z.string().trim().max(100).optional(),
     // Event id, or "next" for the nearest upcoming event that isn't today.
     pickupEventId: z.string().min(1).optional(),
+    // Weekday pickup day instead of an event, YYYY-MM-DD in store time.
+    // Mutually exclusive with pickupEventId; checked against the bookable
+    // days below, never trusted as-is.
+    pickupDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
     // Square card token from the Web Payments SDK. Required when payments
     // are configured; ignored otherwise (dev/tests without a Square token).
     paymentToken: z.string().min(1).max(500).optional(),
@@ -69,7 +81,8 @@ const orderSchema = z
     promoCode: z.string().trim().max(40).optional(),
   })
   .refine(
-    // Pickup orders (collected at a market/event) need no address.
+    // Pickup orders (at a market/event, or a weekday pickup) need no
+    // address.
     (o) =>
       o.fulfillmentType === "pickup" ||
       (o.address && o.city && o.state && o.zip),
@@ -122,6 +135,7 @@ export async function POST(req) {
       guestEmail,
       guestName,
       pickupEventId,
+      pickupDate,
       paymentToken,
       promoCode,
     } = parsed.data;
@@ -152,19 +166,46 @@ export async function POST(req) {
       );
     }
 
-    // Pickup orders are tied to a specific market/expo. No same-day
-    // pickup — the event must be at least a day out (shared rule in
+    // Pickup orders are collected either at a specific market/expo or on
+    // a weekday the customer picked — exactly one of the two. No same-day
+    // pickup either way: an event must be at least a day out, and a
+    // weekday must be one of the bookable days (shared rules in
     // src/lib/pickup-window.js); "next" resolves to the nearest event
     // that's still selectable.
     let pickupEvent = null;
     if (fulfillmentType === "pickup") {
-      if (!pickupEventId) {
+      if (pickupEventId && pickupDate) {
         return NextResponse.json(
-          { error: "Please choose a pickup event" },
+          { error: "Please choose an event or a weekday pickup day, not both" },
           { status: 400 }
         );
       }
-      if (pickupEventId === "next") {
+      if (pickupDate) {
+        const weekday = await getWeekdayPickupSettings();
+        if (!weekday.enabled) {
+          return NextResponse.json(
+            {
+              error:
+                "Weekday pickup isn't available right now — please choose a market or event",
+            },
+            { status: 409 }
+          );
+        }
+        if (!isWeekdayPickupSelectable(pickupDate, weekday.closedDays)) {
+          return NextResponse.json(
+            {
+              error:
+                "That pickup day isn't available — please choose another day",
+            },
+            { status: 409 }
+          );
+        }
+      } else if (!pickupEventId) {
+        return NextResponse.json(
+          { error: "Please choose a pickup event or a weekday pickup day" },
+          { status: 400 }
+        );
+      } else if (pickupEventId === "next") {
         // The 48h lookback covers timezone skew around midnight; the
         // selectability filter does the real gating.
         const candidates = await prisma.event.findMany({
@@ -370,6 +411,10 @@ export async function POST(req) {
           channel: "online",
           fulfillmentType,
           pickupEventId: pickupEvent?.id ?? null,
+          pickupDate:
+            fulfillmentType === "pickup" && pickupDate
+              ? dayKeyToUtcDate(pickupDate)
+              : null,
           total: finalTotal,
           discountTotal: discount.discountTotal,
           promoCode:

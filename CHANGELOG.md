@@ -21,6 +21,28 @@ breaking anything, and PATCH fixes a bug with no new capability.
   and the photo is a raster: a message that has left the site can't load
   a relative path, and mail clients won't draw SVG. Otherwise the emails
   stay exactly as they were.
+- Weekday pickup: customers can collect an online order Monday–Friday
+  instead of at a market or event, choosing from the next 10 open
+  weekdays, never the same day (store time). Managed in Admin → Weekday
+  Pickup — an on/off switch (off by default), the where/when details shown
+  to customers, and closed days for holidays or days off.
+- Events list by month: `/events` lists upcoming events grouped by month,
+  this month open (or the nearest month with events), others one click
+  away. Each event links to its day page.
+
+### Changed
+
+- `/events` opens on the list; the calendar is one click away
+  ("Calendar view", top right). The day page links "Back to Events".
+- Terms of Service §4 and the Privacy Policy cover weekday pickup.
+
+### Fixed
+
+- Today's events count as upcoming all day in store time. The cutoff used
+  the UTC date, so the events list, checkout and the dashboard dropped
+  them after about 5 PM in Boise.
+- The admin event forms no longer claim online pickup closes 2 hours
+  before the event ends; it closes the day before.
 
 ## [1.1.0] — 2026-08-20
 

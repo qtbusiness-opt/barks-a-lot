@@ -2,6 +2,12 @@
 // drift apart.
 
 import { STORE_TIME_ZONE } from "@/lib/format-date";
+import {
+  storeDayKey,
+  storeDayStartUtc,
+  weekdayPickupDays,
+  isWeekdayPickupDay,
+} from "@/lib/calendar-days";
 
 // event.date is a Date object straight from Prisma on the server and an
 // ISO string after JSON on the client — handle both. Events are stored
@@ -11,17 +17,35 @@ export const eventDayKey = (event) =>
     ? event.date.toISOString().slice(0, 10)
     : String(event.date).slice(0, 10);
 
-// en-CA renders as YYYY-MM-DD, directly comparable with eventDayKey.
-// Computed in STORE_TIME_ZONE explicitly rather than the process's own
-// clock — the container runs in UTC in production, and "today" needs to
-// mean the store's today, not the server's.
-const storeDayFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: STORE_TIME_ZONE,
-});
-
+// YYYY-MM-DD, directly comparable with eventDayKey. Computed in
+// STORE_TIME_ZONE explicitly rather than the process's own clock — the
+// container runs in UTC in production, and "today" needs to mean the
+// store's today, not the server's. (The rule itself lives in
+// src/lib/calendar-days.js, where it is tested at exact instants.)
 export function dayKeyOf(now = new Date()) {
-  return storeDayFormatter.format(now);
+  return storeDayKey(now, STORE_TIME_ZONE);
 }
+
+// Lower bound for "from today on" event queries: midnight UTC of the
+// store's today, matching how event days are stored. Taking the UTC date
+// instead drops today's events after ~5 PM in Boise.
+export const storeTodayStartUtc = (now = new Date()) =>
+  storeDayStartUtc(now, STORE_TIME_ZONE);
+
+// The weekdays a customer can book right now, given the owner's closed
+// days (Mon–Fri only, never same-day).
+export const weekdayPickupDaysAt = (closedDays = [], now = new Date()) =>
+  weekdayPickupDays(dayKeyOf(now), closedDays);
+
+export const isWeekdayPickupSelectable = (
+  dayKey,
+  closedDays = [],
+  now = new Date()
+) => isWeekdayPickupDay(dayKey, dayKeyOf(now), closedDays);
+
+// Shown wherever the owner hasn't written pickup details yet.
+export const WEEKDAY_PICKUP_FALLBACK =
+  "We'll email you with where and when to pick up.";
 
 const pad = (n) => String(n).padStart(2, "0");
 

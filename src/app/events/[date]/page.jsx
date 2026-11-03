@@ -236,7 +236,7 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
                     className={inputClass}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Online pickup closes 2 hours before the end time.
+                    Online pickup for this event closes the day before it.
                   </p>
                 </div>
               </div>
@@ -297,7 +297,7 @@ export default function EventDayPage() {
         href="/events"
         className="inline-flex items-center min-h-11 text-[#4A7C8A] hover:underline mb-1"
       >
-        &larr; Back to Calendar
+        &larr; Back to Events
       </Link>
       <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6">
         {dayLabel}
