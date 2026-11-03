@@ -247,6 +247,15 @@ model OrderItem {
   // labels, so renaming or deleting an option later can't rewrite what
   // the customer actually ordered.
   options   String?
+  // The photo this line was bought as: the chosen option's own picture
+  // when it has one (the bandana pattern the customer clicked), else the
+  // product's cover at the time of the order. A snapshot for the same
+  // reason as `options` above — replacing a product photo or retiring an
+  // option must not change what a past order looks like. Resolved
+  // server-side from the stored choice, never accepted from the browser.
+  // Null on orders placed before this column existed; readers fall back
+  // to the product's current cover.
+  image     String?
 }
 
 // Product categories, managed by admins. Products reference the slug as

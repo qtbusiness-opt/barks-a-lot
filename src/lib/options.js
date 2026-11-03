@@ -42,6 +42,44 @@ export function parseSelectedOptions(raw) {
   }
 }
 
+/**
+ * The choice the customer just picked, when it carries a photo of its own
+ * — what the product page swaps its main image over to, the way a
+ * storefront swatch does.
+ *
+ * Compares the selections before and after a change rather than reading
+ * the current state, so the pick that just happened wins even when
+ * several groups have photos. Returns { choiceId, src, label } or null.
+ *
+ * `selections` on both sides is the page's { [groupId]: [choiceId, ...] }.
+ */
+export function pickedImageChoice(groups, before, after) {
+  for (const group of groups ?? []) {
+    const was = before?.[group.id] ?? [];
+    const now = after?.[group.id] ?? [];
+    const choice = (group.choices ?? []).find(
+      (c) => c.image && now.includes(c.id) && !was.includes(c.id)
+    );
+    if (choice) {
+      return {
+        choiceId: choice.id,
+        src: choice.image,
+        label: `${group.name}: ${choice.label}`,
+      };
+    }
+  }
+  return null;
+}
+
+// Whether a choice is still picked in any group — how the product page
+// knows a photo it swapped in belongs to a choice that has since been
+// unticked.
+export function isChoiceSelected(selections, choiceId) {
+  return Object.values(selections ?? {}).some((ids) =>
+    (ids ?? []).includes(choiceId)
+  );
+}
+
 // "Size: Large · Style: Plaid" — one line for carts, orders and emails.
 export function formatSelectedOptions(selections) {
   return (selections ?? [])
@@ -65,6 +103,19 @@ export function formatSelectedOptions(selections) {
  *     groups.
  *   - pricingChoice: the chosen {id, price} from the group flagged
  *     setsPrice, or null if there isn't one or it wasn't required.
+ *   - chosenImage: the picture belonging to a chosen choice — what the
+ *     product page swapped its main image to — or null when nothing
+ *     picked carries one. The order snapshots this so the line keeps
+ *     showing the pattern that was bought.
+ *
+ *     Only single-select groups are considered: a checkbox group is a
+ *     list of add-ons, and an add-on's picture shouldn't stand in for
+ *     the thing itself. Groups are walked in sortOrder, so the first
+ *     one carrying a picture wins and the result doesn't depend on the
+ *     order the customer happened to click in. That can differ from the
+ *     product page, which shows whichever photo was clicked last, but
+ *     only for a product where two single-select groups both have
+ *     pictures — and either photo is a true picture of what was bought.
  *
  * On failure: { ok: false, error } with a customer-safe message.
  */
@@ -76,6 +127,7 @@ export function validateSelections(product, submitted) {
       selections: [],
       combinationChoiceIds: [],
       pricingChoice: null,
+      chosenImage: null,
     };
   }
 
@@ -85,6 +137,7 @@ export function validateSelections(product, submitted) {
   const selections = [];
   const combinationChoiceIds = [];
   let pricingChoice = null;
+  let chosenImage = null;
 
   for (const group of groups) {
     const chosenIds = byGroup.get(group.id) ?? [];
@@ -116,7 +169,16 @@ export function validateSelections(product, submitted) {
     if (group.setsPrice) {
       pricingChoice = { id: valid[0].id, price: valid[0].price ?? null };
     }
+    if (!chosenImage && !allowsMultiple(group.inputType) && valid[0].image) {
+      chosenImage = valid[0].image;
+    }
   }
 
-  return { ok: true, selections, combinationChoiceIds, pricingChoice };
+  return {
+    ok: true,
+    selections,
+    combinationChoiceIds,
+    pricingChoice,
+    chosenImage,
+  };
 }

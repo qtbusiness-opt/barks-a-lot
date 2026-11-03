@@ -241,6 +241,12 @@ export async function POST(req) {
           chosen.selections.length > 0
             ? JSON.stringify(chosen.selections)
             : null;
+        // Frozen alongside the labels: the chosen option's own picture if
+        // it has one, else the cover as it looks right now. Resolved from
+        // the stored choice — the cart sends an image for its own display
+        // and it is deliberately not part of orderSchema, so nothing a
+        // browser says can put a URL in an admin's inbox.
+        const image = chosen.chosenImage ?? product.image;
 
         if (product.trackOptionStock) {
           if (chosen.combinationChoiceIds.length === 0) {
@@ -269,6 +275,7 @@ export async function POST(req) {
             quantity: item.quantity,
             price,
             options,
+            image,
           });
           decrements.push({ product, variant, quantity: item.quantity });
         } else if (product.variants.length > 0) {
@@ -290,6 +297,7 @@ export async function POST(req) {
             quantity: item.quantity,
             price,
             options,
+            image,
           });
           decrements.push({ product, variant, quantity: item.quantity });
         } else {
@@ -305,6 +313,7 @@ export async function POST(req) {
             quantity: item.quantity,
             price: resolveLinePrice(product, {}),
             options,
+            image,
           });
           decrements.push({ product, quantity: item.quantity });
         }

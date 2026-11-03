@@ -1,4 +1,10 @@
-import { sendEmail, adminEmails } from "@/lib/mailer";
+import { sendEmail, adminEmails, brandedShell } from "@/lib/mailer";
+import {
+  escapeHtml,
+  emailParagraphs,
+  orderItemName,
+  orderItemsHtml,
+} from "@/lib/email-format";
 import { formatTimeRange } from "@/lib/pickup-window";
 import { logEvent } from "@/lib/log";
 
@@ -51,7 +57,7 @@ function itemLines(order) {
   return order.items
     .map(
       (i) =>
-        `  - ${i.product.name}${i.variant ? ` (${i.variant.name})` : ""} x ${i.quantity} — $${(i.price * i.quantity).toFixed(2)}`
+        `  - ${orderItemName(i)} x ${i.quantity} — $${(i.price * i.quantity).toFixed(2)}`
     )
     .join("\n");
 }
@@ -76,7 +82,21 @@ export async function sendOrderConfirmationEmail(order) {
       to,
       subject: `Order confirmed — ${order.confirmationNumber}`,
       text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}\n${deliveryLine(order)}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
-      branded: true,
+      // The pictures matter most here: a bandana is bought by its
+      // pattern, and the confirmation is the cheapest place for a
+      // customer to notice they picked the wrong one. Passing html
+      // explicitly replaces what `branded: true` would have produced —
+      // brandedShell is the same wrapper, so the inline logo still
+      // resolves — and the text body above stays the fallback for
+      // clients that don't render HTML or block remote images.
+      html: brandedShell(
+        `<p>Thanks for your order from Barks-A-Lot Treats &amp; More!</p>
+         <p>Confirmation number: <strong>${escapeHtml(order.confirmationNumber)}</strong></p>
+         ${orderItemsHtml(order.items)}
+         <hr style="border:none;border-top:1px solid #eee;margin:12px 0" />
+         ${emailParagraphs(`${totalsBlock(order)}\n${deliveryLine(order)}`)}
+         <p style="margin-top:12px">We'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.</p>`
+      ),
     });
     await noteIfUndelivered(
       result,
@@ -119,6 +139,20 @@ export async function sendAdminOrderAlert(order) {
       to,
       subject: `New order ${order.confirmationNumber} — $${order.total.toFixed(2)}`,
       text: `A new order just came in.\n\nConfirmation number: ${order.confirmationNumber}\nCustomer: ${customer}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${deliveryLine(order)}\n\nManage it in the admin dashboard under Orders.`,
+      // Deliberately not run through brandedShell: this is the internal
+      // heads-up, and the shell would attach the 13KB logo to every one
+      // of them to put a masthead on a note you send yourself. The
+      // pictures are here to show what needs packing.
+      html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;color:#2A4A52;font-size:15px;line-height:1.6">
+        <p>A new order just came in.</p>
+        ${emailParagraphs(`Confirmation number: ${order.confirmationNumber}\nCustomer: ${customer}`)}
+        ${orderItemsHtml(order.items)}
+        <hr style="border:none;border-top:1px solid #eee;margin:12px 0" />
+        ${emailParagraphs(
+          `${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${deliveryLine(order)}`
+        )}
+        <p style="margin-top:12px">Manage it in the admin dashboard under Orders.</p>
+      </div>`,
     });
     await noteIfUndelivered(
       result,

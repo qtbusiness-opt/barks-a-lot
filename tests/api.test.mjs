@@ -2621,3 +2621,142 @@ test("turning on option stock without a participating group is rejected, even se
   const after = await api("GET", `/products/${created.data.product.slug}`);
   assert.equal(after.data.product.trackOptionStock, false);
 });
+
+// ── The photo an order line was bought as ───────────────────────────
+// OrderItem.image freezes the picture the customer saw at checkout, the
+// same way options freezes the labels: it is what the orders pages and
+// the order emails show, so replacing a product photo later must not
+// rewrite what a past order looks like.
+
+// The seeded Classic Leather Collar is the one catalog product whose
+// option choices carry photos of their own — Black and Chestnut differ
+// from the cover, so an assertion on them can't pass by accidentally
+// matching the fallback.
+async function seededCollar() {
+  const { data } = await api("GET", "/products");
+  const product = data.products.find((p) => p.name === "Classic Leather Collar");
+  assert.ok(product, "seeded Classic Leather Collar is in the catalog");
+  const size = product.optionGroups.find((g) => g.name === "Size");
+  const colour = product.optionGroups.find((g) => g.name === "Colour");
+  assert.ok(size && colour, "collar has its Size and Colour groups");
+  return { product, size, colour };
+}
+
+const collarOrder = (product, answers, extra = {}) => ({
+  items: [{ productId: product.id, quantity: 1, options: answers, ...extra }],
+  fulfillmentType: "pickup",
+  pickupEventId: "next",
+  guestEmail: "photo@test.local",
+});
+
+test("an order line keeps the chosen option's photo, not the product cover", async () => {
+  const { product, size, colour } = await seededCollar();
+  const black = colour.choices.find((c) => c.label === "Black");
+  assert.notEqual(
+    black.image,
+    product.image,
+    "Black must differ from the cover or this test proves nothing"
+  );
+
+  const res = await api("POST", "/orders", {
+    body: collarOrder(product, [
+      { groupId: size.id, choiceIds: [size.choices[0].id] },
+      { groupId: colour.id, choiceIds: [black.id] },
+    ]),
+  });
+
+  assert.equal(res.status, 201, JSON.stringify(res.data));
+  assert.equal(res.data.order.items[0].image, black.image);
+});
+
+test("a photo sent with the order is ignored in favour of the stored choice", async () => {
+  // The cart carries an image for its own display and the checkout POST
+  // is free to include one. Nothing a browser says may decide what gets
+  // drawn in the owner's inbox, so it must be dropped outright.
+  const { product, size, colour } = await seededCollar();
+  const chestnut = colour.choices.find((c) => c.label === "Chestnut");
+
+  const res = await api("POST", "/orders", {
+    body: collarOrder(
+      product,
+      [
+        { groupId: size.id, choiceIds: [size.choices[0].id] },
+        { groupId: colour.id, choiceIds: [chestnut.id] },
+      ],
+      { image: "https://evil.example/beacon.png" }
+    ),
+  });
+
+  assert.equal(res.status, 201, JSON.stringify(res.data));
+  assert.equal(res.data.order.items[0].image, chestnut.image);
+});
+
+test("a line with nothing to choose falls back to the product cover", async () => {
+  const { data } = await api("GET", "/products");
+  const plain = data.products.find(
+    (p) =>
+      p.inStock &&
+      p.variants.length === 0 &&
+      (p.optionGroups ?? []).length === 0
+  );
+  assert.ok(plain, "catalog still has a plain in-stock product");
+
+  const res = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: plain.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "photo-plain@test.local",
+    },
+  });
+
+  assert.equal(res.status, 201, JSON.stringify(res.data));
+  assert.equal(res.data.order.items[0].image, plain.image);
+});
+
+test("the line photo survives the product's cover being replaced", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const bought = "/images/products/squeaky-bone.svg";
+  const replaced = "/images/products/puzzle-toy.svg";
+
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Photo Snapshot Test Collar",
+      description: "cover gets swapped out from under a placed order",
+      price: 7,
+      image: bought,
+      category: "accessories",
+      quantity: 3,
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201);
+  const productId = created.data.product.id;
+
+  const placed = await api("POST", "/orders", {
+    body: {
+      items: [{ productId, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupEventId: "next",
+      guestEmail: "photo-snapshot@test.local",
+    },
+  });
+  assert.equal(placed.status, 201, JSON.stringify(placed.data));
+  assert.equal(placed.data.order.items[0].image, bought);
+
+  const patched = await api("PATCH", `/admin/products/${productId}`, {
+    body: { image: replaced },
+    cookie,
+  });
+  assert.equal(patched.status, 200, JSON.stringify(patched.data));
+
+  const after = await api("GET", "/admin/orders", { cookie });
+  const line = after.data.orders
+    .find((o) => o.confirmationNumber === placed.data.order.confirmationNumber)
+    .items.find((i) => i.productId === productId);
+
+  // The order still shows what was bought...
+  assert.equal(line.image, bought);
+  // ...and the product really did move on, so the two have diverged.
+  assert.equal(line.product.image, replaced);
+});

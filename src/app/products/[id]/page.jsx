@@ -10,22 +10,33 @@ import {
   formatSelectedOptions,
   allowsMultiple,
   combinationKey,
+  pickedImageChoice,
+  isChoiceSelected,
 } from "@/lib/options";
 import StoreImage from "@/components/StoreImage";
 
-// Cover image plus any gallery extras. Clicking the photo advances to
+// The product's cover image, its gallery extras, and — when the customer
+// picks an option choice that has a thumbnail of its own — that choice's
+// photo, appended as one more entry. Clicking the big photo advances to
 // the next one; thumbnails jump straight to an image.
-function GalleryColumn({ product, imageIndex, setImageIndex }) {
-  const gallery = [product.image, ...(product.images ?? [])];
-  const current = gallery[imageIndex] ?? gallery[0];
-  const advance = () => setImageIndex((i) => (i + 1) % gallery.length);
+//
+// `photos` is [{ src, label }], where a label marks a choice's photo
+// ("Style: Plaid") and null marks one of the product's own.
+function GalleryColumn({ productName, photos, imageIndex, setImageIndex }) {
+  // The list shrinks when a choice is unpicked, so never trust the index
+  // to still be in range.
+  const index = Math.min(Math.max(imageIndex, 0), photos.length - 1);
+  const altFor = (photo, i) =>
+    photo.label
+      ? `${productName} — ${photo.label}`
+      : `${productName} — photo ${i + 1} of ${photos.length}`;
 
-  if (gallery.length <= 1) {
+  if (photos.length <= 1) {
     return (
       <div className="relative aspect-square bg-[#F5F0E8] rounded-xl overflow-hidden self-start">
         <StoreImage
-          src={product.image}
-          alt={product.name}
+          src={photos[0].src}
+          alt={productName}
           fill
           priority
           sizes="(max-width: 768px) 100vw, 50vw"
@@ -39,13 +50,13 @@ function GalleryColumn({ product, imageIndex, setImageIndex }) {
     <div className="self-start">
       <button
         type="button"
-        onClick={advance}
-        aria-label={`${product.name} photo ${imageIndex + 1} of ${gallery.length} — show next photo`}
+        onClick={() => setImageIndex((index + 1) % photos.length)}
+        aria-label={`${altFor(photos[index], index)} — show next photo`}
         className="relative block w-full aspect-square bg-[#F5F0E8] rounded-xl overflow-hidden cursor-pointer"
       >
         <StoreImage
-          src={current}
-          alt={`${product.name} — photo ${imageIndex + 1} of ${gallery.length}`}
+          src={photos[index].src}
+          alt={altFor(photos[index], index)}
           fill
           priority
           sizes="(max-width: 768px) 100vw, 50vw"
@@ -53,21 +64,25 @@ function GalleryColumn({ product, imageIndex, setImageIndex }) {
         />
       </button>
       <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-        {gallery.map((src, i) => (
+        {photos.map((photo, i) => (
           <button
-            key={`${src}-${i}`}
+            key={`${photo.src}-${i}`}
             type="button"
             onClick={() => setImageIndex(i)}
-            aria-label={`Show photo ${i + 1} of ${gallery.length}`}
-            aria-current={imageIndex === i ? "true" : undefined}
+            aria-label={
+              photo.label
+                ? `Show ${photo.label}`
+                : `Show photo ${i + 1} of ${photos.length}`
+            }
+            aria-current={index === i ? "true" : undefined}
             className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition ${
-              imageIndex === i
+              index === i
                 ? "border-[#4A7C8A]"
                 : "border-transparent opacity-70 hover:opacity-100"
             }`}
           >
             <StoreImage
-              src={src}
+              src={photo.src}
               alt=""
               width={48}
               height={48}
@@ -127,6 +142,10 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [qty, setQuantity] = useState(1);
   const [imageIndex, setImageIndex] = useState(0);
+  // The photo belonging to the option choice the customer picked most
+  // recently, or null when they haven't picked one with a photo:
+  // { choiceId, src, label }.
+  const [optionImage, setOptionImage] = useState(null);
   // { [groupId]: [choiceId, ...] }
   const [optionChoices, setOptionChoices] = useState({});
   const [optionError, setOptionError] = useState("");
@@ -136,6 +155,7 @@ export default function ProductDetailPage() {
       api.get(`/products/${id}`).then((res) => {
         setProduct(res.data.product);
         setImageIndex(0);
+        setOptionImage(null);
         setOptionChoices({});
       });
     }
@@ -150,6 +170,42 @@ export default function ProductDetailPage() {
   }
 
   const optionGroups = product.optionGroups ?? [];
+
+  // The gallery: the product's own photos, plus the picked choice's
+  // thumbnail as one extra entry. A choice photo that's already in the
+  // gallery is shown in its existing place rather than listed twice.
+  const productPhotos = [product.image, ...(product.images ?? [])];
+  const slotFor = (src) => {
+    const existing = productPhotos.indexOf(src);
+    return existing === -1 ? productPhotos.length : existing;
+  };
+  const photos = [
+    ...productPhotos.map((src) => ({ src, label: null })),
+    ...(optionImage && slotFor(optionImage.src) === productPhotos.length
+      ? [{ src: optionImage.src, label: optionImage.label }]
+      : []),
+  ];
+
+  // Picking a carousel thumbnail (or any choice with a photo) brings that
+  // photo up as the main image — the customer sees the style they chose
+  // at full size instead of at 64px. The product's own photos stay one
+  // click away in the strip beneath it.
+  const handleOptionChange = (next) => {
+    setOptionError("");
+    const picked = pickedImageChoice(optionGroups, optionChoices, next);
+    if (picked) {
+      setOptionImage(picked);
+      setImageIndex(slotFor(picked.src));
+    } else if (optionImage && !isChoiceSelected(next, optionImage.choiceId)) {
+      // Its choice was unticked, so the photo goes with it. Only the
+      // appended slot can dangle; an index into the product's own photos
+      // is still valid.
+      setOptionImage(null);
+      setImageIndex((i) => (i >= productPhotos.length ? 0 : i));
+    }
+    setOptionChoices(next);
+  };
+
   // The order API re-checks all of this; answering here just saves the
   // customer a round trip.
   const missingGroup = optionGroups.find(
@@ -228,7 +284,10 @@ export default function ProductDetailPage() {
           ? `${product.name} — ${combination.name}`
           : product.name,
         price,
-        image: product.image,
+        // The chosen style's photo, when it has one, so the cart line and
+        // the added-to-cart notice show what was actually picked rather
+        // than the generic cover shot.
+        image: optionImage?.src ?? product.image,
         options: chosenOptions.map((o) => ({
           groupId: o.groupId,
           choiceIds: o.choiceIds,
@@ -250,7 +309,8 @@ export default function ProductDetailPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
         <GalleryColumn
-          product={product}
+          productName={product.name}
+          photos={photos}
           imageIndex={imageIndex}
           setImageIndex={setImageIndex}
         />
@@ -292,10 +352,7 @@ export default function ProductDetailPage() {
           <ProductOptions
             groups={optionGroups}
             selections={optionChoices}
-            onChange={(next) => {
-              setOptionChoices(next);
-              setOptionError("");
-            }}
+            onChange={handleOptionChange}
           />
 
           {optionError && (

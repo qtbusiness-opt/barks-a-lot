@@ -139,8 +139,12 @@ export default function OrdersPage() {
               <div className="space-y-3">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-4">
+                    {/* The photo frozen onto the line at checkout — the
+                        option the customer picked, when it had one. Older
+                        orders predate the snapshot and fall back to the
+                        product's cover as it looks today. */}
                     <StoreImage
-                      src={item.product.image}
+                      src={item.image ?? item.product.image}
                       alt={item.product.name}
                       width={48}
                       height={48}
