@@ -50,6 +50,19 @@ export function formatCalendarDay(day, options) {
   }).format(new Date(`${ymd}T00:00:00Z`));
 }
 
+/** "Wednesday, Nov 4" — a pickup day at checkout, on confirmations, in emails. */
+export const formatPickupDay = (day) =>
+  formatCalendarDay(day, { weekday: "long", month: "short", day: "numeric" });
+
+/** "Wed, 11/4/2026" — a pickup day in order history, where the year matters. */
+export const formatPickupDayWithYear = (day) =>
+  formatCalendarDay(day, {
+    weekday: "short",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
+
 /** "August 2026" for a calendar heading. */
 export function formatMonth(year, month) {
   return new Intl.DateTimeFormat(STORE_LOCALE, {

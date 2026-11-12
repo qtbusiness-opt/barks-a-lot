@@ -24,7 +24,9 @@ function StatPanel({ href, icon, label, value, detail, accent }) {
             {value ?? "—"}
           </span>
         )}
-        <span className="block font-semibold text-[#4A7C8A] mt-0.5">{label}</span>
+        <span className="block font-semibold text-[#4A7C8A] mt-0.5">
+          {label}
+        </span>
         {detail && (
           <span className="block text-sm text-gray-500 mt-1">{detail}</span>
         )}
@@ -51,7 +53,12 @@ export default function AdminDashboardPage() {
   return (
     <AdminShell title="Admin Dashboard">
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6">{error}</p>
+        <p
+          role="alert"
+          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+        >
+          {error}
+        </p>
       )}
 
       <div className="space-y-4 sm:space-y-6">
@@ -80,7 +87,9 @@ export default function AdminDashboardPage() {
             label="Orders"
             value={stats?.orders.total}
             detail={
-              stats ? `${stats.orders.pending} pending fulfillment` : "View and manage orders"
+              stats
+                ? `${stats.orders.pending} pending fulfillment`
+                : "View and manage orders"
             }
           />
           <StatPanel
@@ -152,12 +161,20 @@ export default function AdminDashboardPage() {
             }
           />
           <StatPanel
-            href="/events"
+            href="/events?view=calendar"
             icon="📅"
             accent="bg-purple-500/10"
             label="Upcoming Events"
             value={stats?.upcomingEvents}
             detail="Manage markets and expos on the calendar"
+          />
+          <StatPanel
+            href="/admin/pickup"
+            icon="🏡"
+            accent="bg-teal-500/10"
+            label="Weekday Pickup"
+            value=""
+            detail="Offer Monday–Friday pickup, set pickup details and closed days"
           />
           <StatPanel
             href="/admin/users"

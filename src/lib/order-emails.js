@@ -5,7 +5,9 @@ import {
   orderItemName,
   orderItemsHtml,
 } from "@/lib/email-format";
-import { formatTimeRange } from "@/lib/pickup-window";
+import { formatTimeRange, WEEKDAY_PICKUP_FALLBACK } from "@/lib/pickup-window";
+import { formatPickupDay } from "@/lib/format-date";
+import { getWeekdayPickupSettings } from "@/lib/site-settings";
 import { logEvent } from "@/lib/log";
 
 // Order mail used to fail only into the server console, which on a hosted
@@ -53,6 +55,24 @@ function deliveryLine(order) {
   return `Shipping to ${order.address}, ${order.city}, ${order.state} ${order.zip}`;
 }
 
+// The delivery line for any order, weekday pickups included. Never throws:
+// the orders route awaits these emails inside its own try, so a settings
+// hiccup here would otherwise turn an already-charged order into a
+// "Server error" — and the customer would lose their confirmation too.
+// On failure the generic copy stands in for the owner's details.
+async function deliveryLineFor(order) {
+  if (order.fulfillmentType !== "pickup" || !order.pickupDate) {
+    return deliveryLine(order);
+  }
+  let details = "";
+  try {
+    ({ details } = await getWeekdayPickupSettings());
+  } catch {
+    // Fall back to the generic copy below.
+  }
+  return `Weekday pickup on ${formatPickupDay(order.pickupDate)} — ${details || WEEKDAY_PICKUP_FALLBACK}`;
+}
+
 function itemLines(order) {
   return order.items
     .map(
@@ -78,10 +98,11 @@ export async function sendOrderConfirmationEmail(order) {
   if (!to) return;
 
   try {
+    const delivery = await deliveryLineFor(order);
     const result = await sendEmail({
       to,
       subject: `Order confirmed — ${order.confirmationNumber}`,
-      text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}\n${deliveryLine(order)}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
+      text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}\n${delivery}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
       // The pictures matter most here: a bandana is bought by its
       // pattern, and the confirmation is the cheapest place for a
       // customer to notice they picked the wrong one. Passing html
@@ -94,7 +115,7 @@ export async function sendOrderConfirmationEmail(order) {
          <p>Confirmation number: <strong>${escapeHtml(order.confirmationNumber)}</strong></p>
          ${orderItemsHtml(order.items)}
          <hr style="border:none;border-top:1px solid #eee;margin:12px 0" />
-         ${emailParagraphs(`${totalsBlock(order)}\n${deliveryLine(order)}`)}
+         ${emailParagraphs(`${totalsBlock(order)}\n${delivery}`)}
          <p style="margin-top:12px">We'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.</p>`
       ),
     });
@@ -131,6 +152,7 @@ export async function sendAdminOrderAlert(order) {
       return;
     }
 
+    const delivery = await deliveryLineFor(order);
     const customer = order.user
       ? `${order.user.name} (${order.user.email})`
       : `${order.guestName ? `${order.guestName} — ` : ""}${order.guestEmail} (guest)`;
@@ -138,7 +160,7 @@ export async function sendAdminOrderAlert(order) {
     const result = await sendEmail({
       to,
       subject: `New order ${order.confirmationNumber} — $${order.total.toFixed(2)}`,
-      text: `A new order just came in.\n\nConfirmation number: ${order.confirmationNumber}\nCustomer: ${customer}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${deliveryLine(order)}\n\nManage it in the admin dashboard under Orders.`,
+      text: `A new order just came in.\n\nConfirmation number: ${order.confirmationNumber}\nCustomer: ${customer}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${delivery}\n\nManage it in the admin dashboard under Orders.`,
       // Deliberately not run through brandedShell: this is the internal
       // heads-up, and the shell would attach the 13KB logo to every one
       // of them to put a masthead on a note you send yourself. The
@@ -149,7 +171,7 @@ export async function sendAdminOrderAlert(order) {
         ${orderItemsHtml(order.items)}
         <hr style="border:none;border-top:1px solid #eee;margin:12px 0" />
         ${emailParagraphs(
-          `${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${deliveryLine(order)}`
+          `${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${delivery}`
         )}
         <p style="margin-top:12px">Manage it in the admin dashboard under Orders.</p>
       </div>`,
@@ -173,10 +195,11 @@ export async function sendOrderStatusEmail(order, message) {
   if (!to) return;
 
   try {
+    const delivery = await deliveryLineFor(order);
     await sendEmail({
       to,
       subject: `Order update — ${order.confirmationNumber}`,
-      text: `${message}\n\n${deliveryLine(order)}\n\nQuestions? You can reach us at info@barks-a-lot.com.`,
+      text: `${message}\n\n${delivery}\n\nQuestions? You can reach us at info@barks-a-lot.com.`,
       branded: true,
     });
   } catch (err) {

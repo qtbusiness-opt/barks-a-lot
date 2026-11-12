@@ -20,16 +20,16 @@ export default function TermsOfServicePage() {
         Terms of Service
       </h1>
       <p className="text-gray-500 mt-2">
-        Barks-A-Lot Treats &amp; More &middot; Effective Date: Aug 19, 2024
+        Barks-A-Lot Treats &amp; More &middot; Effective Date: Nov 3, 2026
       </p>
 
       <p className="mt-6 text-gray-700 leading-relaxed">
         Welcome to Barks-A-Lot Treats &amp; More (&ldquo;Barks-A-Lot,&rdquo;
-        &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;). These Terms of
-        Service (&ldquo;Terms&rdquo;) govern your use of our website and any
-        purchases made through it. By accessing our website or placing an
-        order, you agree to these Terms. If you do not agree, please do not
-        use our website.
+        &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;). These Terms
+        of Service (&ldquo;Terms&rdquo;) govern your use of our website and any
+        purchases made through it. By accessing our website or placing an order,
+        you agree to these Terms. If you do not agree, please do not use our
+        website.
       </p>
 
       <Section title="1. About Our Products">
@@ -46,14 +46,13 @@ export default function TermsOfServicePage() {
             purchasing or feeding a product.
           </li>
           <li>
-            Our products are not a substitute for veterinary advice. If your
-            pet has a medical condition, dietary restriction, or known
-            allergy, please consult your veterinarian before introducing a new
-            treat.
+            Our products are not a substitute for veterinary advice. If your pet
+            has a medical condition, dietary restriction, or known allergy,
+            please consult your veterinarian before introducing a new treat.
           </li>
           <li>
-            Product appearance, size, and color may vary slightly, as items
-            are handmade in small batches.
+            Product appearance, size, and color may vary slightly, as items are
+            handmade in small batches.
           </li>
         </ul>
       </Section>
@@ -63,12 +62,12 @@ export default function TermsOfServicePage() {
           <li>You may create an account or check out as a guest.</li>
           <li>
             If you create an account, you are responsible for maintaining the
-            confidentiality of your login credentials and for all activity
-            that occurs under your account.
+            confidentiality of your login credentials and for all activity that
+            occurs under your account.
           </li>
           <li>
-            You agree to provide accurate and current information when
-            creating an account or placing an order.
+            You agree to provide accurate and current information when creating
+            an account or placing an order.
           </li>
           <li>
             Please notify us immediately at{" "}
@@ -91,9 +90,9 @@ export default function TermsOfServicePage() {
             including in cases of suspected fraud or pricing errors.
           </li>
           <li>
-            Prices are listed in U.S. dollars and are subject to change
-            without notice. The price charged will be the price displayed at
-            the time of purchase.
+            Prices are listed in U.S. dollars and are subject to change without
+            notice. The price charged will be the price displayed at the time of
+            purchase.
           </li>
           <li>
             Payment is processed securely through our third-party payment
@@ -105,43 +104,43 @@ export default function TermsOfServicePage() {
       <Section title="4. Order Pickup">
         <ul className="list-disc pl-6 space-y-2">
           <li>
-            All online orders are fulfilled by pickup at one of our markets or
-            events. We do not offer shipping at this time.
+            All online orders are fulfilled by pickup — at one of our markets or
+            events or, when we offer it, a weekday pickup (Monday–Friday) at the
+            location described at checkout. We do not offer shipping at this
+            time.
           </li>
           <li>
-            At checkout you select the market or event where you will pick up
-            your order. Please bring your order confirmation number (from your
-            confirmation email or your account&rsquo;s orders page) to the
-            booth.
+            At checkout you choose a market or event, or a weekday pickup day.
+            Weekday pickup must be booked at least one day ahead. Please bring
+            your order confirmation number (from your confirmation email or your
+            account&rsquo;s orders page) when you pick up.
           </li>
           <li>
             We will make reasonable efforts to have your order ready at the
-            selected event. If we are unable to attend an event, we will
-            notify you and arrange pickup at another upcoming event.
+            selected event or on the selected day. If we are unable to attend an
+            event or keep a weekday pickup, we will notify you and arrange
+            another pickup.
           </li>
           <li>
-            If you are unable to attend your selected event, contact us at{" "}
+            If you are unable to pick up as scheduled, contact us at{" "}
             <a
               href="mailto:info@barks-a-lot.com"
               className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
             >
               info@barks-a-lot.com
             </a>{" "}
-            and we will arrange pickup at an upcoming event.
+            and we will arrange another pickup.
           </li>
-          <li>
-            Risk of loss and title for products pass to you upon pickup at the
-            event or market.
-          </li>
+          <li>Risk of loss and title for products pass to you upon pickup.</li>
         </ul>
       </Section>
 
       <Section title="5. Returns, Refunds, and Cancellations">
         <p>
-          <strong>Returns:</strong> Due to their perishable nature, our
-          treats and other edible products cannot be returned. All other
-          items (such as bandanas and accessories) may be returned within
-          thirty (30) days of pickup in unused condition — contact us at{" "}
+          <strong>Returns:</strong> Due to their perishable nature, our treats
+          and other edible products cannot be returned. All other items (such as
+          bandanas and accessories) may be returned within thirty (30) days of
+          pickup in unused condition — contact us at{" "}
           <a
             href="mailto:info@barks-a-lot.com"
             className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
@@ -152,8 +151,8 @@ export default function TermsOfServicePage() {
         </p>
         <p>
           <strong>Refunds:</strong> Approved returns are refunded to your
-          original payment method. Perishable items are not eligible for
-          refunds once an order has been picked up.
+          original payment method. Perishable items are not eligible for refunds
+          once an order has been picked up.
         </p>
         <p>
           <strong>Cancellations:</strong> Orders may be cancelled at any time
@@ -188,8 +187,7 @@ export default function TermsOfServicePage() {
         <p>When using our website, you agree not to:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>
-            Use the site for any unlawful purpose or in violation of these
-            Terms
+            Use the site for any unlawful purpose or in violation of these Terms
           </li>
           <li>
             Attempt to gain unauthorized access to our systems or another
@@ -203,30 +201,30 @@ export default function TermsOfServicePage() {
       <Section title="8. Disclaimer of Warranties">
         <p>
           Our website and products are provided &ldquo;as is&rdquo; without
-          warranties of any kind, express or implied, except as expressly
-          stated in these Terms. We do not guarantee that our website will be
+          warranties of any kind, express or implied, except as expressly stated
+          in these Terms. We do not guarantee that our website will be
           uninterrupted, error-free, or secure at all times.
         </p>
       </Section>
 
       <Section title="9. Limitation of Liability">
         <p>
-          To the fullest extent permitted by law, Barks-A-Lot Treats &amp;
-          More shall not be liable for any indirect, incidental, special, or
+          To the fullest extent permitted by law, Barks-A-Lot Treats &amp; More
+          shall not be liable for any indirect, incidental, special, or
           consequential damages arising out of your use of our website or
           products, including any adverse reaction by a pet to a product,
           provided the product was used as intended and in accordance with any
           provided instructions or ingredient disclosures. Our total liability
-          for any claim arising from a purchase shall not exceed the amount
-          you paid for the product giving rise to the claim.
+          for any claim arising from a purchase shall not exceed the amount you
+          paid for the product giving rise to the claim.
         </p>
       </Section>
 
       <Section title="10. Indemnification">
         <p>
-          You agree to indemnify and hold harmless Barks-A-Lot Treats &amp;
-          More from any claims, damages, or expenses arising from your
-          violation of these Terms or misuse of our website or products.
+          You agree to indemnify and hold harmless Barks-A-Lot Treats &amp; More
+          from any claims, damages, or expenses arising from your violation of
+          these Terms or misuse of our website or products.
         </p>
       </Section>
 
@@ -234,17 +232,16 @@ export default function TermsOfServicePage() {
         <p>
           These Terms are governed by the laws of the State of Idaho, without
           regard to its conflict of law principles. Any disputes arising from
-          these Terms or your use of our website shall be resolved in the
-          courts located in Idaho.
+          these Terms or your use of our website shall be resolved in the courts
+          located in Idaho.
         </p>
       </Section>
 
       <Section title="12. Changes to These Terms">
         <p>
-          We may update these Terms from time to time. Changes will be posted
-          on this page with an updated effective date. Continued use of our
-          website after changes are posted constitutes acceptance of the
-          updated Terms.
+          We may update these Terms from time to time. Changes will be posted on
+          this page with an updated effective date. Continued use of our website
+          after changes are posted constitutes acceptance of the updated Terms.
         </p>
       </Section>
 

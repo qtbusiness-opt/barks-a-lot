@@ -151,6 +151,13 @@ async function adminStock(productId) {
   return products.find((p) => p.id === productId);
 }
 
+// The store's "today" as YYYY-MM-DD, the way src/lib/pickup-window.js
+// computes it — not the test runner's clock, which is UTC in CI.
+const storeToday = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Boise" }).format(
+    new Date()
+  );
+
 test("register creates an unverified account; login is blocked until verified", async () => {
   const res = await api("POST", "/auth/register", {
     body: {
@@ -1734,11 +1741,11 @@ test("no same-day pickup — an event must be at least a day out to be reserved"
   const storeDay = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Boise",
   });
-  const now = new Date();
-  const today = storeDay.format(now);
-  const tomorrow = storeDay.format(
-    new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  );
+  const { addDays } = await import("../src/lib/calendar-days.js");
+  const today = storeDay.format(new Date());
+  // Calendar arithmetic, not +24h: on the day clocks fall back, the first
+  // hour plus 24 hours is still the same calendar day.
+  const tomorrow = addDays(today, 1);
 
   // The event must end after it starts (unrelated to the cutoff — still a
   // real validation rule).
@@ -1778,6 +1785,16 @@ test("no same-day pickup — an event must be at least a day out to be reserved"
     cookie,
   });
   assert.equal(todayEvent.status, 201);
+
+  // Today's event still counts as upcoming, all day in store time. (The
+  // cutoff used the UTC date, which drops it after ~5 PM in Boise — so on
+  // the old code this only fails in the evening; the conversion itself is
+  // pinned down in tests/calendar-days.test.mjs.)
+  const upcoming = await api("GET", "/events?upcoming=true");
+  assert.ok(
+    upcoming.data.events.some((e) => e.id === todayEvent.data.event.id),
+    "today's event is listed as upcoming"
+  );
 
   const refused = await api("POST", "/orders", {
     body: {
@@ -2634,7 +2651,9 @@ test("turning on option stock without a participating group is rejected, even se
 // matching the fallback.
 async function seededCollar() {
   const { data } = await api("GET", "/products");
-  const product = data.products.find((p) => p.name === "Classic Leather Collar");
+  const product = data.products.find(
+    (p) => p.name === "Classic Leather Collar"
+  );
   assert.ok(product, "seeded Classic Leather Collar is in the catalog");
   const size = product.optionGroups.find((g) => g.name === "Size");
   const colour = product.optionGroups.find((g) => g.name === "Colour");
@@ -2759,4 +2778,227 @@ test("the line photo survives the product's cover being replaced", async () => {
   assert.equal(line.image, bought);
   // ...and the product really did move on, so the two have diverged.
   assert.equal(line.product.image, replaced);
+});
+
+// ── Weekday pickup ─────────────────────────────────────────────────────
+// Monday–Friday pickup, never same-day, off until an admin turns it on.
+// Every test here resets the weekday_pickup_* settings when it finishes,
+// so later tests (and "next" event resolution) see the default state.
+
+async function resetWeekdayPickup(cookie) {
+  for (const key of [
+    "weekday_pickup_enabled",
+    "weekday_pickup_details",
+    "weekday_pickup_closed_days",
+  ]) {
+    await api("PATCH", "/admin/site-settings", {
+      body: { key, value: "" },
+      cookie,
+    });
+  }
+}
+
+// An always-available product with room for several orders.
+async function plainProduct() {
+  const catalog = await adminCatalog();
+  return catalog.find(
+    (p) =>
+      !p.trackOptionStock &&
+      p.quantity >= 5 &&
+      !p.limitedQuantity &&
+      !p.availableFrom &&
+      !p.availableUntil
+  );
+}
+
+test("weekday pickup is off until an admin turns it on", async () => {
+  const { weekdayPickupDays } = await import("../src/lib/calendar-days.js");
+
+  const off = await api("GET", "/pickup/weekdays");
+  assert.equal(off.status, 200);
+  assert.deepEqual(off.data, { enabled: false, details: "", days: [] });
+
+  const product = await plainProduct();
+  const refused = await api("POST", "/orders", {
+    body: {
+      items: [{ productId: product.id, quantity: 1 }],
+      fulfillmentType: "pickup",
+      pickupDate: weekdayPickupDays(storeToday())[1],
+      guestEmail: "weekday@test.local",
+    },
+  });
+  assert.equal(refused.status, 409);
+  assert.match(refused.data.error, /isn't available right now/);
+});
+
+test("weekday pickup: Mon–Fri only, never same-day, next 10 open weekdays, closed days honored", async () => {
+  const { weekdayPickupDays, addDays, isWeekday } =
+    await import("../src/lib/calendar-days.js");
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const setSetting = (key, value) =>
+    api("PATCH", "/admin/site-settings", { body: { key, value }, cookie });
+
+  try {
+    assert.equal(
+      (await setSetting("weekday_pickup_enabled", "true")).status,
+      200
+    );
+    const details = "Porch pickup in Meridian, 3–6 PM";
+    assert.equal(
+      (await setSetting("weekday_pickup_details", details)).status,
+      200
+    );
+
+    // The window is read around the request, so a store-midnight rollover
+    // mid-test can't make it disagree with either side.
+    const before = storeToday();
+    const on = await api("GET", "/pickup/weekdays");
+    const after = storeToday();
+    assert.equal(on.status, 200);
+    assert.equal(on.data.enabled, true);
+    assert.equal(on.data.details, details);
+    assert.equal(on.data.days.length, 10);
+    assert.ok(
+      [weekdayPickupDays(before), weekdayPickupDays(after)].some(
+        (w) => JSON.stringify(w) === JSON.stringify(on.data.days)
+      ),
+      `days ${JSON.stringify(on.data.days)} match the store-time window`
+    );
+    const { days } = on.data;
+    // days[1], not days[0]: still bookable if the store day rolls over.
+    const day = days[1];
+
+    const product = await plainProduct();
+    const order = (extra) =>
+      api("POST", "/orders", {
+        body: {
+          items: [{ productId: product.id, quantity: 1 }],
+          fulfillmentType: "pickup",
+          guestEmail: "weekday@test.local",
+          ...extra,
+        },
+      });
+
+    const startStock = (await adminStock(product.id)).quantity;
+    const placed = await order({ pickupDate: day });
+    assert.equal(placed.status, 201, JSON.stringify(placed.data));
+    const placedOrder = placed.data.order;
+    assert.equal(placedOrder.fulfillmentType, "pickup");
+    assert.equal(placedOrder.pickupDate, `${day}T00:00:00.000Z`);
+    assert.equal(placedOrder.pickupEventId, null);
+    assert.equal(placedOrder.pickupEvent, null);
+    assert.equal(placedOrder.address, null);
+    assert.equal((await adminStock(product.id)).quantity, startStock - 1);
+
+    // Turning weekday pickup on doesn't change event pickup.
+    const viaNext = await order({ pickupEventId: "next" });
+    assert.equal(viaNext.status, 201, JSON.stringify(viaNext.data));
+    assert.equal(viaNext.data.order.pickupEvent.title, "Farmers Market");
+    assert.equal(viaNext.data.order.pickupDate, null);
+
+    const stockBeforeRefusals = (await adminStock(product.id)).quantity;
+    let weekend = addDays(after, 1);
+    while (isWeekday(weekend)) weekend = addDays(weekend, 1);
+    // Three weeks out is past ten weekdays even after a rollover.
+    let beyond = addDays(after, 21);
+    while (!isWeekday(beyond)) beyond = addDays(beyond, 1);
+    for (const [label, pickupDate] of [
+      ["same day", storeToday()],
+      ["weekend", weekend],
+      ["beyond the window", beyond],
+      ["past", addDays(before, -1)],
+      ["not a calendar day", "2031-02-30"],
+    ]) {
+      const refused = await order({ pickupDate });
+      assert.equal(refused.status, 409, `${label}: ${pickupDate}`);
+      assert.match(refused.data.error, /pickup day isn't available/, label);
+    }
+    assert.equal(
+      (await adminStock(product.id)).quantity,
+      stockBeforeRefusals,
+      "refused orders leave stock alone"
+    );
+
+    const malformed = await order({ pickupDate: "11/04/2026" });
+    assert.equal(malformed.status, 400);
+    assert.match(malformed.data.error, /check your order details/);
+
+    const both = await order({ pickupDate: day, pickupEventId: "next" });
+    assert.equal(both.status, 400);
+    assert.match(both.data.error, /not both/);
+
+    // A closed day drops out; the window still offers 10 open days.
+    assert.equal(
+      (await setSetting("weekday_pickup_closed_days", days[2])).status,
+      200
+    );
+    const closed = await api("GET", "/pickup/weekdays");
+    assert.ok(!closed.data.days.includes(days[2]), "closed day is hidden");
+    assert.equal(closed.data.days.length, 10);
+    const onClosedDay = await order({ pickupDate: days[2] });
+    assert.equal(onClosedDay.status, 409);
+    assert.equal(
+      (await setSetting("weekday_pickup_closed_days", "")).status,
+      200
+    );
+
+    // Admins see the day on the order.
+    const adminOrders = await api("GET", "/admin/orders", { cookie });
+    const listed = adminOrders.data.orders.find((o) => o.id === placedOrder.id);
+    assert.equal(listed.pickupDate, `${day}T00:00:00.000Z`);
+
+    // Switching it off closes it again; the details stay for placed orders.
+    assert.equal((await setSetting("weekday_pickup_enabled", "")).status, 200);
+    const offAgain = await api("GET", "/pickup/weekdays");
+    assert.deepEqual(offAgain.data, { enabled: false, details, days: [] });
+    const refusedOff = await order({ pickupDate: day });
+    assert.equal(refusedOff.status, 409);
+  } finally {
+    await resetWeekdayPickup(cookie);
+  }
+});
+
+// ── Events list ────────────────────────────────────────────────────────
+
+test("events page lists upcoming events by month; the calendar is one click away", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const today = storeToday();
+  const created = [];
+  const createEvent = async (title, date) => {
+    const res = await api("POST", "/admin/events", {
+      body: { title, description: "events list test", date },
+      cookie,
+    });
+    assert.equal(res.status, 201, JSON.stringify(res.data));
+    created.push(res.data.event.id);
+  };
+
+  try {
+    await createEvent("List Today", today);
+    await createEvent("List Far", "2031-03-14");
+
+    const html = await (await fetch(`${BASE}/events`)).text();
+    const tag = (month) =>
+      html.match(new RegExp(`<details[^>]*data-month="${month}"[^>]*>`))?.[0];
+
+    // The list is the default view now, not the calendar.
+    assert.ok(!html.includes('aria-label="Previous month"'), "no calendar");
+    assert.ok(tag(today.slice(0, 7))?.includes('open=""'), "this month open");
+    const far = tag("2031-03");
+    assert.ok(far, "far month listed");
+    assert.ok(!far.includes('open=""'), "far month collapsed");
+    assert.ok(html.includes(`href="/events/${today}"`));
+    assert.ok(html.includes('href="/events/2031-03-14"'));
+    assert.match(html, />Calendar view</);
+    assert.ok(html.includes('href="/events?view=calendar"'));
+
+    const cal = await (await fetch(`${BASE}/events?view=calendar`)).text();
+    assert.ok(cal.includes('aria-label="Previous month"'), "calendar shown");
+    assert.match(cal, />List view</);
+    assert.ok(!cal.includes("data-month="), "no list");
+  } finally {
+    for (const id of created) {
+      await api("DELETE", `/admin/events/${id}`, { cookie });
+    }
+  }
 });

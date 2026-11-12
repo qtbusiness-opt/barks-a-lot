@@ -206,11 +206,17 @@ model Order {
   // "online" (web checkout) | "market" (in-person sale recorded after the
   // fact) — one inventory ledger across both sales channels.
   channel            String      @default("online")
-  // "shipping" | "pickup" — pickup orders (markets/expos) need no address.
+  // "shipping" | "pickup" — pickup orders (at a market/expo, or a weekday
+  // pickup) need no address.
   fulfillmentType    String      @default("shipping")
   // The market/expo the customer chose to pick up at.
   pickupEventId      String?
   pickupEvent        Event?      @relation(fields: [pickupEventId], references: [id])
+  // Weekday pickup (Mon–Fri) instead of an event: the calendar day chosen,
+  // stored as midnight UTC like Event.date and compared by YYYY-MM-DD key.
+  // At most one of pickupEventId / pickupDate is set (the orders API
+  // rejects both). Null on every order placed before this column existed.
+  pickupDate         DateTime?
   total              Float
   // Square payment id for the charge — the only payment detail we store
   // (never card numbers). Null when payments aren't configured (dev) or
