@@ -6,3 +6,11 @@
 // flip it to true to bring shipping back. Nothing was removed, only
 // parked behind this flag.
 export const SHIPPING_ENABLED = false;
+
+// EVENT_PICKUP_ENABLED gates reserving an order for collection at a
+// market or event — the "Next Event" / "Choose Event" options at checkout
+// and pickupEventId on the orders API. Off: orders are collected by
+// scheduled pickup only (a day and half-hour slot), and event days are
+// blocked out of the pickup days instead. Parked, not removed, the same
+// way shipping is.
+export const EVENT_PICKUP_ENABLED = false;

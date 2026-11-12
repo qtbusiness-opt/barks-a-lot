@@ -6,17 +6,22 @@ import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
 import { useAsyncAction } from "@/lib/use-async-action";
 import {
-  WEEKDAY_PICKUP_ENABLED,
-  WEEKDAY_PICKUP_DETAILS,
-  WEEKDAY_PICKUP_CLOSED_DAYS,
+  PICKUP_ENABLED,
+  PICKUP_DETAILS,
+  PICKUP_CLOSED_DAYS,
+  PICKUP_HOURS_START,
+  PICKUP_HOURS_END,
   MAX_CLOSED_DAYS,
 } from "@/lib/setting-keys";
 import {
-  isWeekday,
+  isPickupWeekday,
   parseClosedDays,
   pruneClosedDays,
+  pickupHours,
+  pickupSlots,
+  SLOT_CAPACITY,
 } from "@/lib/calendar-days";
-import { dayKeyOf } from "@/lib/pickup-window";
+import { dayKeyOf, formatTime } from "@/lib/pickup-window";
 import { formatPickupDay } from "@/lib/format-date";
 
 const inputClass =
@@ -24,9 +29,78 @@ const inputClass =
 const buttonClass =
   "min-h-11 px-4 rounded-lg font-semibold text-white bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] transition disabled:opacity-50 disabled:cursor-not-allowed";
 
-// Weekday pickup settings: the on/off switch, the where/when text shown
-// to customers, and the days the owner is unavailable. Stored as site
-// settings through the generic, admin-only settings route.
+// Every half hour of the day, for the opening/closing pickers.
+const HALF_HOURS = pickupSlots("00:00", "24:00");
+
+// Pickup settings: the on/off switch, the hours slots are offered in, the
+// where-to-collect text shown to customers, and the days the owner is
+// unavailable. Stored as site settings through the generic, admin-only
+// settings route.
+// Opening and closing time for pickup slots, saved as soon as either
+// changes.
+function PickupHoursCard({ hours, saving, onChange }) {
+  const slots = pickupSlots(hours.start, hours.end);
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+      <h2 className="font-semibold text-[#2A4A52]">Pickup hours</h2>
+      <p className="text-sm text-gray-500 mt-1 mb-3">
+        The same hours apply Monday through Saturday. Customers book a 30-minute
+        slot, and each slot takes up to {SLOT_CAPACITY} orders — right now
+        that&rsquo;s {slots.length} slot
+        {slots.length === 1 ? "" : "s"} a day, the last starting at{" "}
+        {formatTime(slots.at(-1))}.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label
+            htmlFor="pickup-opens"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Opens
+          </label>
+          <select
+            id="pickup-opens"
+            value={hours.start}
+            disabled={saving}
+            onChange={(e) => onChange(e.target.value, hours.end)}
+            className={inputClass}
+          >
+            {HALF_HOURS.map((time) => (
+              <option key={time} value={time}>
+                {formatTime(time)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label
+            htmlFor="pickup-closes"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Closes
+          </label>
+          <select
+            id="pickup-closes"
+            value={hours.end}
+            disabled={saving}
+            onChange={(e) => onChange(hours.start, e.target.value)}
+            className={inputClass}
+          >
+            {HALF_HOURS.slice(1).map((time) => (
+              <option key={time} value={time}>
+                {formatTime(time)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <p className="text-xs text-gray-500 mt-2">
+        Changing hours doesn&rsquo;t move orders already booked.
+      </p>
+    </div>
+  );
+}
+
 export default function AdminPickupPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -42,9 +116,9 @@ export default function AdminPickupPage() {
         .get("/admin/site-settings")
         .then((res) => {
           setSettings(res.data.settings);
-          setDetails(res.data.settings[WEEKDAY_PICKUP_DETAILS] ?? "");
+          setDetails(res.data.settings[PICKUP_DETAILS] ?? "");
         })
-        .catch(() => setError("Failed to load the weekday pickup settings."));
+        .catch(() => setError("Failed to load the pickup settings."));
     }
   }, [isAdmin]);
 
@@ -68,11 +142,31 @@ export default function AdminPickupPage() {
     }
   });
 
-  const enabled = settings?.[WEEKDAY_PICKUP_ENABLED] === "true";
-  const closedDays = parseClosedDays(settings?.[WEEKDAY_PICKUP_CLOSED_DAYS]);
+  const enabled = settings?.[PICKUP_ENABLED] === "true";
+  const closedDays = parseClosedDays(settings?.[PICKUP_CLOSED_DAYS]);
+
+  const hours = pickupHours(
+    settings?.[PICKUP_HOURS_START],
+    settings?.[PICKUP_HOURS_END]
+  );
+
+  // Hours are two settings saved one at a time, so both are always written:
+  // a lone value would pair with nothing and the server would fall back to
+  // the default hours.
+  const saveHours = async (start, end) => {
+    if (start >= end) {
+      setNotice("");
+      setError("Closing time has to be after opening time.");
+      return;
+    }
+    const doneNotice = `Pickup hours are ${formatTime(start)} – ${formatTime(end)}.`;
+    if (await save(PICKUP_HOURS_START, start, doneNotice)) {
+      await save(PICKUP_HOURS_END, end, doneNotice);
+    }
+  };
 
   const saveClosedDays = (days, doneNotice) =>
-    save(WEEKDAY_PICKUP_CLOSED_DAYS, days.join(","), doneNotice);
+    save(PICKUP_CLOSED_DAYS, days.join(","), doneNotice);
 
   const addClosedDay = async (e) => {
     e.preventDefault();
@@ -83,8 +177,8 @@ export default function AdminPickupPage() {
       setError("Pick a day after today.");
       return;
     }
-    if (!isWeekday(closeDay)) {
-      setError("Weekends are already closed — pick a weekday.");
+    if (!isPickupWeekday(closeDay)) {
+      setError("Sundays are already closed — pick another day.");
       return;
     }
     const next = pruneClosedDays(
@@ -112,10 +206,10 @@ export default function AdminPickupPage() {
     );
 
   return (
-    <AdminShell title="Weekday Pickup" backTo="/admin">
+    <AdminShell title="Pickup" backTo="/admin">
       <p className="text-sm text-gray-500 mb-6 -mt-4">
-        Let customers collect their order on a weekday instead of at a market or
-        event.
+        How customers collect online orders: a pickup day (Monday–Saturday) and
+        a 30-minute time slot.
       </p>
 
       {error && (
@@ -147,27 +241,29 @@ export default function AdminPickupPage() {
                 disabled={saving}
                 onChange={(e) =>
                   save(
-                    WEEKDAY_PICKUP_ENABLED,
+                    PICKUP_ENABLED,
                     e.target.checked ? "true" : "",
-                    e.target.checked
-                      ? "Weekday pickup is on."
-                      : "Weekday pickup is off."
+                    e.target.checked ? "Pickup is on." : "Pickup is off."
                   )
                 }
                 className="h-5 w-5 accent-[#4A7C8A]"
               />
-              Offer weekday pickup at checkout
+              Offer pickup at checkout
             </label>
             <p className="text-sm text-gray-500 mt-2">
-              Customers can choose from the next 10 open weekdays
-              (Monday–Friday), starting the day after they order.
+              Customers choose from the next 10 open days (Monday–Saturday),
+              starting the day after they order. Sundays, closed days and any
+              day with an event on the calendar are skipped automatically. While
+              this is off, online orders can&rsquo;t be placed.
             </p>
           </div>
+
+          <PickupHoursCard hours={hours} saving={saving} onChange={saveHours} />
 
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              save(WEEKDAY_PICKUP_DETAILS, details, "Pickup details saved.");
+              save(PICKUP_DETAILS, details, "Pickup details saved.");
             }}
             className="bg-white rounded-xl shadow-sm p-4 sm:p-6"
           >
@@ -178,8 +274,8 @@ export default function AdminPickupPage() {
               Pickup details shown to customers
             </label>
             <p className="text-sm text-gray-500 mb-3">
-              Where and when to collect — e.g. &ldquo;Porch pickup in Meridian,
-              3–6 PM.&rdquo; Shown at checkout, in My Orders and in order
+              Where to collect — e.g. &ldquo;Porch pickup at 123 Main St,
+              Meridian.&rdquo; Shown at checkout, in My Orders and in order
               emails. Anyone can see it at checkout, so leave out anything you
               don&rsquo;t want public.
             </p>
@@ -204,8 +300,10 @@ export default function AdminPickupPage() {
             <h2 className="font-semibold text-[#2A4A52]">Closed days</h2>
             <p className="text-sm text-gray-500 mt-1 mb-3">
               Closed days never appear at checkout; customers still get 10 open
-              weekdays to choose from. Closing a day doesn&rsquo;t change orders
-              already booked for it — check Orders for those.
+              days to choose from. Event days are blocked automatically, so
+              there&rsquo;s no need to add them here. Closing a day (or adding
+              an event) doesn&rsquo;t change orders already booked for it —
+              check Orders for those.
             </p>
             <form
               onSubmit={addClosedDay}

@@ -172,9 +172,9 @@ export default function AdminDashboardPage() {
             href="/admin/pickup"
             icon="🏡"
             accent="bg-teal-500/10"
-            label="Weekday Pickup"
+            label="Pickup"
             value=""
-            detail="Offer Monday–Friday pickup, set pickup details and closed days"
+            detail="Turn pickup on or off, set hours, details and closed days"
           />
           <StatPanel
             href="/admin/users"

@@ -73,6 +73,15 @@ before(async () => {
   });
   execSync("node prisma/seed.js", { env, stdio: "pipe" });
 
+  // Every order is collected by scheduled pickup, which ships switched
+  // off. Turn it on for the run; the tests about the switch itself put it
+  // back on when they finish.
+  const seeded = new PrismaClient({ datasourceUrl: dbUrl });
+  await seeded.siteSetting.create({
+    data: { key: "weekday_pickup_enabled", value: "true" },
+  });
+  await seeded.$disconnect();
+
   // stdio must be drained or ignored — an unread pipe fills up and blocks
   // the dev server mid-boot.
   // Spawn the next binary directly (not via npx) so server.pid is the
@@ -149,6 +158,18 @@ async function adminCatalog() {
 async function adminStock(productId) {
   const products = await adminCatalog();
   return products.find((p) => p.id === productId);
+}
+
+// A bookable pickup day and slot, as the server is offering right now —
+// spread into an order body. Always the first slot with room, so tests
+// fill slots in order and move on by themselves when one is full.
+async function pickup() {
+  const res = await api("GET", "/pickup/days");
+  for (const { day, slots } of res.data.days) {
+    const open = slots.find((slot) => slot.available);
+    if (open) return { pickupDate: day, pickupTime: open.time };
+  }
+  throw new Error("no pickup slot available");
 }
 
 // The store's "today" as YYYY-MM-DD, the way src/lib/pickup-window.js
@@ -261,7 +282,7 @@ test("guest pickup order succeeds without address and decrements stock", async (
     body: {
       items: [{ productId: product.id, quantity: 2 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "guest@test.local",
     },
   });
@@ -300,7 +321,7 @@ test("ordering more than available stock is rejected and nothing is written", as
     body: {
       items: [{ productId: product.id, quantity: product.quantity + 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "guest@test.local",
     },
   });
@@ -323,7 +344,7 @@ test("logged-in customer order is linked to the account", async () => {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
     },
     cookie,
   });
@@ -383,7 +404,7 @@ test("trackOptionStock products price and decrement by the chosen combination", 
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "guest@test.local",
     },
   });
@@ -412,7 +433,7 @@ test("trackOptionStock products price and decrement by the chosen combination", 
     body: {
       items: [{ productId: product.id, quantity: 2, options }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "guest@test.local",
     },
   });
@@ -443,7 +464,7 @@ test("trackOptionStock products price and decrement by the chosen combination", 
         },
       ],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "guest@test.local",
     },
   });
@@ -469,7 +490,7 @@ test("trackOptionStock products price and decrement by the chosen combination", 
           { productId: product.id, quantity: 1, options: foreignOptions },
         ],
         fulfillmentType: "pickup",
-        pickupEventId: "next",
+        ...(await pickup()),
         guestEmail: "guest@test.local",
       },
     });
@@ -530,7 +551,7 @@ test("expired limited drops are hidden and cannot be purchased", async () => {
     body: {
       items: [{ productId: expired.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "guest@test.local",
     },
   });
@@ -691,7 +712,7 @@ test("status changes record a notification tied to the order email", async () =>
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: email,
     },
   });
@@ -848,7 +869,7 @@ test("product deletion works but is blocked by order history", async () => {
     body: {
       items: [{ productId: orderedId, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "history@test.local",
     },
   });
@@ -943,61 +964,44 @@ test("events: admin CRUD, public read-only calendar queries", async () => {
   assert.equal(gone.data.events.length, 0);
 });
 
-test("pickup orders require an event; Next Event resolves to the nearest selectable event", async () => {
+test("orders are collected by scheduled pickup; reserving for an event is retired", async () => {
   const catalog = await adminCatalog();
   const product = catalog.find((p) => !p.trackOptionStock && p.quantity >= 2);
+  const order = (extra) =>
+    api("POST", "/orders", {
+      body: {
+        items: [{ productId: product.id, quantity: 1 }],
+        fulfillmentType: "pickup",
+        guestEmail: "pickup@test.local",
+        ...extra,
+      },
+    });
 
-  // Upcoming endpoint lists the seeded events for the dropdown.
+  // Pickup with nothing chosen is rejected.
+  const nothing = await order({});
+  assert.equal(nothing.status, 400);
+  assert.match(nothing.data.error, /pickup day and time/);
+
+  // The event options are gone: neither "next" nor a real event id works.
+  const viaNext = await order({ pickupEventId: "next" });
+  assert.equal(viaNext.status, 400);
+  assert.match(viaNext.data.error, /Event pickup isn't available/);
   const upcoming = await api("GET", "/events?upcoming=true");
-  assert.equal(upcoming.status, 200);
-  assert.ok(upcoming.data.events.length >= 2);
-
-  // Pickup without an event is rejected.
-  const noEvent = await api("POST", "/orders", {
-    body: {
-      items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "pickup",
-      guestEmail: "pickup@test.local",
-    },
-  });
-  assert.equal(noEvent.status, 400);
-
-  // "next" resolves server-side to the nearest event still open for
-  // pickup: the seeded Farmers Market, 3 days out.
-  const nextOrder = await api("POST", "/orders", {
-    body: {
-      items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "pickup",
-      pickupEventId: "next",
-      guestEmail: "pickup@test.local",
-    },
-  });
-  assert.equal(nextOrder.status, 201);
-  assert.equal(nextOrder.data.order.pickupEvent.title, "Farmers Market");
-
-  // An explicit event id is honored.
   const expo = upcoming.data.events.find((e) => e.title === "Pet Expo");
-  const explicit = await api("POST", "/orders", {
-    body: {
-      items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "pickup",
-      pickupEventId: expo.id,
-      guestEmail: "pickup@test.local",
-    },
-  });
-  assert.equal(explicit.status, 201);
-  assert.equal(explicit.data.order.pickupEvent.id, expo.id);
+  const explicit = await order({ pickupEventId: expo.id });
+  assert.equal(explicit.status, 400);
 
-  // A bogus event id is rejected.
-  const bogus = await api("POST", "/orders", {
-    body: {
-      items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "pickup",
-      pickupEventId: "not-a-real-event",
-      guestEmail: "pickup@test.local",
-    },
-  });
-  assert.equal(bogus.status, 409);
+  // A day needs a time with it.
+  const { pickupDate, pickupTime } = await pickup();
+  const dayOnly = await order({ pickupDate });
+  assert.equal(dayOnly.status, 400);
+  assert.match(dayOnly.data.error, /pickup time/);
+
+  const placed = await order({ pickupDate, pickupTime });
+  assert.equal(placed.status, 201, JSON.stringify(placed.data));
+  assert.equal(placed.data.order.pickupDate, `${pickupDate}T00:00:00.000Z`);
+  assert.equal(placed.data.order.pickupTime, pickupTime);
+  assert.equal(placed.data.order.pickupEvent, null);
 });
 
 test("image uploads are admin-only, stored, and served back", async () => {
@@ -1269,10 +1273,11 @@ test("product option groups round-trip and are enforced at checkout", async () =
 
   const sizeGroup = groups[0];
   const addOns = groups[1];
+  const optionsSlot = await pickup();
   const order = (options) => ({
     items: [{ productId, quantity: 1, ...(options ? { options } : {}) }],
     fulfillmentType: "pickup",
-    pickupEventId: "next",
+    ...optionsSlot,
     guestEmail: "options@test.local",
     guestName: "Options Tester",
   });
@@ -1396,7 +1401,7 @@ test("admins can look up customers, send resets, and delete accounts", async () 
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
     },
     cookie: customerCookie,
   });
@@ -1470,7 +1475,7 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       address: "77 Book St",
       city: "Meridian",
       state: "ID",
@@ -1496,7 +1501,7 @@ test("profile: name edit, order summary; no addresses recorded while pickup-only
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
     },
     cookie,
   });
@@ -1530,7 +1535,7 @@ test("customer can cancel an order until pickup; stock is restored", async () =>
     body: {
       items: [{ productId: product.id, quantity: 2 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
     },
     cookie,
   });
@@ -1588,7 +1593,7 @@ test("picked-up orders can't be cancelled by the customer", async () => {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
     },
     cookie,
   });
@@ -1646,7 +1651,7 @@ test("the Refunded tag is rejected on orders that aren't picked up", async () =>
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "refundtag@test.local",
     },
   });
@@ -1668,7 +1673,7 @@ test("admin cancellation of an active order restores stock", async () => {
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "cancel-restock@test.local",
     },
   });
@@ -1705,7 +1710,7 @@ test("customers can delete their own account; orders survive as guest records", 
     body: {
       items: [{ productId: product.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
     },
     cookie,
   });
@@ -1733,119 +1738,94 @@ test("customers can delete their own account; orders survive as guest records", 
   assert.equal(kept.guestEmail, "selfdelete@test.local");
 });
 
-test("no same-day pickup — an event must be at least a day out to be reserved", async () => {
-  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
-  // Store-timezone day keys, the same way src/lib/pickup-window.js computes
-  // "today" — not the test runner's own local time, which is UTC in CI and
-  // would silently mis-place these dates around the Boise/UTC day boundary.
-  const storeDay = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Boise",
-  });
+test("events take priority: a day with an event is blocked out of pickup", async () => {
   const { addDays } = await import("../src/lib/calendar-days.js");
-  const today = storeDay.format(new Date());
-  // Calendar arithmetic, not +24h: on the day clocks fall back, the first
-  // hour plus 24 hours is still the same calendar day.
-  const tomorrow = addDays(today, 1);
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const today = storeToday();
+  const created = [];
+  const createEvent = async (body) => {
+    const res = await api("POST", "/admin/events", { body, cookie });
+    if (res.status === 201) created.push(res.data.event.id);
+    return res;
+  };
 
-  // The event must end after it starts (unrelated to the cutoff — still a
-  // real validation rule).
-  const badTimes = await api("POST", "/admin/events", {
-    body: {
+  try {
+    // The event must end after it starts (still a real validation rule).
+    const badTimes = await createEvent({
       title: "Backwards Event",
       description: "end before start",
       date: today,
       startTime: "14:00",
       endTime: "09:00",
-    },
-    cookie,
-  });
-  assert.equal(badTimes.status, 400);
+    });
+    assert.equal(badTimes.status, 400);
 
-  // Needs two units — this test places up to two orders. The admin catalog
-  // also lists expired drops, so stick to always-available items.
-  const catalog = await adminCatalog();
-  const product = catalog.find(
-    (p) =>
-      !p.trackOptionStock &&
-      p.quantity >= 5 &&
-      !p.limitedQuantity &&
-      !p.availableFrom &&
-      !p.availableUntil
-  );
-
-  // A same-day event, regardless of what time it ends, can't be reserved.
-  const todayEvent = await api("POST", "/admin/events", {
-    body: {
+    // Today's event still counts as upcoming, all day in store time. (The
+    // cutoff used the UTC date, which drops it after ~5 PM in Boise — so
+    // on the old code this only fails in the evening; the conversion
+    // itself is pinned down in tests/calendar-days.test.mjs.)
+    const todayEvent = await createEvent({
       title: "Today's Market",
       description: "happening right now",
       date: today,
-      startTime: "00:00",
-      endTime: "23:59",
-    },
-    cookie,
-  });
-  assert.equal(todayEvent.status, 201);
+    });
+    assert.equal(todayEvent.status, 201);
+    const upcoming = await api("GET", "/events?upcoming=true");
+    assert.ok(
+      upcoming.data.events.some((e) => e.id === todayEvent.data.event.id),
+      "today's event is listed as upcoming"
+    );
 
-  // Today's event still counts as upcoming, all day in store time. (The
-  // cutoff used the UTC date, which drops it after ~5 PM in Boise — so on
-  // the old code this only fails in the evening; the conversion itself is
-  // pinned down in tests/calendar-days.test.mjs.)
-  const upcoming = await api("GET", "/events?upcoming=true");
-  assert.ok(
-    upcoming.data.events.some((e) => e.id === todayEvent.data.event.id),
-    "today's event is listed as upcoming"
-  );
+    // The seeded Farmers Market (3 days out) and Pet Expo (12 days out)
+    // already keep their days off the list.
+    const before = await api("GET", "/pickup/days");
+    const offered = before.data.days.map((d) => d.day);
+    assert.equal(offered.length, 10);
+    for (const e of upcoming.data.events) {
+      assert.ok(!offered.includes(e.date.slice(0, 10)), `${e.title} day`);
+    }
 
-  const refused = await api("POST", "/orders", {
-    body: {
-      items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "pickup",
-      pickupEventId: todayEvent.data.event.id,
-      guestEmail: "cutoff@test.local",
-    },
-  });
-  assert.equal(refused.status, 409);
+    // Scheduling an event on a bookable day takes that day away, and the
+    // window still offers 10 days.
+    const target = offered.find((day) => day > addDays(today, 1));
+    const product = await plainProduct();
+    const order = (extra) =>
+      api("POST", "/orders", {
+        body: {
+          items: [{ productId: product.id, quantity: 1 }],
+          fulfillmentType: "pickup",
+          guestEmail: "blackout@test.local",
+          ...extra,
+        },
+      });
+    const slot = before.data.days.find((d) => d.day === target).slots[0].time;
+    const bookedFirst = await order({ pickupDate: target, pickupTime: slot });
+    assert.equal(bookedFirst.status, 201, JSON.stringify(bookedFirst.data));
 
-  // An event dated tomorrow can be reserved.
-  const tomorrowEvent = await api("POST", "/admin/events", {
-    body: {
-      title: "Tomorrow's Market",
-      description: "one day out",
-      date: tomorrow,
-      startTime: "09:00",
-      endTime: "14:00",
-    },
-    cookie,
-  });
-  assert.equal(tomorrowEvent.status, 201);
+    const popUp = await createEvent({
+      title: "Pop-up Market",
+      description: "scheduled over a pickup day",
+      date: target,
+    });
+    assert.equal(popUp.status, 201);
 
-  const manual = await api("POST", "/orders", {
-    body: {
-      items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "pickup",
-      pickupEventId: tomorrowEvent.data.event.id,
-      guestEmail: "cutoff@test.local",
-    },
-  });
-  assert.equal(manual.status, 201);
+    const after = await api("GET", "/pickup/days");
+    const nowOffered = after.data.days.map((d) => d.day);
+    assert.ok(!nowOffered.includes(target), "event day is blocked");
+    assert.equal(nowOffered.length, 10);
+    const refused = await order({ pickupDate: target, pickupTime: slot });
+    assert.equal(refused.status, 409);
+    assert.match(refused.data.error, /pickup day isn't available/);
 
-  // "next" skips today's event entirely and resolves to tomorrow's.
-  const viaNext = await api("POST", "/orders", {
-    body: {
-      items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "pickup",
-      pickupEventId: "next",
-      guestEmail: "cutoff@test.local",
-    },
-  });
-  assert.equal(viaNext.status, 201, JSON.stringify(viaNext.data));
-  assert.equal(viaNext.data.order.pickupEvent.id, tomorrowEvent.data.event.id);
-
-  // Clean up so later tests' "next" stays deterministic.
-  await api("DELETE", `/admin/events/${tomorrowEvent.data.event.id}`, {
-    cookie,
-  });
-  await api("DELETE", `/admin/events/${todayEvent.data.event.id}`, { cookie });
+    // Removing the event gives the day back.
+    await api("DELETE", `/admin/events/${created.pop()}`, { cookie });
+    const restored = await api("GET", "/pickup/days");
+    assert.ok(restored.data.days.some((d) => d.day === target));
+  } finally {
+    for (const id of created) {
+      await api("DELETE", `/admin/events/${id}`, { cookie });
+    }
+  }
 });
 
 test("admin manages categories; storefront lists and products follow", async () => {
@@ -2144,7 +2124,7 @@ test("promotions: admin CRUD, code + bundle discounts, and server-authoritative 
     body: {
       items: cartItems,
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "promo@test.local",
       promoCode: "SAVE10",
     },
@@ -2260,7 +2240,7 @@ test("stacking rules: bundles stack without limit; only one discount code applie
     body: {
       items: fourUnits,
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "stack@test.local",
       promoCode: "TWENTYOFF",
     },
@@ -2539,7 +2519,7 @@ test("two order lines for the identical combination decrement cumulatively, not 
         { productId: product.id, quantity: half, options },
       ],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "double-line@test.local",
     },
   });
@@ -2566,7 +2546,7 @@ test("two order lines for the identical combination decrement cumulatively, not 
         { productId: product.id, quantity: 1, options },
       ],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "double-line@test.local",
     },
   });
@@ -2661,10 +2641,10 @@ async function seededCollar() {
   return { product, size, colour };
 }
 
-const collarOrder = (product, answers, extra = {}) => ({
+const collarOrder = async (product, answers, extra = {}) => ({
   items: [{ productId: product.id, quantity: 1, options: answers, ...extra }],
   fulfillmentType: "pickup",
-  pickupEventId: "next",
+  ...(await pickup()),
   guestEmail: "photo@test.local",
 });
 
@@ -2678,7 +2658,7 @@ test("an order line keeps the chosen option's photo, not the product cover", asy
   );
 
   const res = await api("POST", "/orders", {
-    body: collarOrder(product, [
+    body: await collarOrder(product, [
       { groupId: size.id, choiceIds: [size.choices[0].id] },
       { groupId: colour.id, choiceIds: [black.id] },
     ]),
@@ -2696,7 +2676,7 @@ test("a photo sent with the order is ignored in favour of the stored choice", as
   const chestnut = colour.choices.find((c) => c.label === "Chestnut");
 
   const res = await api("POST", "/orders", {
-    body: collarOrder(
+    body: await collarOrder(
       product,
       [
         { groupId: size.id, choiceIds: [size.choices[0].id] },
@@ -2724,7 +2704,7 @@ test("a line with nothing to choose falls back to the product cover", async () =
     body: {
       items: [{ productId: plain.id, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "photo-plain@test.local",
     },
   });
@@ -2756,7 +2736,7 @@ test("the line photo survives the product's cover being replaced", async () => {
     body: {
       items: [{ productId, quantity: 1 }],
       fulfillmentType: "pickup",
-      pickupEventId: "next",
+      ...(await pickup()),
       guestEmail: "photo-snapshot@test.local",
     },
   });
@@ -2780,19 +2760,21 @@ test("the line photo survives the product's cover being replaced", async () => {
   assert.equal(line.product.image, replaced);
 });
 
-// ── Weekday pickup ─────────────────────────────────────────────────────
-// Monday–Friday pickup, never same-day, off until an admin turns it on.
-// Every test here resets the weekday_pickup_* settings when it finishes,
-// so later tests (and "next" event resolution) see the default state.
+// ── Scheduled pickup ───────────────────────────────────────────────────
+// Monday–Saturday pickup in 30-minute slots, never same-day. The run has
+// it switched on (see before()); tests that change the pickup settings
+// put them back when they finish.
 
-async function resetWeekdayPickup(cookie) {
-  for (const key of [
-    "weekday_pickup_enabled",
-    "weekday_pickup_details",
-    "weekday_pickup_closed_days",
+async function resetPickup(cookie) {
+  for (const [key, value] of [
+    ["weekday_pickup_enabled", "true"],
+    ["weekday_pickup_details", ""],
+    ["weekday_pickup_closed_days", ""],
+    ["pickup_hours_start", ""],
+    ["pickup_hours_end", ""],
   ]) {
     await api("PATCH", "/admin/site-settings", {
-      body: { key, value: "" },
+      body: { key, value },
       cookie,
     });
   }
@@ -2804,158 +2786,258 @@ async function plainProduct() {
   return catalog.find(
     (p) =>
       !p.trackOptionStock &&
-      p.quantity >= 5 &&
+      p.quantity >= 8 &&
       !p.limitedQuantity &&
       !p.availableFrom &&
       !p.availableUntil
   );
 }
 
-test("weekday pickup is off until an admin turns it on", async () => {
-  const { weekdayPickupDays } = await import("../src/lib/calendar-days.js");
+test("pickup can be switched off, and then no order can be placed", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  try {
+    const slot = await pickup();
+    const off = await api("PATCH", "/admin/site-settings", {
+      body: { key: "weekday_pickup_enabled", value: "" },
+      cookie,
+    });
+    assert.equal(off.status, 200);
 
-  const off = await api("GET", "/pickup/weekdays");
-  assert.equal(off.status, 200);
-  assert.deepEqual(off.data, { enabled: false, details: "", days: [] });
+    const days = await api("GET", "/pickup/days");
+    assert.equal(days.status, 200);
+    assert.deepEqual(days.data, { enabled: false, details: "", days: [] });
 
-  const product = await plainProduct();
-  const refused = await api("POST", "/orders", {
-    body: {
-      items: [{ productId: product.id, quantity: 1 }],
-      fulfillmentType: "pickup",
-      pickupDate: weekdayPickupDays(storeToday())[1],
-      guestEmail: "weekday@test.local",
-    },
-  });
-  assert.equal(refused.status, 409);
-  assert.match(refused.data.error, /isn't available right now/);
+    const product = await plainProduct();
+    const refused = await api("POST", "/orders", {
+      body: {
+        items: [{ productId: product.id, quantity: 1 }],
+        fulfillmentType: "pickup",
+        ...slot,
+        guestEmail: "pickup-off@test.local",
+      },
+    });
+    assert.equal(refused.status, 409);
+    assert.match(refused.data.error, /isn't available right now/);
+  } finally {
+    await resetPickup(cookie);
+  }
 });
 
-test("weekday pickup: Mon–Fri only, never same-day, next 10 open weekdays, closed days honored", async () => {
-  const { weekdayPickupDays, addDays, isWeekday } =
+test("pickup days: Monday–Saturday, never same-day, 10 open days, closed days honored", async () => {
+  const { pickupDays, addDays, isPickupWeekday } =
     await import("../src/lib/calendar-days.js");
   const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
   const setSetting = (key, value) =>
     api("PATCH", "/admin/site-settings", { body: { key, value }, cookie });
 
   try {
-    assert.equal(
-      (await setSetting("weekday_pickup_enabled", "true")).status,
-      200
-    );
-    const details = "Porch pickup in Meridian, 3–6 PM";
+    const details = "Porch pickup at 123 Main St, Meridian";
     assert.equal(
       (await setSetting("weekday_pickup_details", details)).status,
       200
     );
 
-    // The window is read around the request, so a store-midnight rollover
-    // mid-test can't make it disagree with either side.
+    // Event days are blocked, so the expected window is computed with them.
+    // Read around the request so a store-midnight rollover mid-test can't
+    // make it disagree with either side.
+    const events = (await api("GET", "/events?upcoming=true")).data.events;
+    const eventDays = events.map((e) => e.date.slice(0, 10));
     const before = storeToday();
-    const on = await api("GET", "/pickup/weekdays");
+    const on = await api("GET", "/pickup/days");
     const after = storeToday();
     assert.equal(on.status, 200);
     assert.equal(on.data.enabled, true);
     assert.equal(on.data.details, details);
-    assert.equal(on.data.days.length, 10);
+    const days = on.data.days.map((d) => d.day);
+    assert.equal(days.length, 10);
     assert.ok(
-      [weekdayPickupDays(before), weekdayPickupDays(after)].some(
-        (w) => JSON.stringify(w) === JSON.stringify(on.data.days)
+      [pickupDays(before, eventDays), pickupDays(after, eventDays)].some(
+        (w) => JSON.stringify(w) === JSON.stringify(days)
       ),
-      `days ${JSON.stringify(on.data.days)} match the store-time window`
+      `days ${JSON.stringify(days)} match the store-time window`
     );
-    const { days } = on.data;
+    assert.ok(days.every(isPickupWeekday), "no Sundays");
+    assert.ok(
+      days.some((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6),
+      "Saturdays are offered"
+    );
+    // Default hours: six half-hour slots from 3:00 PM.
+    assert.deepEqual(
+      on.data.days[0].slots.map((s) => s.time),
+      ["15:00", "15:30", "16:00", "16:30", "17:00", "17:30"]
+    );
+
     // days[1], not days[0]: still bookable if the store day rolls over.
     const day = days[1];
-
     const product = await plainProduct();
     const order = (extra) =>
       api("POST", "/orders", {
         body: {
           items: [{ productId: product.id, quantity: 1 }],
           fulfillmentType: "pickup",
-          guestEmail: "weekday@test.local",
+          guestEmail: "pickup-days@test.local",
           ...extra,
         },
       });
 
     const startStock = (await adminStock(product.id)).quantity;
-    const placed = await order({ pickupDate: day });
+    const placed = await order({ pickupDate: day, pickupTime: "16:30" });
     assert.equal(placed.status, 201, JSON.stringify(placed.data));
     const placedOrder = placed.data.order;
     assert.equal(placedOrder.fulfillmentType, "pickup");
     assert.equal(placedOrder.pickupDate, `${day}T00:00:00.000Z`);
+    assert.equal(placedOrder.pickupTime, "16:30");
     assert.equal(placedOrder.pickupEventId, null);
-    assert.equal(placedOrder.pickupEvent, null);
     assert.equal(placedOrder.address, null);
     assert.equal((await adminStock(product.id)).quantity, startStock - 1);
 
-    // Turning weekday pickup on doesn't change event pickup.
-    const viaNext = await order({ pickupEventId: "next" });
-    assert.equal(viaNext.status, 201, JSON.stringify(viaNext.data));
-    assert.equal(viaNext.data.order.pickupEvent.title, "Farmers Market");
-    assert.equal(viaNext.data.order.pickupDate, null);
-
     const stockBeforeRefusals = (await adminStock(product.id)).quantity;
-    let weekend = addDays(after, 1);
-    while (isWeekday(weekend)) weekend = addDays(weekend, 1);
-    // Three weeks out is past ten weekdays even after a rollover.
-    let beyond = addDays(after, 21);
-    while (!isWeekday(beyond)) beyond = addDays(beyond, 1);
+    let sunday = addDays(after, 1);
+    while (isPickupWeekday(sunday)) sunday = addDays(sunday, 1);
+    // Four weeks out is past ten open days even after a rollover.
+    let beyond = addDays(after, 28);
+    while (!isPickupWeekday(beyond)) beyond = addDays(beyond, 1);
     for (const [label, pickupDate] of [
       ["same day", storeToday()],
-      ["weekend", weekend],
+      ["Sunday", sunday],
       ["beyond the window", beyond],
       ["past", addDays(before, -1)],
       ["not a calendar day", "2031-02-30"],
     ]) {
-      const refused = await order({ pickupDate });
+      const refused = await order({ pickupDate, pickupTime: "16:30" });
       assert.equal(refused.status, 409, `${label}: ${pickupDate}`);
       assert.match(refused.data.error, /pickup day isn't available/, label);
     }
+    // A time outside the pickup hours is refused; one off the half hour
+    // never gets past validation.
+    const outsideHours = await order({ pickupDate: day, pickupTime: "09:00" });
+    assert.equal(outsideHours.status, 409);
+    assert.match(outsideHours.data.error, /pickup time isn't available/);
+    const offGrid = await order({ pickupDate: day, pickupTime: "16:15" });
+    assert.equal(offGrid.status, 400);
     assert.equal(
       (await adminStock(product.id)).quantity,
       stockBeforeRefusals,
       "refused orders leave stock alone"
     );
 
-    const malformed = await order({ pickupDate: "11/04/2026" });
+    const malformed = await order({
+      pickupDate: "11/04/2026",
+      pickupTime: "16:30",
+    });
     assert.equal(malformed.status, 400);
     assert.match(malformed.data.error, /check your order details/);
-
-    const both = await order({ pickupDate: day, pickupEventId: "next" });
-    assert.equal(both.status, 400);
-    assert.match(both.data.error, /not both/);
 
     // A closed day drops out; the window still offers 10 open days.
     assert.equal(
       (await setSetting("weekday_pickup_closed_days", days[2])).status,
       200
     );
-    const closed = await api("GET", "/pickup/weekdays");
-    assert.ok(!closed.data.days.includes(days[2]), "closed day is hidden");
-    assert.equal(closed.data.days.length, 10);
-    const onClosedDay = await order({ pickupDate: days[2] });
+    const closed = await api("GET", "/pickup/days");
+    const closedList = closed.data.days.map((d) => d.day);
+    assert.ok(!closedList.includes(days[2]), "closed day is hidden");
+    assert.equal(closedList.length, 10);
+    const onClosedDay = await order({
+      pickupDate: days[2],
+      pickupTime: "16:30",
+    });
     assert.equal(onClosedDay.status, 409);
     assert.equal(
       (await setSetting("weekday_pickup_closed_days", "")).status,
       200
     );
 
-    // Admins see the day on the order.
+    // Admins see the day and slot on the order.
     const adminOrders = await api("GET", "/admin/orders", { cookie });
     const listed = adminOrders.data.orders.find((o) => o.id === placedOrder.id);
     assert.equal(listed.pickupDate, `${day}T00:00:00.000Z`);
-
-    // Switching it off closes it again; the details stay for placed orders.
-    assert.equal((await setSetting("weekday_pickup_enabled", "")).status, 200);
-    const offAgain = await api("GET", "/pickup/weekdays");
-    assert.deepEqual(offAgain.data, { enabled: false, details, days: [] });
-    const refusedOff = await order({ pickupDate: day });
-    assert.equal(refusedOff.status, 409);
+    assert.equal(listed.pickupTime, "16:30");
   } finally {
-    await resetWeekdayPickup(cookie);
+    await resetPickup(cookie);
   }
+});
+
+test("pickup hours: admin-set on the half hour, and they decide the slots", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const setSetting = (key, value) =>
+    api("PATCH", "/admin/site-settings", { body: { key, value }, cookie });
+  const slotTimes = async () =>
+    (await api("GET", "/pickup/days")).data.days[0].slots.map((s) => s.time);
+
+  try {
+    assert.equal((await setSetting("pickup_hours_start", "10:15")).status, 400);
+    assert.equal((await setSetting("pickup_hours_start", "soon")).status, 400);
+
+    assert.equal((await setSetting("pickup_hours_start", "10:00")).status, 200);
+    assert.equal((await setSetting("pickup_hours_end", "11:30")).status, 200);
+    assert.deepEqual(await slotTimes(), ["10:00", "10:30", "11:00"]);
+
+    // Closing before opening makes no sense — the default hours stand in
+    // rather than leaving checkout with nothing to offer.
+    assert.equal((await setSetting("pickup_hours_end", "09:00")).status, 200);
+    assert.equal((await slotTimes()).length, 6);
+  } finally {
+    await resetPickup(cookie);
+  }
+});
+
+test("a pickup slot takes 5 orders; the 6th is refused until one is cancelled", async () => {
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const product = await plainProduct();
+  const startStock = (await adminStock(product.id)).quantity;
+
+  // The last slot of the last day: nothing else in the run books it.
+  const schedule = (await api("GET", "/pickup/days")).data.days;
+  const { day, slots } = schedule.at(-1);
+  const time = slots.at(-1).time;
+  const order = () =>
+    api("POST", "/orders", {
+      body: {
+        items: [{ productId: product.id, quantity: 1 }],
+        fulfillmentType: "pickup",
+        pickupDate: day,
+        pickupTime: time,
+        guestEmail: "slot-capacity@test.local",
+      },
+    });
+  const slotOpen = async () =>
+    (await api("GET", "/pickup/days")).data.days
+      .find((d) => d.day === day)
+      .slots.find((s) => s.time === time).available;
+
+  // Seven at once: the slot must take exactly five, however they race.
+  const results = await Promise.all(Array.from({ length: 7 }, order));
+  const placed = results.filter((r) => r.status === 201);
+  const refused = results.filter((r) => r.status === 409);
+  assert.equal(placed.length, 5, JSON.stringify(results.map((r) => r.status)));
+  assert.equal(refused.length, 2);
+  for (const r of refused) assert.match(r.data.error, /filled up/);
+  assert.equal(
+    (await adminStock(product.id)).quantity,
+    startStock - 5,
+    "refused orders take no stock"
+  );
+
+  assert.equal(await slotOpen(), false, "slot shows as full");
+  // The neighbouring slot is unaffected.
+  const neighbour = (await api("GET", "/pickup/days")).data.days
+    .find((d) => d.day === day)
+    .slots.at(-2);
+  assert.equal(neighbour.available, true);
+
+  // Cancelling gives the place back.
+  const cancelled = await api(
+    "PATCH",
+    `/admin/orders/${placed[0].data.order.id}`,
+    {
+      body: { status: "cancelled" },
+      cookie,
+    }
+  );
+  assert.equal(cancelled.status, 200, JSON.stringify(cancelled.data));
+  assert.equal(await slotOpen(), true, "cancelled order frees its place");
+  assert.equal((await order()).status, 201);
+  assert.equal((await order()).status, 409);
 });
 
 // ── Events list ────────────────────────────────────────────────────────

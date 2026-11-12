@@ -6,13 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import api from "@/lib/api";
 import Link from "next/link";
-import { SHIPPING_ENABLED } from "@/lib/features";
+import { SHIPPING_ENABLED, EVENT_PICKUP_ENABLED } from "@/lib/features";
 import {
   isPickupSelectable,
   formatTimeRange,
   eventDayKey,
   dayKeyOf,
-  WEEKDAY_PICKUP_FALLBACK,
+  PICKUP_FALLBACK,
+  formatSlot,
 } from "@/lib/pickup-window";
 import { getPublicConfig } from "@/lib/public-config";
 import { formatCalendarDay, formatPickupDay } from "@/lib/format-date";
@@ -162,11 +163,81 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
   );
 }
 
-// The pickup choice on the info step: next event, a chosen event, or a
-// weekday pickup day — each option only when it's actually on offer.
+// The day and half-hour slot pickers. Full days and full slots stay in
+// the lists, disabled, so the customer can see they exist.
+function PickupDayAndTime({
+  schedule,
+  chosenDay,
+  setPickupDay,
+  chosenTime,
+  setPickupTime,
+  pickupDetails,
+}) {
+  const daySlots = schedule.days.find((d) => d.day === chosenDay)?.slots ?? [];
+  return (
+    <div className="mt-3 space-y-2">
+      <label htmlFor="pickup-day" className="sr-only">
+        Pickup day
+      </label>
+      <select
+        id="pickup-day"
+        value={chosenDay}
+        onChange={(e) => setPickupDay(e.target.value)}
+        required
+        className={inputClass}
+      >
+        <option value="" disabled>
+          Choose a day...
+        </option>
+        {schedule.days.map(({ day, slots }) => {
+          const full = !slots.some((slot) => slot.available);
+          return (
+            <option key={day} value={day} disabled={full}>
+              {formatPickupDay(day)}
+              {full ? " — fully booked" : ""}
+            </option>
+          );
+        })}
+      </select>
+      <label htmlFor="pickup-time" className="sr-only">
+        Pickup time
+      </label>
+      <select
+        id="pickup-time"
+        value={chosenTime}
+        onChange={(e) => setPickupTime(e.target.value)}
+        required
+        disabled={!chosenDay}
+        className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-500`}
+      >
+        <option value="" disabled>
+          {chosenDay ? "Choose a time..." : "Choose a day first"}
+        </option>
+        {daySlots.map(({ time, available }) => (
+          <option key={time} value={time} disabled={!available}>
+            {formatSlot(time)}
+            {available ? "" : " — full"}
+          </option>
+        ))}
+      </select>
+      <p className="text-sm text-gray-700 bg-[#F5F0E8] p-3 rounded-lg">
+        {pickupDetails}
+      </p>
+      <p className="text-xs text-gray-500">
+        Pickup is Monday–Saturday in 30-minute time slots, booked at least a day
+        ahead.
+      </p>
+    </div>
+  );
+}
+
+// The pickup choice on the info step: a pickup day and half-hour slot.
+// The event options (next event, a chosen event) only appear while
+// EVENT_PICKUP_ENABLED is on; with one kind of pickup there's nothing to
+// choose between, so the radios go away too.
 function PickupOptions({
   hasEvents,
-  offersWeekday,
+  offersScheduled,
   activePickupMode,
   setPickupMode,
   pickupChoiceLost,
@@ -174,15 +245,17 @@ function PickupOptions({
   events,
   pickupChoice,
   setPickupChoice,
-  weekday,
+  schedule,
   chosenDay,
   setPickupDay,
-  weekdayDetails,
+  chosenTime,
+  setPickupTime,
+  pickupDetails,
 }) {
   return (
     <fieldset>
       <legend className="block text-xl font-semibold text-[#2A4A52] mb-2">
-        Pickup Option
+        {hasEvents ? "Pickup Option" : "Pickup Day & Time"}
       </legend>
       {pickupChoiceLost && (
         <p
@@ -218,16 +291,16 @@ function PickupOptions({
             </label>
           </>
         )}
-        {offersWeekday && (
+        {hasEvents && offersScheduled && (
           <label className="flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
             <input
               type="radio"
               name="pickup-mode"
-              value="weekday"
-              checked={activePickupMode === "weekday"}
-              onChange={() => setPickupMode("weekday")}
+              value="scheduled"
+              checked={activePickupMode === "scheduled"}
+              onChange={() => setPickupMode("scheduled")}
             />
-            <span className="text-sm font-medium">Weekday Pickup</span>
+            <span className="text-sm font-medium">Pickup Day &amp; Time</span>
           </label>
         )}
       </div>
@@ -260,35 +333,15 @@ function PickupOptions({
             ))}
           </select>
         </div>
-      ) : activePickupMode === "weekday" ? (
-        <div className="mt-3 space-y-2">
-          <label htmlFor="pickup-day" className="sr-only">
-            Pickup day
-          </label>
-          <select
-            id="pickup-day"
-            value={chosenDay}
-            onChange={(e) => setPickupDay(e.target.value)}
-            required
-            className={inputClass}
-          >
-            <option value="" disabled>
-              Choose a day...
-            </option>
-            {weekday.days.map((day) => (
-              <option key={day} value={day}>
-                {formatPickupDay(day)}
-              </option>
-            ))}
-          </select>
-          <p className="text-sm text-gray-700 bg-[#F5F0E8] p-3 rounded-lg">
-            {weekdayDetails}
-          </p>
-          <p className="text-xs text-gray-500">
-            Weekday pickup is Monday–Friday and must be booked at least a day
-            ahead.
-          </p>
-        </div>
+      ) : activePickupMode === "scheduled" ? (
+        <PickupDayAndTime
+          schedule={schedule}
+          chosenDay={chosenDay}
+          setPickupDay={setPickupDay}
+          chosenTime={chosenTime}
+          setPickupTime={setPickupTime}
+          pickupDetails={pickupDetails}
+        />
       ) : null}
     </fieldset>
   );
@@ -300,22 +353,25 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [step, setStep] = useState(0);
-  // Pickup-only launch: every order is collected at a market/event or on
-  // a weekday pickup day.
+  // Pickup-only launch: every order is collected on a booked pickup day
+  // and time slot.
   const [fulfillmentType, setFulfillmentType] = useState(
     SHIPPING_ENABLED ? "shipping" : "pickup"
   );
   // null until the customer picks a radio; then "next" (nearest open
-  // event), "choose" (pick from the list) or "weekday" (a weekday day).
+  // event), "choose" (pick from the list) or "scheduled" (a day and slot).
   const [pickupMode, setPickupMode] = useState(null);
   // Event id when pickupMode is "choose".
   const [pickupChoice, setPickupChoice] = useState("");
   const [upcomingEvents, setUpcomingEvents] = useState(null);
-  // Weekday pickup as the server offers it — { enabled, details, days } —
-  // or null while loading. The server decides which days are bookable.
-  const [weekday, setWeekday] = useState(null);
-  // YYYY-MM-DD when pickupMode is "weekday".
+  // Scheduled pickup as the server offers it — { enabled, details, days:
+  // [{ day, slots: [{ time, available }] }] } — or null while loading.
+  // The server decides which days and slots are bookable.
+  const [schedule, setSchedule] = useState(null);
+  // YYYY-MM-DD when pickupMode is "scheduled".
   const [pickupDay, setPickupDay] = useState("");
+  // "HH:MM" start of the slot on that day.
+  const [pickupTime, setPickupTime] = useState("");
   const [form, setForm] = useState({
     guestName: "",
     guestEmail: "",
@@ -352,20 +408,20 @@ export default function CheckoutPage() {
       .catch(() => setUpcomingEvents([]));
   }, []);
 
-  // Also called again after a refused weekday order, so a day that just
-  // became same-day (store midnight) drops out of the list.
-  const loadWeekdayPickup = useCallback(
+  // Also called again after a refused order, so a day that just became
+  // same-day (store midnight) or a slot that just filled drops out.
+  const loadSchedule = useCallback(
     () =>
       api
-        .get("/pickup/weekdays")
-        .then((res) => setWeekday(res.data))
-        .catch(() => setWeekday({ enabled: false, details: "", days: [] })),
+        .get("/pickup/days")
+        .then((res) => setSchedule(res.data))
+        .catch(() => setSchedule({ enabled: false, details: "", days: [] })),
     []
   );
 
   useEffect(() => {
-    loadWeekdayPickup();
-  }, [loadWeekdayPickup]);
+    loadSchedule();
+  }, [loadSchedule]);
 
   useEffect(() => {
     getPublicConfig().then((cfg) => {
@@ -470,24 +526,27 @@ export default function CheckoutPage() {
 
   // No same-day pickup (shared rule with the orders API). "Next Event"
   // is the nearest event still open for pickup.
-  const events = (upcomingEvents ?? []).filter((e) => isPickupSelectable(e));
+  const events = EVENT_PICKUP_ENABLED
+    ? (upcomingEvents ?? []).filter((e) => isPickupSelectable(e))
+    : [];
   const hasEvents = events.length > 0;
   const nextEvent = events[0] ?? null;
-  const offersWeekday =
-    Boolean(weekday?.enabled) && (weekday?.days.length ?? 0) > 0;
-  const canPickup = hasEvents || offersWeekday;
-  const pickupOptionsLoaded = upcomingEvents !== null && weekday !== null;
-  const isOffered = (mode) => (mode === "weekday" ? offersWeekday : hasEvents);
+  const offersScheduled =
+    Boolean(schedule?.enabled) && (schedule?.days.length ?? 0) > 0;
+  const canPickup = hasEvents || offersScheduled;
+  const pickupOptionsLoaded = upcomingEvents !== null && schedule !== null;
+  const isOffered = (mode) =>
+    mode === "scheduled" ? offersScheduled : hasEvents;
   // An explicit pick is never swapped for another kind of pickup behind
   // the customer's back: if it stops being offered (the owner switched
-  // weekday pickup off, the last event passed), nothing is selected and
+  // pickup off, the last event passed), nothing is selected and
   // they choose again. Before they pick, events come first.
   const activePickupMode =
     pickupMode === null
       ? hasEvents
         ? "next"
-        : offersWeekday
-          ? "weekday"
+        : offersScheduled
+          ? "scheduled"
           : null
       : isOffered(pickupMode)
         ? pickupMode
@@ -500,18 +559,28 @@ export default function CheckoutPage() {
       : activePickupMode === "choose"
         ? events.find((e) => e.id === pickupChoice)
         : undefined;
-  const chosenDay =
-    activePickupMode === "weekday" && weekday.days.includes(pickupDay)
-      ? pickupDay
+  // A day or slot that stopped being bookable (filled up, got closed)
+  // reads as not chosen, so the customer has to pick again.
+  const dayEntry =
+    activePickupMode === "scheduled"
+      ? schedule.days.find((d) => d.day === pickupDay)
+      : undefined;
+  const chosenDay = dayEntry?.slots.some((slot) => slot.available)
+    ? pickupDay
+    : "";
+  const chosenTime =
+    chosenDay &&
+    dayEntry.slots.some((slot) => slot.time === pickupTime && slot.available)
+      ? pickupTime
       : "";
   const pickupReady =
-    activePickupMode === "weekday" ? chosenDay !== "" : Boolean(chosenEvent);
-  const weekdayDetails = weekday?.details || WEEKDAY_PICKUP_FALLBACK;
+    activePickupMode === "scheduled" ? chosenTime !== "" : Boolean(chosenEvent);
+  const pickupDetails = schedule?.details || PICKUP_FALLBACK;
   // True only when today's own event is the thing missing from the list
   // above, so the note doesn't show for an ordinary quiet week.
-  const hasSameDayEvent = (upcomingEvents ?? []).some(
-    (e) => eventDayKey(e) === dayKeyOf()
-  );
+  const hasSameDayEvent =
+    EVENT_PICKUP_ENABLED &&
+    (upcomingEvents ?? []).some((e) => eventDayKey(e) === dayKeyOf());
 
   // Guest orders finish here (guests have no orders page), so show the
   // confirmation inline after the cart has been cleared.
@@ -529,10 +598,12 @@ export default function CheckoutPage() {
           <div className="text-gray-500 mb-8 space-y-2">
             <p>
               We&rsquo;ll have your order ready for pickup on{" "}
-              {formatPickupDay(confirmation.pickupDate)} — bring your
-              confirmation number.
+              {formatPickupDay(confirmation.pickupDate)}
+              {confirmation.pickupTime &&
+                `, ${formatSlot(confirmation.pickupTime)}`}{" "}
+              — bring your confirmation number.
             </p>
-            <p>{weekdayDetails}</p>
+            <p>{pickupDetails}</p>
           </div>
         ) : (
           <p className="text-gray-500 mb-8">
@@ -647,8 +718,8 @@ export default function CheckoutPage() {
               state: form.state,
               zip: form.zip,
             }
-          : activePickupMode === "weekday"
-            ? { pickupDate: chosenDay }
+          : activePickupMode === "scheduled"
+            ? { pickupDate: chosenDay, pickupTime: chosenTime }
             : {
                 pickupEventId:
                   activePickupMode === "next" ? "next" : pickupChoice,
@@ -667,6 +738,7 @@ export default function CheckoutPage() {
           number: res.data.order.confirmationNumber,
           event: res.data.order.pickupEvent,
           pickupDate: res.data.order.pickupDate,
+          pickupTime: res.data.order.pickupTime,
         });
       }
     } catch (err) {
@@ -674,10 +746,10 @@ export default function CheckoutPage() {
         err.response?.data?.error || "Failed to place order. Please try again."
       );
       setSubmitting(false);
-      // A refused weekday day has usually just become same-day (store
-      // midnight) or been closed — refresh the list so it drops out.
-      if (err.response?.status === 409 && activePickupMode === "weekday") {
-        loadWeekdayPickup();
+      // A refused day or slot has usually just filled up, become same-day
+      // (store midnight) or been closed — refresh so it drops out.
+      if (err.response?.status === 409 && activePickupMode === "scheduled") {
+        loadSchedule();
       }
       // A declined charge consumes the one-time token — back to the info
       // step so the customer can re-enter or change the card.
@@ -808,19 +880,13 @@ export default function CheckoutPage() {
                 </h2>
                 {pickupOptionsLoaded && !canPickup ? (
                   <p className="text-sm text-amber-800 bg-amber-50 p-3 rounded-lg">
-                    Online orders are picked up at our markets and events, and
-                    nothing is on the calendar just yet. Check back soon — new
-                    events are added all the time!
-                  </p>
-                ) : offersWeekday ? (
-                  <p className="text-sm text-gray-600 bg-[#F5F0E8] p-3 rounded-lg">
-                    Pick up at one of our markets or events, or on a weekday
-                    (Monday–Friday) — choose what works best for you below.
+                    Online orders are collected by scheduled pickup, and there
+                    are no pickup times open right now. Please check back soon!
                   </p>
                 ) : (
                   <p className="text-sm text-gray-600 bg-[#F5F0E8] p-3 rounded-lg">
-                    All online orders are picked up at one of our markets or
-                    events — choose the one that works best for you below.
+                    All online orders are collected by pickup — choose the day
+                    and 30-minute time slot that work best for you below.
                   </p>
                 )}
               </div>
@@ -908,7 +974,7 @@ export default function CheckoutPage() {
             ) : canPickup ? (
               <PickupOptions
                 hasEvents={hasEvents}
-                offersWeekday={offersWeekday}
+                offersScheduled={offersScheduled}
                 activePickupMode={activePickupMode}
                 setPickupMode={setPickupMode}
                 pickupChoiceLost={pickupChoiceLost}
@@ -916,10 +982,12 @@ export default function CheckoutPage() {
                 events={events}
                 pickupChoice={pickupChoice}
                 setPickupChoice={setPickupChoice}
-                weekday={weekday}
+                schedule={schedule}
                 chosenDay={chosenDay}
                 setPickupDay={setPickupDay}
-                weekdayDetails={weekdayDetails}
+                chosenTime={chosenTime}
+                setPickupTime={setPickupTime}
+                pickupDetails={pickupDetails}
               />
             ) : null}
 
@@ -1094,13 +1162,13 @@ export default function CheckoutPage() {
                 <p className="text-[#2A4A52] mt-1">
                   Ship to: {form.address}, {form.city}, {form.state} {form.zip}
                 </p>
-              ) : activePickupMode === "weekday" && chosenDay ? (
+              ) : activePickupMode === "scheduled" && chosenTime ? (
                 <div className="text-[#2A4A52] mt-1">
-                  <p className="font-medium">Weekday pickup</p>
+                  <p className="font-medium">Pickup</p>
                   <p className="text-sm text-gray-600">
-                    {formatPickupDay(chosenDay)}
+                    {formatPickupDay(chosenDay)} · {formatSlot(chosenTime)}
                   </p>
-                  <p className="text-sm text-gray-600">{weekdayDetails}</p>
+                  <p className="text-sm text-gray-600">{pickupDetails}</p>
                 </div>
               ) : chosenEvent ? (
                 <div className="text-[#2A4A52] mt-1">

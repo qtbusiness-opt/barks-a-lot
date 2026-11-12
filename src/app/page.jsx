@@ -143,7 +143,7 @@ export default function HomePage() {
                 Easy Local Pickup
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                Order online, pick up at our next market or event
+                Order online, then pick a pickup day and time that suit you
               </p>
             </div>
           )}

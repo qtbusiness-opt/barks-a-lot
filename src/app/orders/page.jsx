@@ -11,7 +11,7 @@ import {
   formatDate,
   formatPickupDayWithYear,
 } from "@/lib/format-date";
-import { WEEKDAY_PICKUP_FALLBACK } from "@/lib/pickup-window";
+import { PICKUP_FALLBACK, formatSlot } from "@/lib/pickup-window";
 import StoreImage from "@/components/StoreImage";
 
 export default function OrdersPage() {
@@ -19,7 +19,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState(null);
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState(null);
-  // The owner's weekday pickup details, shown on weekday orders still
+  // The owner's pickup details, shown on scheduled pickup orders still
   // waiting to be collected. Empty until loaded (the fallback shows).
   const [pickupDetails, setPickupDetails] = useState("");
 
@@ -27,7 +27,7 @@ export default function OrdersPage() {
     if (user) {
       api.get("/orders").then((res) => setOrders(res.data.orders));
       api
-        .get("/pickup/weekdays")
+        .get("/pickup/days")
         .then((res) => setPickupDetails(res.data.details))
         .catch(() => {});
     }
@@ -127,7 +127,7 @@ export default function OrdersPage() {
                   <p className="text-xs text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
                       ? order.pickupDate
-                        ? `Weekday pickup — ${formatPickupDayWithYear(order.pickupDate)}`
+                        ? `Pickup — ${formatPickupDayWithYear(order.pickupDate)}${order.pickupTime ? ` · ${formatSlot(order.pickupTime)}` : ""}`
                         : order.pickupEvent
                           ? `Pickup at ${order.pickupEvent.title} — ${formatCalendarDay(
                               order.pickupEvent.date
@@ -138,7 +138,7 @@ export default function OrdersPage() {
                   {order.pickupDate &&
                     ["pending", "shipped"].includes(order.status) && (
                       <p className="text-xs text-gray-500 mt-1">
-                        {pickupDetails || WEEKDAY_PICKUP_FALLBACK}
+                        {pickupDetails || PICKUP_FALLBACK}
                       </p>
                     )}
                 </div>

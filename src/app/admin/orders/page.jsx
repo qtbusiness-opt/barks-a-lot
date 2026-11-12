@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 import AdminShell from "@/components/AdminShell";
+import { formatSlot } from "@/lib/pickup-window";
 import StoreImage from "@/components/StoreImage";
 import { orderStatusLabel } from "@/lib/order-status";
 import {
@@ -94,7 +95,7 @@ export default function AdminOrdersPage() {
                   <p className="text-sm text-gray-500 mt-1">
                     {order.fulfillmentType === "pickup"
                       ? order.pickupDate
-                        ? `Weekday pickup — ${formatPickupDayWithYear(order.pickupDate)}`
+                        ? `Pickup — ${formatPickupDayWithYear(order.pickupDate)}${order.pickupTime ? ` · ${formatSlot(order.pickupTime)}` : ""}`
                         : order.pickupEvent
                           ? `Pickup at ${order.pickupEvent.title} — ${formatCalendarDay(
                               order.pickupEvent.date

@@ -20,7 +20,7 @@ export default function TermsOfServicePage() {
         Terms of Service
       </h1>
       <p className="text-gray-500 mt-2">
-        Barks-A-Lot Treats &amp; More &middot; Effective Date: Nov 3, 2026
+        Barks-A-Lot Treats &amp; More &middot; Effective Date: Nov 12, 2026
       </p>
 
       <p className="mt-6 text-gray-700 leading-relaxed">
@@ -104,22 +104,20 @@ export default function TermsOfServicePage() {
       <Section title="4. Order Pickup">
         <ul className="list-disc pl-6 space-y-2">
           <li>
-            All online orders are fulfilled by pickup — at one of our markets or
-            events or, when we offer it, a weekday pickup (Monday–Friday) at the
-            location described at checkout. We do not offer shipping at this
-            time.
+            All online orders are fulfilled by scheduled pickup at the location
+            described at checkout. We do not offer shipping at this time.
           </li>
           <li>
-            At checkout you choose a market or event, or a weekday pickup day.
-            Weekday pickup must be booked at least one day ahead. Please bring
-            your order confirmation number (from your confirmation email or your
+            At checkout you choose a pickup day (Monday–Saturday) and a
+            30-minute time slot. Pickup must be booked at least one day ahead,
+            and each time slot has limited availability. Please bring your order
+            confirmation number (from your confirmation email or your
             account&rsquo;s orders page) when you pick up.
           </li>
           <li>
-            We will make reasonable efforts to have your order ready at the
-            selected event or on the selected day. If we are unable to attend an
-            event or keep a weekday pickup, we will notify you and arrange
-            another pickup.
+            We will make reasonable efforts to have your order ready at your
+            selected day and time. If we are unable to keep a pickup, we will
+            notify you and arrange another.
           </li>
           <li>
             If you are unable to pick up as scheduled, contact us at{" "}

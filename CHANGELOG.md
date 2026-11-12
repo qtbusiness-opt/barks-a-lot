@@ -21,11 +21,15 @@ breaking anything, and PATCH fixes a bug with no new capability.
   and the photo is a raster: a message that has left the site can't load
   a relative path, and mail clients won't draw SVG. Otherwise the emails
   stay exactly as they were.
-- Weekday pickup: customers can collect an online order Monday–Friday
-  instead of at a market or event, choosing from the next 10 open
-  weekdays, never the same day (store time). Managed in Admin → Weekday
-  Pickup — an on/off switch (off by default), the where/when details shown
+- Scheduled pickup: customers collect an online order on a day and
+  30-minute time slot they book at checkout — Monday through Saturday,
+  never the same day (store time), from the next 10 open days. Each slot
+  takes up to 5 orders; a full slot shows as full and can't be booked.
+  Managed in Admin → Pickup: an on/off switch (off by default), pickup
+  hours (3:00–6:00 PM until changed), the where-to-collect details shown
   to customers, and closed days for holidays or days off.
+- Events take priority over pickup: a day with an event on the calendar is
+  blocked out of the pickup days automatically.
 - Events list by month: `/events` lists upcoming events grouped by month,
   this month open (or the nearest month with events), others one click
   away. Each event links to its day page.
@@ -34,7 +38,13 @@ breaking anything, and PATCH fixes a bug with no new capability.
 
 - `/events` opens on the list; the calendar is one click away
   ("Calendar view", top right). The day page links "Back to Events".
-- Terms of Service §4 and the Privacy Policy cover weekday pickup.
+- Orders can no longer be reserved for collection at a market or event.
+  The "Next Event" and "Choose Event" options are gone from checkout and
+  the orders API refuses them; the code is parked behind
+  `EVENT_PICKUP_ENABLED`, the same way shipping is. Existing event-pickup
+  orders are unchanged.
+- Terms of Service §4, the Privacy Policy and the homepage describe
+  scheduled pickup.
 
 ### Fixed
 
@@ -42,7 +52,7 @@ breaking anything, and PATCH fixes a bug with no new capability.
   the UTC date, so the events list, checkout and the dashboard dropped
   them after about 5 PM in Boise.
 - The admin event forms no longer claim online pickup closes 2 hours
-  before the event ends; it closes the day before.
+  before the event ends; they say event days can't be booked for pickup.
 
 ## [1.1.0] — 2026-08-20
 

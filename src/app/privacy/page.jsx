@@ -20,7 +20,7 @@ export default function PrivacyPolicyPage() {
         Privacy Policy
       </h1>
       <p className="text-gray-500 mt-2">
-        Barks-A-Lot Treats &amp; More &middot; Effective Date: Nov 3, 2026
+        Barks-A-Lot Treats &amp; More &middot; Effective Date: Nov 12, 2026
       </p>
 
       <p className="mt-6 text-gray-700 leading-relaxed">
@@ -45,8 +45,7 @@ export default function PrivacyPolicyPage() {
           <li>
             <strong>Guest checkout:</strong> If you check out as a guest, we
             collect your name, email address, and order details — including the
-            market, event, or weekday pickup day you choose — for that
-            transaction.
+            pickup day and time you choose — for that transaction.
           </li>
           <li>
             <strong>Payment information:</strong> Payment is processed by a

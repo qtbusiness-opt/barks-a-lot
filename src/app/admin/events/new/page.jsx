@@ -158,7 +158,7 @@ function NewEventForm() {
             className={inputClass}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Online pickup for this event closes the day before it.
+            Customers can’t book an order pickup on an event day.
           </p>
         </div>
       </div>
