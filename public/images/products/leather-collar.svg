@@ -19,5 +19,4 @@
     <!-- Stitch detail -->
     <circle cx="0" cy="0" r="52" fill="none" stroke="#D4923A" stroke-width="1" stroke-dasharray="3,6" opacity="0.6"/>
   </g>
-  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Leather Collar</text>
 </svg>

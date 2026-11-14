@@ -34,10 +34,13 @@ export default function AddedToCartNotice() {
 
   return (
     <div className="fixed inset-0 z-[60]">
-      <button
-        aria-label="Close"
+      {/* Click-outside to dismiss. Kept out of the tab order and the
+          accessibility tree: its focus ring would sit off-screen, and the
+          panel's Close button and Escape already cover keyboard users. */}
+      <div
+        aria-hidden="true"
         onClick={dismissLastAdded}
-        className="absolute inset-0 bg-black/40 animate-fade-in cursor-default"
+        className="absolute inset-0 bg-black/40 animate-fade-in"
       />
       <div
         ref={panelRef}
@@ -52,7 +55,7 @@ export default function AddedToCartNotice() {
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
           <h2 className="text-lg font-bold text-[#2A4A52] flex items-center gap-2">
             <svg
-              className="w-6 h-6 text-green-600"
+              className="w-6 h-6 text-green-700"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -69,7 +72,7 @@ export default function AddedToCartNotice() {
           <button
             onClick={dismissLastAdded}
             aria-label="Close"
-            className="flex items-center justify-center h-11 w-11 -mr-2 text-gray-500 hover:text-gray-700 active:text-gray-800"
+            className="flex items-center justify-center h-11 w-11 -mr-2 text-gray-600 hover:text-gray-700 active:text-gray-800"
           >
             <svg
               className="w-6 h-6"
@@ -97,10 +100,10 @@ export default function AddedToCartNotice() {
           />
           <div className="min-w-0">
             <p className="font-semibold text-[#2A4A52]">{lastAdded.name}</p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-600 mt-1">
               Qty: {lastAdded.quantity}
             </p>
-            <p className="text-[#C8722A] font-bold mt-1">
+            <p className="text-[#8A4D1A] font-bold mt-1">
               ${(lastAdded.price * lastAdded.quantity).toFixed(2)}
             </p>
           </div>
@@ -119,21 +122,21 @@ export default function AddedToCartNotice() {
             <Link
               href="/cart"
               onClick={dismissLastAdded}
-              className="text-center border-2 border-[#4A7C8A] text-[#4A7C8A] py-2.5 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+              className="text-center border-2 border-[#4A7C8A] text-[#3A6270] py-2.5 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
             >
               View Cart
             </Link>
             <Link
               href="/checkout"
               onClick={dismissLastAdded}
-              className="text-center bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-2.5 rounded-lg font-semibold transition"
+              className="text-center bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white py-2.5 rounded-lg font-semibold transition"
             >
               Checkout
             </Link>
           </div>
           <button
             onClick={dismissLastAdded}
-            className="w-full text-center text-sm text-[#4A7C8A] font-medium hover:underline mt-3 min-h-11"
+            className="w-full text-center text-sm text-[#3A6270] font-medium hover:underline mt-3 min-h-11"
           >
             Continue Shopping
           </button>

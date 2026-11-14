@@ -1,5 +1,6 @@
 import { getSettings, ABOUT_IMAGE_KEYS } from "@/lib/site-settings";
 import StoreImage from "@/components/StoreImage";
+import { PawIcon } from "@/components/Icons";
 
 export const metadata = {
   title: "About Us — Barks-A-Lot Treats & More",
@@ -32,11 +33,9 @@ function SectionImage({ src, label }) {
       role="img"
       aria-label={`${label} (image coming soon)`}
     >
-      <span aria-hidden="true" className="text-4xl mb-2">
-        🐾
-      </span>
-      <span className="text-sm font-medium text-[#4A7C8A]">{label}</span>
-      <span className="text-xs text-gray-400 mt-1">Image coming soon</span>
+      <PawIcon className="h-9 w-9 mb-2 text-brand-ink-2" />
+      <span className="text-sm font-medium text-[#3A6270]">{label}</span>
+      <span className="text-xs text-brand-ink-2 mt-1">Image coming soon</span>
     </div>
   );
 }
@@ -96,7 +95,7 @@ export default async function AboutPage() {
         >
           <p>Everything we do here traces back to two very good dogs.</p>
           <p>
-            <strong>Meeko</strong> is our tan maltipoo and a real stud muffin.
+            <strong>Meeko</strong>{" "}is our tan maltipoo and a real stud muffin.
             At seven years old, he&rsquo;s been part of our family the longest.
             He can be a bit of a troublemaker with strangers at first, all bark
             and no follow-through, but it never takes long before he warms up
@@ -105,7 +104,7 @@ export default async function AboutPage() {
             biggest dogs at the dog park.
           </p>
           <p>
-            <strong>Evee</strong> is our white chipoo and an absolute cutie. She
+            <strong>Evee</strong>{" "}is our white chipoo and an absolute cutie. She
             was rescued in early 2026 and is turning one year old on Halloween
             2026. She&rsquo;s the self-appointed chaos coordinator of the
             household, on a personal mission to find and shred any stray piece
@@ -145,16 +144,16 @@ export default async function AboutPage() {
           something here worth wagging about.
         </p>
         <div className="mt-8 space-y-4">
-          <blockquote className="text-[#4A7C8A] italic">
+          <blockquote className="text-[#3A6270] italic">
             &ldquo;The LORD is good to all, and has compassion on all He has
             made.&rdquo;
-            <cite className="block not-italic text-sm text-gray-500 mt-1">
+            <cite className="block not-italic text-sm text-gray-600 mt-1">
               Psalm 145:9
             </cite>
           </blockquote>
-          <blockquote className="text-[#4A7C8A] italic">
+          <blockquote className="text-[#3A6270] italic">
             &ldquo;A righteous person cares for the life of his animal.&rdquo;
-            <cite className="block not-italic text-sm text-gray-500 mt-1">
+            <cite className="block not-italic text-sm text-gray-600 mt-1">
               Proverbs 12:10
             </cite>
           </blockquote>

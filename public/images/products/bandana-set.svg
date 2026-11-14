@@ -25,5 +25,4 @@
     <!-- Bottom point of triangle -->
     <polygon points="-5,18 5,18 0,55" fill="#4A7C8A"/>
   </g>
-  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Bandana Set</text>
 </svg>

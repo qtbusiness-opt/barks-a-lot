@@ -21,5 +21,4 @@
     <ellipse cx="-15" cy="62" rx="14" ry="6" fill="#4A7C8A"/>
     <ellipse cx="15" cy="62" rx="14" ry="6" fill="#4A7C8A"/>
   </g>
-  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Plush Duck</text>
 </svg>

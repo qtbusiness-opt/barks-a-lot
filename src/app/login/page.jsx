@@ -8,7 +8,7 @@ import api from "@/lib/api";
 import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 function LoginForm() {
   const { login } = useAuth();
@@ -66,7 +66,7 @@ function LoginForm() {
         {error && (
           <p
             role="alert"
-            className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4"
+            className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4"
           >
             {error}
           </p>
@@ -76,7 +76,7 @@ function LoginForm() {
             type="button"
             onClick={handleResend}
             disabled={resending}
-            className="w-full border-2 border-[#C8722A] text-[#C8722A] py-2.5 rounded-lg font-semibold hover:bg-[#C8722A] hover:text-white transition mb-4 disabled:opacity-50"
+            className="w-full border-2 border-[#C8722A] text-[#8A4D1A] py-2.5 rounded-lg font-semibold hover:bg-[#A85D1F] hover:text-white transition mb-4 disabled:opacity-50"
           >
             {resending ? "Sending…" : "Resend Verification Email"}
           </button>
@@ -116,7 +116,7 @@ function LoginForm() {
               </label>
               <Link
                 href="/forgot-password"
-                className="text-sm text-[#4A7C8A] font-medium hover:underline"
+                className="text-sm text-[#3A6270] font-medium hover:underline"
               >
                 Forgot password?
               </Link>
@@ -138,11 +138,11 @@ function LoginForm() {
             {loading ? "Logging in…" : "Log In"}
           </button>
         </form>
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-gray-600 mt-6">
           Don&rsquo;t have an account?{" "}
           <Link
             href="/register"
-            className="text-[#4A7C8A] font-medium hover:underline"
+            className="text-[#3A6270] font-medium hover:underline"
           >
             Sign Up
           </Link>

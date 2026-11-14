@@ -1,34 +1,18 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import {
-  visibleInListing,
-  publicProduct,
-  PRODUCT_DETAIL_INCLUDE,
-} from "@/lib/catalog";
+import { getListedProducts } from "@/lib/storefront";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category");
   const featured = searchParams.get("featured");
 
-  const where = {};
-  if (category) where.category = category;
-  if (featured === "true") where.featured = true;
-
-  // Option groups are fetched here (not just variants) so the listing
-  // card knows a product has required choices before it ever renders —
-  // otherwise a quick-add button could skip them entirely.
-  const products = await prisma.product.findMany({
-    where,
-    include: PRODUCT_DETAIL_INCLUDE,
-    orderBy: { createdAt: "desc" },
+  // The listing rules (option groups included, availability windows and
+  // sold-out limited drops filtered, stock counts stripped to booleans)
+  // live in src/lib/storefront.js and src/lib/catalog.js, shared with the
+  // home page.
+  const products = await getListedProducts({
+    category,
+    featured: featured === "true",
   });
-
-  // Availability windows and sold-out limited drops are filtered here
-  // rather than in SQL — the catalog is small and the rules live in one
-  // place (src/lib/catalog.js) shared with checkout. Stock counts are
-  // stripped to booleans on the way out.
-  return NextResponse.json({
-    products: products.filter((p) => visibleInListing(p)).map(publicProduct),
-  });
+  return NextResponse.json({ products });
 }

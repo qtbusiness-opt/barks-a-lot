@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/api";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 export default function ContactPage() {
   const { user } = useAuth();
@@ -55,7 +55,7 @@ export default function ContactPage() {
         note and we&rsquo;ll reply by email. You can also reach us directly at{" "}
         <a
           href="mailto:info@barks-a-lot.com"
-          className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+          className="text-[#3A6270] underline hover:text-[#2A4A52]"
         >
           info@barks-a-lot.com
         </a>
@@ -63,7 +63,7 @@ export default function ContactPage() {
       </p>
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">
+        <p role="alert" className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4">
           {error}
         </p>
       )}
@@ -116,12 +116,12 @@ export default function ContactPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+          className="w-full bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
         >
           {submitting ? "Sending…" : "Send Message"}
         </button>
         {user && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-600">
             Sending as {user.name}. Prefer we reply somewhere else? Just change
             the email above.
           </p>

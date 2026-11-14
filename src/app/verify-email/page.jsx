@@ -80,7 +80,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-md mx-auto safe-x py-16 text-center text-gray-500">
+        <div className="max-w-md mx-auto safe-x py-16 text-center text-gray-600">
           Loading...
         </div>
       }

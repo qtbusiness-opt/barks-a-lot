@@ -1,54 +1,98 @@
+/* Hallmark · genre: playful · macrostructure: Bento Grid · theme: custom · nav: N1b · footer: Ft5 · design-system: design.md · designed-as-app
+ * Pre-emit critique: P4 H4 E4 S4 R4 V4 */
 @import "tailwindcss";
+/* Canonical design tokens (colour, type, space, motion). See design.md. */
+@import "../../tokens.css";
 
 :root {
-  --background: #FEFCF8;
-  --foreground: #2A4A52;
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Named type tokens (hallmark): Fraunces display + Geist body, wired to
-     the CSS variables next/font sets on <html>. */
-  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
-  --font-body: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  /* Utility aliases for the role tokens in tokens.css (bg-brand-paper,
+     text-brand-ink, …). The brand- prefix keeps clear of Tailwind's own
+     teal/orange palettes. */
+  --color-brand-paper: var(--color-paper);
+  --color-brand-paper-2: var(--color-paper-2);
+  --color-brand-paper-3: var(--color-paper-3);
+  --color-brand-ink: var(--color-ink);
+  --color-brand-ink-2: var(--color-ink-2);
+  --color-brand-rule: var(--color-rule);
+  --color-brand-teal: var(--color-surface-brand);
+  --color-brand-deep: var(--color-surface-brand-strong);
+  --color-brand-on: var(--color-on-brand);
+  --color-brand-accent: var(--color-accent);
+  --color-brand-accent-strong: var(--color-accent-strong);
+  --color-brand-accent-deep: var(--color-accent-deep);
+  --color-brand-error: var(--color-error);
+  --color-brand-success: var(--color-success);
+  --font-heading: var(--font-display);
 }
 
 html {
   /* Keep iOS Safari from inflating text in landscape. */
   -webkit-text-size-adjust: 100%;
+  /* clip, never hidden: hidden would break position: sticky on the navbar. */
+  overflow-x: clip;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
+  line-height: 1.6;
+  overflow-x: clip;
   /* Quieter touch feedback; buttons provide their own active states. */
   -webkit-tap-highlight-color: transparent;
   /* Stop pull-to-refresh gestures from bouncing the whole page on Android. */
   overscroll-behavior-y: none;
 }
 
-/* Headings and the wordmark carry the display face; body copy stays sans.
-   A one-font page reads as a template — the pairing gives the storefront a
-   distinct voice. Tighten tracking slightly, as display serifs want. */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.wordmark {
-  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
-  letter-spacing: -0.015em;
+/* Headings and the wordmark carry the display face (Fredoka, rounded);
+   body copy stays Figtree. Always roman, never italic. Weight 600+ because
+   Fredoka's lighter cuts get thin against the body face. In the base
+   layer so a utility such as font-bold on a heading still wins. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-style: normal;
+    letter-spacing: -0.02em;
+    /* Long words wrap instead of forcing sideways scroll at 320px. */
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
 }
 
-/* WCAG 2.4.7/2.4.11: a clearly visible, unobscured focus indicator on
-   every interactive element, without flashing outlines at mouse users. */
+/* Prices, counts and other figures line up in columns. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* WCAG 2.4.7 / 2.4.11 / 1.4.11: one clearly visible, unobscured focus
+   indicator on every interactive element, never animated. The offset leaves
+   a gap of page colour between control and ring, so the ring only has to
+   contrast with the surface behind it: ink on light surfaces (≥7.19:1), and
+   paper on the teal/deep-teal bars (4.51 / 6.48:1). The old orange ring was
+   1.30:1 on the navbar. */
 :focus-visible {
-  outline: 3px solid #C8722A;
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
-  border-radius: 2px;
+}
+
+nav[aria-label="Main"] :focus-visible,
+footer :focus-visible,
+.on-dark :focus-visible {
+  outline-color: var(--color-focus-on-dark);
 }
 
 /* Focused elements scroll clear of the sticky navbar (2.4.11 focus not
@@ -64,9 +108,9 @@ h6,
   position: absolute;
   left: -9999px;
   top: 0;
-  z-index: 100;
-  background: #2A4A52;
-  color: #fff;
+  z-index: var(--z-dropdown);
+  background: var(--color-ink);
+  color: var(--color-paper);
   padding: 0.75rem 1.25rem;
   border-radius: 0 0 0.5rem 0;
   font-weight: 600;
@@ -121,20 +165,20 @@ h6,
 }
 
 .animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+  animation: fade-in var(--dur-short) var(--ease-out);
 }
 
 .animate-slide-up {
-  animation: slide-up 0.25s ease-out;
+  animation: slide-up var(--dur-short) var(--ease-out);
 }
 
 .md\:animate-slide-in-right {
-  animation: slide-up 0.25s ease-out;
+  animation: slide-up var(--dur-short) var(--ease-out);
 }
 
 @media (min-width: 48rem) {
   .md\:animate-slide-in-right {
-    animation: slide-in-right 0.25s ease-out;
+    animation: slide-in-right var(--dur-short) var(--ease-out);
   }
 }
 

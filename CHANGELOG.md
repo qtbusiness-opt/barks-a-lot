@@ -6,10 +6,18 @@ follows [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`,
 where MAJOR breaks how the site is used, MINOR adds a capability without
 breaking anything, and PATCH fixes a bug with no new capability.
 
-## [Unreleased]
+## [2.0.0] — 2026-11-14
+
+A major release: the storefront has a new look, and online orders are now
+collected only by a pickup day and time slot booked at checkout.
 
 ### Added
 
+- A redesigned home page: a split hero with the shop's own photo (or the
+  logo), then tiles for shopping by category, the next market from the
+  events calendar, how pickup works (hours read from the admin settings),
+  what goes into the treats, the family, and custom bandanas, then the
+  four newest featured products.
 - Order lines remember the photo they were bought as. The picture the
   customer picked — the bandana pattern, not just the product's cover —
   is frozen onto the order at checkout and shown in order history, in
@@ -36,6 +44,21 @@ breaking anything, and PATCH fixes a bug with no new capability.
 
 ### Changed
 
+- New type across the whole site: Fredoka, a rounded face, for headings
+  and the wordmark, and Figtree for body text. The brand colours are
+  unchanged.
+- The navigation bar has four main links (Shop, Events, About, Contact)
+  with the account and cart on the right, and marks the page you're on.
+  The footer is a single closing line with the links beneath it.
+- Product cards have one soft shadow, pill-shaped buttons, and stock
+  shown with an icon and a word. The product page matches: stock with an
+  icon, brand-coloured buttons and selects, the whole photo visible, and
+  long style names wrap instead of being cut off.
+- Placeholder product pictures no longer carry a name caption, and new
+  products start with a plain paw placeholder instead of the squeaky-bone
+  picture.
+- The design system is written down in `design.md` and `tokens.css`, so
+  later pages follow the same colours, type and spacing.
 - `/events` opens on the list; the calendar is one click away
   ("Calendar view", top right). The day page links "Back to Events".
 - Orders can no longer be reserved for collection at a market or event.
@@ -53,6 +76,18 @@ breaking anything, and PATCH fixes a bug with no new capability.
   them after about 5 PM in Boise.
 - The admin event forms no longer claim online pickup closes 2 hours
   before the event ends; they say event days can't be booked for pickup.
+- Text and buttons across the site meet WCAG AA contrast: white text on
+  orange, orange prices, teal text on cream, error and stock messages,
+  and form field borders all fell short before.
+- A visible keyboard focus ring on every page, including on the teal
+  navigation bar and footer, where the old orange ring couldn't be seen.
+  The colour swatches on the product and event forms now show focus too.
+- Missing spaces after bold words on the About and Privacy pages
+  ("Meekois", "Your shopping cartis").
+- The shop page shows a message and a "Try again" button when the
+  products can't load, instead of "Loading…" forever.
+- The verification and password-reset emails escape the customer's name
+  and the link before putting them into the email's HTML.
 
 ## [1.1.0] — 2026-08-20
 

@@ -1,7 +1,7 @@
 "use client";
 
 const inputClass =
-  "w-24 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-24 border border-[#4A7C8A] rounded-lg px-3 py-2";
 
 // One quantity input per stock combination (e.g. "Medium / Plaid"),
 // generated server-side from the option groups above and only available
@@ -15,7 +15,7 @@ export default function VariantStockGrid({ variants, stock, onChange }) {
       <legend className="block text-sm font-medium text-gray-700 mb-1">
         Stock by option
       </legend>
-      <p className="text-xs text-gray-500 mb-2">
+      <p className="text-xs text-gray-600 mb-2">
         Added or removed choices show up here after you save once.
       </p>
       <div className="space-y-2">

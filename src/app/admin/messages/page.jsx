@@ -47,19 +47,19 @@ function MessageCard({ message, onChanged, onDeleted, onError }) {
           <p className="font-semibold text-[#2A4A52]">
             {message.name}
             {!isRead && (
-              <span className="ml-2 inline-block bg-[#C8722A] text-white text-xs rounded-full px-2 py-0.5 font-medium align-middle">
+              <span className="ml-2 inline-block bg-[#A85D1F] text-white text-xs rounded-full px-2 py-0.5 font-medium align-middle">
                 New
               </span>
             )}
           </p>
           <a
             href={`mailto:${message.email}`}
-            className="text-sm text-[#4A7C8A] hover:underline"
+            className="text-sm text-[#3A6270] hover:underline"
           >
             {message.email}
           </a>
         </div>
-        <p className="text-xs text-gray-500 shrink-0">
+        <p className="text-xs text-gray-600 shrink-0">
           {formatDateTime(message.createdAt)}
         </p>
       </div>
@@ -76,13 +76,13 @@ function MessageCard({ message, onChanged, onDeleted, onError }) {
         <button
           onClick={toggleRead}
           disabled={busy}
-          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition disabled:opacity-50"
+          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition disabled:opacity-50"
         >
           {isRead ? "Mark unread" : "Mark read"}
         </button>
         <button
           onClick={remove}
-          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white transition"
+          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-700 hover:bg-red-700 hover:text-white transition"
         >
           Delete
         </button>
@@ -110,23 +110,23 @@ export default function AdminMessagesPage() {
 
   return (
     <AdminShell title="Messages" backTo="/admin">
-      <p className="text-sm text-gray-500 mb-6 -mt-4">
+      <p className="text-sm text-gray-600 mb-6 -mt-4">
         Messages sent through the Contact Us form
         {unread > 0 ? ` — ${unread} unread.` : "."}
       </p>
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>
       )}
 
       {messages === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading messages…</p>
+        <p className="text-gray-600 text-center py-10">Loading messages…</p>
       ) : messages?.length === 0 ? (
-        <p className="text-gray-500 text-center py-10">
+        <p className="text-gray-600 text-center py-10">
           No messages yet — they appear here when someone uses the Contact Us
           form.
         </p>

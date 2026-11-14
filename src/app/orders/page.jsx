@@ -60,11 +60,11 @@ export default function OrdersPage() {
   if (!authLoading && !user) {
     return (
       <div className="max-w-4xl mx-auto safe-x py-20 text-center">
-        <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">My Orders</h1>
-        <p className="text-gray-500 mb-6">Please log in to view your orders.</p>
+        <h1 className="text-3xl font-bold text-brand-ink mb-4">My Orders</h1>
+        <p className="text-brand-ink-2 mb-6">Please log in to view your orders.</p>
         <Link
           href="/login"
-          className="bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] transition"
+          className="bg-brand-teal text-brand-on px-6 py-3 rounded-lg font-semibold hover:bg-brand-deep transition"
         >
           Log In
         </Link>
@@ -74,7 +74,7 @@ export default function OrdersPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center text-gray-500">
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center text-brand-ink-2">
         Loading orders...
       </div>
     );
@@ -84,14 +84,14 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-4xl mx-auto safe-x py-6 sm:py-10">
-      <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">
+      <h1 className="text-2xl sm:text-3xl font-bold text-brand-ink mb-6 sm:mb-8">
         My Orders
       </h1>
 
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>
@@ -99,12 +99,12 @@ export default function OrdersPage() {
 
       {orderList.length === 0 ? (
         <div className="text-center py-10">
-          <p className="text-gray-500 mb-6">
+          <p className="text-brand-ink-2 mb-6">
             You haven&rsquo;t placed any orders yet.
           </p>
           <Link
             href="/products"
-            className="bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] transition"
+            className="bg-brand-teal text-brand-on px-6 py-3 rounded-lg font-semibold hover:bg-brand-deep transition"
           >
             Start Shopping
           </Link>
@@ -118,13 +118,13 @@ export default function OrdersPage() {
             >
               <div className="flex flex-wrap gap-2 justify-between items-start mb-4">
                 <div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-brand-ink-2">
                     Order placed {formatDate(order.createdAt)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-brand-ink-2 mt-1">
                     Confirmation #: {order.confirmationNumber}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-brand-ink-2 mt-1">
                     {order.fulfillmentType === "pickup"
                       ? order.pickupDate
                         ? `Pickup — ${formatPickupDayWithYear(order.pickupDate)}${order.pickupTime ? ` · ${formatSlot(order.pickupTime)}` : ""}`
@@ -137,7 +137,7 @@ export default function OrdersPage() {
                   </p>
                   {order.pickupDate &&
                     ["pending", "shipped"].includes(order.status) && (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-brand-ink-2 mt-1">
                         {pickupDetails || PICKUP_FALLBACK}
                       </p>
                     )}
@@ -178,13 +178,13 @@ export default function OrdersPage() {
                       {formatSelectedOptions(
                         parseSelectedOptions(item.options)
                       ) && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-brand-ink-2">
                           {formatSelectedOptions(
                             parseSelectedOptions(item.options)
                           )}
                         </p>
                       )}
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-brand-ink-2">
                         Qty: {item.quantity}
                       </p>
                     </div>
@@ -201,7 +201,7 @@ export default function OrdersPage() {
                   <button
                     onClick={() => cancelOrder(order.id)}
                     disabled={cancelling === order.id}
-                    className="min-h-11 px-4 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition disabled:opacity-50"
+                    className="min-h-11 px-4 rounded-lg text-sm font-medium border border-red-300 text-red-700 hover:bg-red-700 hover:text-white active:bg-red-800 transition disabled:opacity-50"
                   >
                     {cancelling === order.id ? "Cancelling…" : "Cancel Order"}
                   </button>
@@ -214,7 +214,7 @@ export default function OrdersPage() {
                       Discount: −${order.discountTotal.toFixed(2)}
                     </p>
                   )}
-                  <p className="font-bold text-[#C8722A]">
+                  <p className="font-bold text-[#8A4D1A]">
                     Total: ${order.total.toFixed(2)}
                   </p>
                 </div>

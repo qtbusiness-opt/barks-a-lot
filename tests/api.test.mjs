@@ -65,6 +65,13 @@ before(async () => {
     ADMIN_PASSWORD,
     RATE_LIMIT_MAX: "1000",
     NODE_ENV: "development",
+    // Keep the run hermetic: a developer's .env with real Square, Resend
+    // or a public APP_URL would demand card details, send real email and
+    // break the dev links these tests rely on. An empty value wins over
+    // .env, because Next only fills variables that are not already set.
+    SQUARE_ACCESS_TOKEN: "",
+    RESEND_API_KEY: "",
+    APP_URL: "",
   };
 
   execSync("node node_modules/prisma/build/index.js migrate deploy", {
@@ -1798,7 +1805,11 @@ test("events take priority: a day with an event is blocked out of pickup", async
           ...extra,
         },
       });
-    const slot = before.data.days.find((d) => d.day === target).slots[0].time;
+    // First slot with room: earlier tests in the run may have filled
+    // slots on this day, and /pickup/days lists full ones too.
+    const slot = before.data.days
+      .find((d) => d.day === target)
+      .slots.find((s) => s.available).time;
     const bookedFirst = await order({ pickupDate: target, pickupTime: slot });
     assert.equal(bookedFirst.status, 201, JSON.stringify(bookedFirst.data));
 

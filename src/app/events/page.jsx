@@ -41,7 +41,7 @@ export default async function EventsPage({ searchParams }) {
         <div className="ml-auto flex items-center gap-2">
           <Link
             href={showCalendar ? "/events" : "/events?view=calendar"}
-            className="inline-flex items-center min-h-11 px-4 rounded-lg border border-[#4A7C8A] text-[#4A7C8A] font-semibold hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+            className="inline-flex items-center min-h-11 px-4 rounded-lg border border-[#4A7C8A] text-[#3A6270] font-semibold hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
           >
             {showCalendar ? "List view" : "Calendar view"}
           </Link>

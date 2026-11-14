@@ -12,7 +12,7 @@ import EventMap from "@/components/EventMap";
 import { formatCalendarDay } from "@/lib/format-date";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 function ColorPicker({ value, onChange }) {
   return (
@@ -30,11 +30,11 @@ function ColorPicker({ value, onChange }) {
               checked={value === key}
               onChange={() => onChange(key)}
               aria-label={EVENT_COLORS[key].label}
-              className="sr-only"
+              className="sr-only peer"
             />
             <span
               title={EVENT_COLORS[key].label}
-              className={`block w-9 h-9 rounded-full ${EVENT_COLORS[key].swatch} ${
+              className={`block w-9 h-9 rounded-full peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#2A4A52] ${EVENT_COLORS[key].swatch} ${
                 value === key ? "ring-2 ring-offset-2 ring-[#2A4A52]" : ""
               }`}
             />
@@ -105,13 +105,13 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
       </span>
       <h2 className="text-xl font-bold text-[#2A4A52] mt-3">{event.title}</h2>
       {formatTimeRange(event) && (
-        <p className="text-sm text-[#4A7C8A] font-medium mt-1">
+        <p className="text-sm text-[#3A6270] font-medium mt-1">
           <span aria-hidden="true">🕒 </span>
           {formatTimeRange(event)}
         </p>
       )}
       {event.location && (
-        <p className="text-sm text-[#4A7C8A] font-medium mt-1">
+        <p className="text-sm text-[#3A6270] font-medium mt-1">
           <span aria-hidden="true">📍 </span>
           {event.location}
         </p>
@@ -124,13 +124,13 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
           <div className="flex gap-2 mt-4">
             <button
               onClick={editing ? () => setEditing(false) : startEdit}
-              className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+              className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
             >
               {editing ? "Close" : "Edit"}
             </button>
             <button
               onClick={remove}
-              className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition"
+              className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-700 hover:bg-red-700 hover:text-white active:bg-red-800 transition"
             >
               Delete
             </button>
@@ -235,7 +235,7 @@ function EventCard({ event, isAdmin, onSaved, onDeleted, onError }) {
                     onChange={(e) => update("endTime", e.target.value)}
                     className={inputClass}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-600 mt-1">
                     Customers can’t book an order pickup on an event day.
                   </p>
                 </div>
@@ -295,7 +295,7 @@ export default function EventDayPage() {
     <div className="max-w-3xl mx-auto safe-x py-6 sm:py-10">
       <Link
         href="/events"
-        className="inline-flex items-center min-h-11 text-[#4A7C8A] hover:underline mb-1"
+        className="inline-flex items-center min-h-11 text-[#3A6270] hover:underline mb-1"
       >
         &larr; Back to Events
       </Link>
@@ -306,21 +306,21 @@ export default function EventDayPage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>
       )}
 
       {events === null ? (
-        <p className="text-gray-500 text-center py-10">Loading events…</p>
+        <p className="text-gray-600 text-center py-10">Loading events…</p>
       ) : events.length === 0 ? (
         <div className="text-center py-10">
-          <p className="text-gray-500 mb-6">No events on this day.</p>
+          <p className="text-gray-600 mb-6">No events on this day.</p>
           {isAdmin && (
             <Link
               href={`/admin/events/new?date=${date}`}
-              className="inline-block bg-[#C8722A] hover:bg-[#A85D1F] text-white px-6 py-3 rounded-lg font-semibold transition"
+              className="inline-block bg-[#A85D1F] hover:bg-[#8A4D1A] text-white px-6 py-3 rounded-lg font-semibold transition"
             >
               + Add Event on This Day
             </Link>
@@ -351,7 +351,7 @@ export default function EventDayPage() {
           {isAdmin && (
             <Link
               href={`/admin/events/new?date=${date}`}
-              className="block text-center border-2 border-dashed border-[#4A7C8A]/40 text-[#4A7C8A] rounded-xl py-4 font-medium hover:border-[#4A7C8A] hover:bg-[#F5F0E8] transition"
+              className="block text-center border-2 border-dashed border-[#4A7C8A]/40 text-[#3A6270] rounded-xl py-4 font-medium hover:border-[#4A7C8A] hover:bg-[#F5F0E8] transition"
             >
               + Add Another Event
             </Link>

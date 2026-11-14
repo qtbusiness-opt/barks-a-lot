@@ -18,5 +18,4 @@
     <path d="M5,5 Q15,0 20,10" fill="none" stroke="#3A6C7A" stroke-width="1.5" opacity="0.5"/>
     <path d="M25,-10 Q35,-15 40,-5" fill="none" stroke="#3A6C7A" stroke-width="1.5" opacity="0.5"/>
   </g>
-  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Salmon Treats</text>
 </svg>

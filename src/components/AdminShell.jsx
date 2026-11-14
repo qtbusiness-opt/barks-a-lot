@@ -13,7 +13,7 @@ export default function AdminShell({ title, backTo, children }) {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto safe-x py-20 text-center text-gray-500">
+      <div className="max-w-6xl mx-auto safe-x py-20 text-center text-gray-600">
         Loading...
       </div>
     );
@@ -23,7 +23,7 @@ export default function AdminShell({ title, backTo, children }) {
     return (
       <div className="max-w-6xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">Admin</h1>
-        <p className="text-gray-500 mb-6">
+        <p className="text-gray-600 mb-6">
           You need an admin account to view this page.
         </p>
         <Link
@@ -41,7 +41,7 @@ export default function AdminShell({ title, backTo, children }) {
       {backTo && (
         <Link
           href={backTo}
-          className="inline-flex items-center min-h-11 text-[#4A7C8A] hover:underline mb-1"
+          className="inline-flex items-center min-h-11 text-[#3A6270] hover:underline mb-1"
         >
           &larr; Dashboard
         </Link>
@@ -50,7 +50,7 @@ export default function AdminShell({ title, backTo, children }) {
         {title}
       </h1>
       {children}
-      <p className="text-center text-xs text-gray-400 mt-10">
+      <p className="text-center text-xs text-gray-600 mt-10">
         Barks-A-Lot v{pkg.version}
       </p>
     </div>

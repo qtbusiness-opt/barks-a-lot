@@ -7,7 +7,7 @@ import api from "@/lib/api";
 import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -60,11 +60,11 @@ export default function RegisterPage() {
             Click it to activate your account, then log in.
           </p>
           {registered.devVerificationUrl && (
-            <p className="text-xs text-gray-500 bg-[#F5F0E8] p-3 rounded-lg mt-4 break-all">
+            <p className="text-xs text-gray-600 bg-[#F5F0E8] p-3 rounded-lg mt-4 break-all">
               Dev mode (no email provider configured):{" "}
               <a
                 href={registered.devVerificationUrl}
-                className="text-[#4A7C8A] font-medium hover:underline"
+                className="text-[#3A6270] font-medium hover:underline"
               >
                 verify now
               </a>
@@ -76,13 +76,13 @@ export default function RegisterPage() {
             </p>
           )}
           {error && (
-            <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mt-4">{error}</p>
+            <p role="alert" className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mt-4">{error}</p>
           )}
           <div className="mt-6 space-y-3">
             <button
               onClick={handleResend}
               disabled={resending}
-              className="w-full border-2 border-[#4A7C8A] text-[#4A7C8A] py-2.5 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white transition disabled:opacity-50"
+              className="w-full border-2 border-[#4A7C8A] text-[#3A6270] py-2.5 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white transition disabled:opacity-50"
             >
               {resending ? "Sending…" : "Resend Verification Email"}
             </button>
@@ -105,7 +105,7 @@ export default function RegisterPage() {
           Create Account
         </h1>
         {error && (
-          <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+          <p role="alert" className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -156,9 +156,9 @@ export default function RegisterPage() {
             {loading ? "Creating account…" : "Sign Up"}
           </button>
         </form>
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-gray-600 mt-6">
           Already have an account?{" "}
-          <Link href="/login" className="text-[#4A7C8A] font-medium hover:underline">
+          <Link href="/login" className="text-[#3A6270] font-medium hover:underline">
             Log In
           </Link>
         </p>

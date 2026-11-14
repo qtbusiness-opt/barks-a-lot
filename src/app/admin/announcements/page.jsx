@@ -7,7 +7,7 @@ import AdminShell from "@/components/AdminShell";
 import { formatDate } from "@/lib/format-date";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 function AnnouncementRow({ announcement, onSaved, onDeleted, onError }) {
   // Several rows can be open for editing at once, so the field ids have
@@ -58,20 +58,20 @@ function AnnouncementRow({ announcement, onSaved, onDeleted, onError }) {
           <p className="font-semibold text-[#2A4A52]">{announcement.title}</p>
           <p className="text-sm text-gray-600 mt-1">{announcement.body}</p>
         </div>
-        <p className="text-xs text-gray-500 shrink-0">
+        <p className="text-xs text-gray-600 shrink-0">
           {formatDate(announcement.createdAt)}
         </p>
       </div>
       <div className="flex gap-2 mt-3">
         <button
           onClick={editing ? () => setEditing(false) : startEdit}
-          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
         >
           {editing ? "Close" : "Edit"}
         </button>
         <button
           onClick={remove}
-          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition"
+          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-700 hover:bg-red-700 hover:text-white active:bg-red-800 transition"
         >
           Delete
         </button>
@@ -172,14 +172,14 @@ export default function AdminAnnouncementsPage() {
           <h2 className="text-xl font-semibold text-[#2A4A52]">
             New Announcement
           </h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-600">
             The most recent announcement appears as a banner on the storefront
             homepage.
           </p>
           {error && (
             <p
               role="alert"
-              className="text-red-500 text-sm bg-red-50 p-3 rounded-lg"
+              className="text-red-700 text-sm bg-red-50 p-3 rounded-lg"
             >
               {error}
             </p>
@@ -219,7 +219,7 @@ export default function AdminAnnouncementsPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+            className="w-full bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
             {submitting ? "Publishing…" : "Publish Announcement"}
           </button>
@@ -230,9 +230,9 @@ export default function AdminAnnouncementsPage() {
             Published ({announcements?.length ?? "…"})
           </h2>
           {announcements === null ? (
-            <p className="text-gray-500">Loading announcements…</p>
+            <p className="text-gray-600">Loading announcements…</p>
           ) : announcements.length === 0 ? (
-            <p className="text-gray-500">No announcements yet.</p>
+            <p className="text-gray-600">No announcements yet.</p>
           ) : (
             <div className="space-y-3">
               {announcements.map((a) => (

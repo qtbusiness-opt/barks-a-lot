@@ -10,6 +10,8 @@ function ProductsContent() {
   const initialCategory = searchParams.get("category") || "all";
   const [category, setCategory] = useState(initialCategory);
   const [result, setResult] = useState(null);
+  // Bumped by "Try again" to re-run the products request.
+  const [retryKey, setRetryKey] = useState(0);
   // Admin-managed category chips; "all" is a fixed pseudo-filter.
   const [categories, setCategories] = useState([]);
 
@@ -21,11 +23,21 @@ function ProductsContent() {
   }, []);
 
   useEffect(() => {
+    // Ignore a response that arrives after the category changed again.
+    let stale = false;
     const params = category !== "all" ? `?category=${encodeURIComponent(category)}` : "";
     api
       .get(`/products${params}`)
-      .then((res) => setResult({ category, products: res.data.products }));
-  }, [category]);
+      .then((res) => {
+        if (!stale) setResult({ category, products: res.data.products, error: false });
+      })
+      .catch(() => {
+        if (!stale) setResult({ category, products: [], error: true });
+      });
+    return () => {
+      stale = true;
+    };
+  }, [category, retryKey]);
 
   const chips = [
     { slug: "all", name: "All" },
@@ -34,10 +46,11 @@ function ProductsContent() {
 
   const loading = result?.category !== category;
   const products = result?.products ?? [];
+  const failed = !loading && result?.error;
 
   return (
     <div className="max-w-7xl mx-auto safe-x py-6 sm:py-10">
-      <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mb-6 sm:mb-8">Our Products</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-brand-ink mb-6 sm:mb-8">Our Products</h1>
 
       <div className="flex sm:flex-wrap gap-2 mb-6 sm:mb-8 overflow-x-auto pb-2 -mx-1 px-1">
         {chips.map((cat) => (
@@ -46,8 +59,8 @@ function ProductsContent() {
             onClick={() => setCategory(cat.slug)}
             className={`shrink-0 min-h-11 px-4 py-2 rounded-full text-sm font-medium transition ${
               category === cat.slug
-                ? "bg-[#4A7C8A] text-white"
-                : "bg-white text-[#4A7C8A] border border-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white"
+                ? "bg-brand-teal text-brand-on border border-brand-teal"
+                : "bg-white text-brand-ink-2 border border-brand-teal hover:bg-brand-teal hover:text-brand-on"
             }`}
           >
             {cat.name}
@@ -56,9 +69,24 @@ function ProductsContent() {
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-gray-500">Loading products…</div>
+        <div className="text-center py-20 text-brand-ink-2">Loading products…</div>
+      ) : failed ? (
+        <div role="alert" className="text-center py-20 text-brand-ink-2">
+          <p>We couldn&rsquo;t load the products just now.</p>
+          <button
+            type="button"
+            onClick={() => {
+              // Clearing the result shows "Loading products…" while retrying.
+              setResult(null);
+              setRetryKey((k) => k + 1);
+            }}
+            className="mt-4 inline-flex items-center min-h-11 px-5 rounded-full bg-brand-teal text-brand-on font-semibold hover:bg-brand-deep"
+          >
+            Try again
+          </button>
+        </div>
       ) : products.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
+        <div className="text-center py-20 text-brand-ink-2">
           No products found in this category.
         </div>
       ) : (
@@ -74,7 +102,7 @@ function ProductsContent() {
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={<div className="text-center py-20 text-gray-500">Loading…</div>}>
+    <Suspense fallback={<div className="text-center py-20 text-brand-ink-2">Loading…</div>}>
       <ProductsContent />
     </Suspense>
   );

@@ -1,81 +1,137 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import StoreImage from "@/components/StoreImage";
+
+// The four places a shopper goes; the logo is the way home. Account and cart
+// controls sit in the right-hand cluster.
+const CENTRE_LINKS = [
+  { href: "/products", label: "Shop" },
+  { href: "/events", label: "Events" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { itemCount } = useCart();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef(null);
   const isDev = process.env.NODE_ENV === "development";
   const isQual = process.env.NODE_ENV === "qual";
+  const cartLabel = `Cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`;
+
+  // Escape closes the phone menu and hands focus back to its button.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [menuOpen]);
+
+  const isCurrent = (href) =>
+    pathname === href || pathname?.startsWith(`${href}/`);
+  const current = (href) =>
+    pathname === href ? "page" : isCurrent(href) ? "true" : undefined;
+
+  // Hover and "you are here" both use an underline, not a colour change:
+  // paper text is the only light colour that clears 4.5:1 on the teal bar.
+  const linkClass = (href) =>
+    `underline-offset-8 decoration-2 hover:underline ${
+      isCurrent(href) ? "underline" : ""
+    }`;
+  const mobileLinkClass = (href) =>
+    `block py-3 underline-offset-4 decoration-2 active:underline ${
+      isCurrent(href) ? "underline" : ""
+    }`;
+
+  const pillClass =
+    "bg-brand-paper text-brand-ink px-4 py-1.5 rounded-full text-sm font-semibold hover:bg-brand-paper-2 transition-colors duration-(--dur-micro) ease-(--ease-out)";
 
   return (
     <nav
       aria-label="Main"
-      className="bg-[#4A7C8A] text-white shadow-lg sticky top-0 z-50 safe-top"
+      className="bg-brand-teal text-brand-on shadow-lg sticky top-0 z-50 safe-top"
     >
       <div className="max-w-7xl mx-auto safe-x sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl">
+        <div className="flex justify-between items-center h-16 lg:grid lg:grid-cols-[1fr_auto_1fr]">
+          <Link
+            href="/"
+            aria-label={`Barks-A-Lot home${isDev ? " (development)" : isQual ? " (qual)" : ""}`}
+            className="flex items-center gap-2 text-xl justify-self-start"
+          >
             <StoreImage
               src="/images/barks-a-lot-logo.png"
-              alt="Barks-A-Lot"
+              alt=""
               width={40}
               height={40}
               className="h-10 w-10 rounded-full"
             />
             <span className="wordmark hidden sm:inline">Barks-A-Lot</span>
             {isDev ? (
-              <span className="ml-3 inline-flex items-center rounded-md bg-yellow-400/10 px-2 py-1 text-sm font-medium text-yellow-500 inset-ring-yellow-400/20">
+              <span className="ml-3 inline-flex items-center rounded-md bg-brand-paper px-2 py-1 text-sm font-medium text-brand-ink">
                 DEV
               </span>
             ) : isQual ? (
-              <span className="ml-3 inline-flex items-center rounded-md bg-red-400/10 px-2 py-1 text-sm font-medium text-red-500 inset-ring-red-400/20">
+              <span className="ml-3 inline-flex items-center rounded-md bg-brand-paper px-2 py-1 text-sm font-medium text-brand-error">
                 QUAL
               </span>
             ) : null}
           </Link>
 
-          <div className="hidden md:flex items-center gap-6">
-            <Link href="/" className="hover:text-[#E8DFC8] transition">
-              Home
-            </Link>
-            <Link href="/products" className="hover:text-[#E8DFC8] transition">
-              Shop
-            </Link>
-            <Link href="/events" className="hover:text-[#E8DFC8] transition">
-              Events
-            </Link>
-            <Link href="/about" className="hover:text-[#E8DFC8] transition">
-              About
-            </Link>
-            <Link href="/contact" className="hover:text-[#E8DFC8] transition">
-              Contact
-            </Link>
+          <div className="hidden lg:flex items-center gap-8 font-medium">
+            {CENTRE_LINKS.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                aria-current={current(href)}
+                className={linkClass(href)}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+
+          <div className="hidden lg:flex items-center justify-end gap-6">
             {user && (
-              <Link href="/orders" className="hover:text-[#E8DFC8] transition">
+              <Link
+                href="/orders"
+                aria-current={current("/orders")}
+                className={linkClass("/orders")}
+              >
                 Orders
               </Link>
             )}
             {user?.role === "admin" && (
-              <Link href="/admin" className="hover:text-[#E8DFC8] transition">
+              <Link
+                href="/admin"
+                aria-current={current("/admin")}
+                className={linkClass("/admin")}
+              >
                 Admin
               </Link>
             )}
             <Link
               href="/cart"
-              aria-label={`Cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`}
-              className="relative hover:text-[#E8DFC8] transition"
+              aria-label={cartLabel}
+              aria-current={current("/cart")}
+              className={`relative ${linkClass("/cart")}`}
             >
               Cart
               {itemCount > 0 && (
                 <span
                   aria-hidden="true"
-                  className="absolute -top-2 -right-4 bg-[#C8722A] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
+                  className="absolute -top-2 -right-4 bg-brand-accent-strong text-brand-on text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center tabular"
                 >
                   {itemCount}
                 </span>
@@ -85,22 +141,18 @@ export default function Navbar() {
               <div className="flex items-center gap-4">
                 <Link
                   href="/profile"
-                  className="text-white text-sm font-medium hover:underline transition"
+                  title={user.name}
+                  aria-current={current("/profile")}
+                  className={`block max-w-36 truncate text-sm font-medium ${linkClass("/profile")}`}
                 >
                   Hi, {user.name}
                 </Link>
-                <button
-                  onClick={logout}
-                  className="bg-[#E8DFC8] text-[#4A7C8A] px-3 py-1 rounded-md text-sm font-medium hover:bg-white transition"
-                >
+                <button onClick={logout} className={pillClass}>
                   Logout
                 </button>
               </div>
             ) : (
-              <Link
-                href="/login"
-                className="bg-[#E8DFC8] text-[#4A7C8A] px-4 py-1.5 rounded-md text-sm font-medium hover:bg-white transition"
-              >
+              <Link href="/login" className={pillClass}>
                 Login
               </Link>
             )}
@@ -108,11 +160,11 @@ export default function Navbar() {
 
           {/* On phones the cart stays one tap away instead of hiding
               behind the menu. */}
-          <div className="flex items-center md:hidden">
+          <div className="flex items-center lg:hidden">
             <Link
               href="/cart"
-              aria-label={`Cart, ${itemCount} items`}
-              className="relative flex items-center justify-center h-11 w-11 active:bg-white/10 rounded-lg"
+              aria-label={cartLabel}
+              className="relative flex items-center justify-center h-11 w-11 active:bg-brand-deep rounded-lg"
             >
               <svg
                 aria-hidden="true"
@@ -130,15 +182,20 @@ export default function Navbar() {
                 />
               </svg>
               {itemCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 bg-[#C8722A] text-white text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center">
+                <span
+                  aria-hidden="true"
+                  className="absolute top-0.5 right-0.5 bg-brand-accent-strong text-brand-on text-xs rounded-full h-5 min-w-5 px-1 flex items-center justify-center tabular"
+                >
                   {itemCount}
                 </span>
               )}
             </Link>
             <button
-              className="flex items-center justify-center h-11 w-11 active:bg-white/10 rounded-lg"
+              ref={menuButtonRef}
+              className="flex items-center justify-center h-11 w-11 active:bg-brand-deep rounded-lg"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
             >
               <svg
@@ -170,46 +227,23 @@ export default function Navbar() {
         </div>
 
         {menuOpen && (
-          <div className="md:hidden pb-4 divide-y divide-white/10">
-            <Link
-              href="/"
-              className="block py-3 active:text-[#E8DFC8]"
-              onClick={() => setMenuOpen(false)}
-            >
-              Home
-            </Link>
-            <Link
-              href="/products"
-              className="block py-3 active:text-[#E8DFC8]"
-              onClick={() => setMenuOpen(false)}
-            >
-              Shop
-            </Link>
-            <Link
-              href="/events"
-              className="block py-3 active:text-[#E8DFC8]"
-              onClick={() => setMenuOpen(false)}
-            >
-              Events
-            </Link>
-            <Link
-              href="/about"
-              className="block py-3 active:text-[#E8DFC8]"
-              onClick={() => setMenuOpen(false)}
-            >
-              About
-            </Link>
-            <Link
-              href="/contact"
-              className="block py-3 active:text-[#E8DFC8]"
-              onClick={() => setMenuOpen(false)}
-            >
-              Contact
-            </Link>
+          <div id="mobile-menu" className="lg:hidden pb-4 divide-y divide-white/10">
+            {CENTRE_LINKS.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                aria-current={current(href)}
+                className={mobileLinkClass(href)}
+                onClick={() => setMenuOpen(false)}
+              >
+                {label}
+              </Link>
+            ))}
             {user && (
               <Link
                 href="/orders"
-                className="block py-3 active:text-[#E8DFC8]"
+                aria-current={current("/orders")}
+                className={mobileLinkClass("/orders")}
                 onClick={() => setMenuOpen(false)}
               >
                 Orders
@@ -218,7 +252,8 @@ export default function Navbar() {
             {user?.role === "admin" && (
               <Link
                 href="/admin"
-                className="block py-3 active:text-[#E8DFC8]"
+                aria-current={current("/admin")}
+                className={mobileLinkClass("/admin")}
                 onClick={() => setMenuOpen(false)}
               >
                 Admin
@@ -226,7 +261,8 @@ export default function Navbar() {
             )}
             <Link
               href="/cart"
-              className="block py-3 active:text-[#E8DFC8]"
+              aria-current={current("/cart")}
+              className={mobileLinkClass("/cart")}
               onClick={() => setMenuOpen(false)}
             >
               Cart {itemCount > 0 && `(${itemCount})`}
@@ -235,7 +271,8 @@ export default function Navbar() {
               <>
                 <Link
                   href="/profile"
-                  className="block py-3 active:text-[#E8DFC8]"
+                  aria-current={current("/profile")}
+                  className={mobileLinkClass("/profile")}
                   onClick={() => setMenuOpen(false)}
                 >
                   Profile
@@ -245,7 +282,7 @@ export default function Navbar() {
                     logout();
                     setMenuOpen(false);
                   }}
-                  className="block w-full text-left py-3 active:text-[#E8DFC8]"
+                  className="block w-full text-left py-3 underline-offset-4 decoration-2 active:underline"
                 >
                   Logout
                 </button>
@@ -253,7 +290,8 @@ export default function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="block py-3 active:text-[#E8DFC8]"
+                aria-current={current("/login")}
+                className={mobileLinkClass("/login")}
                 onClick={() => setMenuOpen(false)}
               >
                 Login

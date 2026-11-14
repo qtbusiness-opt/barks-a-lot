@@ -24,11 +24,11 @@ function StatPanel({ href, icon, label, value, detail, accent }) {
             {value ?? "—"}
           </span>
         )}
-        <span className="block font-semibold text-[#4A7C8A] mt-0.5">
+        <span className="block font-semibold text-[#3A6270] mt-0.5">
           {label}
         </span>
         {detail && (
-          <span className="block text-sm text-gray-500 mt-1">{detail}</span>
+          <span className="block text-sm text-gray-600 mt-1">{detail}</span>
         )}
       </span>
     </Link>
@@ -55,7 +55,7 @@ export default function AdminDashboardPage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>

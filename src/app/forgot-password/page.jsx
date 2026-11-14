@@ -5,7 +5,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -43,11 +43,11 @@ export default function ForgotPasswordPage() {
             in 1 hour.
           </p>
           {sent.devResetUrl && (
-            <p className="text-xs text-gray-500 bg-[#F5F0E8] p-3 rounded-lg mt-4 break-all">
+            <p className="text-xs text-gray-600 bg-[#F5F0E8] p-3 rounded-lg mt-4 break-all">
               Dev mode (no email provider configured):{" "}
               <a
                 href={sent.devResetUrl}
-                className="text-[#4A7C8A] font-medium hover:underline"
+                className="text-[#3A6270] font-medium hover:underline"
               >
                 reset now
               </a>
@@ -70,12 +70,12 @@ export default function ForgotPasswordPage() {
         <h1 className="text-2xl font-bold text-[#2A4A52] text-center mb-3">
           Forgot Password
         </h1>
-        <p className="text-sm text-gray-500 text-center mb-6">
+        <p className="text-sm text-gray-600 text-center mb-6">
           Enter your account email and we&rsquo;ll send you a link to choose a
           new password.
         </p>
         {error && (
-          <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+          <p role="alert" className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -99,9 +99,9 @@ export default function ForgotPasswordPage() {
             {loading ? "Sending…" : "Send Reset Link"}
           </button>
         </form>
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-gray-600 mt-6">
           Remembered it?{" "}
-          <Link href="/login" className="text-[#4A7C8A] font-medium hover:underline">
+          <Link href="/login" className="text-[#3A6270] font-medium hover:underline">
             Log In
           </Link>
         </p>

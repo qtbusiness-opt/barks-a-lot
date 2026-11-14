@@ -19,7 +19,7 @@ import { getPublicConfig } from "@/lib/public-config";
 import { formatCalendarDay, formatPickupDay } from "@/lib/format-date";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 // Square Web Payments SDK. The app id is public by design (it only
 // tokenizes cards in the browser); the secret access token lives
@@ -100,7 +100,7 @@ function Stepper({ step }) {
             >
               {done ? "✓" : i + 1}
             </span>
-            <span className={active ? "text-[#2A4A52]" : "text-gray-500"}>
+            <span className={active ? "text-[#2A4A52]" : "text-gray-600"}>
               {label}
               {done && <span className="sr-only"> (completed)</span>}
             </span>
@@ -124,7 +124,7 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
             <span>
               {item.name} x {item.quantity}
               {item.optionsLabel && (
-                <span className="block text-xs text-gray-500">
+                <span className="block text-xs text-gray-600">
                   {item.optionsLabel}
                 </span>
               )}
@@ -134,19 +134,19 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
             </span>
           </div>
         ))}
-        <hr className="border-[#D4CCBC]" />
+        <hr className="border-[#E8DFC8]" />
         {discount > 0 && (
           <>
             <div className="flex justify-between text-sm">
               <span>Subtotal</span>
               <span>${subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-sm text-green-700">
+            <div className="flex justify-between text-sm text-green-800">
               <span>Discount</span>
               <span>−${discount.toFixed(2)}</span>
             </div>
             {applied.length > 0 && (
-              <ul className="text-xs text-green-700/90 list-disc pl-4">
+              <ul className="text-xs text-green-800 list-disc pl-4">
                 {applied.map((a) => (
                   <li key={a}>{a}</li>
                 ))}
@@ -156,7 +156,7 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
         )}
         <div className="flex justify-between font-bold text-lg">
           <span>Total</span>
-          <span className="text-[#C8722A]">${total.toFixed(2)}</span>
+          <span className="text-[#8A4D1A]">${total.toFixed(2)}</span>
         </div>
       </div>
     </div>
@@ -208,7 +208,7 @@ function PickupDayAndTime({
         onChange={(e) => setPickupTime(e.target.value)}
         required
         disabled={!chosenDay}
-        className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-500`}
+        className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-600`}
       >
         <option value="" disabled>
           {chosenDay ? "Choose a time..." : "Choose a day first"}
@@ -223,7 +223,7 @@ function PickupDayAndTime({
       <p className="text-sm text-gray-700 bg-[#F5F0E8] p-3 rounded-lg">
         {pickupDetails}
       </p>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-600">
         Pickup is Monday–Saturday in 30-minute time slots, booked at least a day
         ahead.
       </p>
@@ -591,11 +591,11 @@ export default function CheckoutPage() {
           Thank You for Your Order!
         </h1>
         <p className="text-gray-600 mb-2">Your confirmation number is</p>
-        <p className="text-2xl font-bold text-[#C8722A] mb-6">
+        <p className="text-2xl font-bold text-[#8A4D1A] mb-6">
           {confirmation.number}
         </p>
         {confirmation.pickupDate ? (
-          <div className="text-gray-500 mb-8 space-y-2">
+          <div className="text-gray-600 mb-8 space-y-2">
             <p>
               We&rsquo;ll have your order ready for pickup on{" "}
               {formatPickupDay(confirmation.pickupDate)}
@@ -606,7 +606,7 @@ export default function CheckoutPage() {
             <p>{pickupDetails}</p>
           </div>
         ) : (
-          <p className="text-gray-500 mb-8">
+          <p className="text-gray-600 mb-8">
             {confirmation.event
               ? `We'll have your order ready at ${confirmation.event.title} on ${formatEventDate(confirmation.event)} — just give us your confirmation number at the booth.`
               : "Keep this number for your records — you'll need it if you contact us about your order."}
@@ -626,7 +626,7 @@ export default function CheckoutPage() {
     return (
       <div className="max-w-4xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">Checkout</h1>
-        <p className="text-gray-500 mb-6">Your cart is empty.</p>
+        <p className="text-gray-600 mb-6">Your cart is empty.</p>
         <Link
           href="/products"
           className="inline-block bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] transition"
@@ -772,7 +772,7 @@ export default function CheckoutPage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>
@@ -792,7 +792,7 @@ export default function CheckoutPage() {
                   </h2>
                   <Link
                     href="/login"
-                    className="text-sm text-[#4A7C8A] font-medium hover:underline"
+                    className="text-sm text-[#3A6270] font-medium hover:underline"
                   >
                     Have an account? Log in
                   </Link>
@@ -865,7 +865,7 @@ export default function CheckoutPage() {
                     <span className="text-sm font-medium">
                       Pickup
                       {pickupOptionsLoaded && !canPickup && (
-                        <span className="block text-xs text-gray-500 font-normal">
+                        <span className="block text-xs text-gray-600 font-normal">
                           No pickup options available right now
                         </span>
                       )}
@@ -999,7 +999,7 @@ export default function CheckoutPage() {
                 {cardStatus === "error" ? (
                   <p
                     role="alert"
-                    className="text-red-500 text-sm bg-red-50 p-3 rounded-lg"
+                    className="text-red-700 text-sm bg-red-50 p-3 rounded-lg"
                   >
                     The payment form couldn&rsquo;t be loaded. Please refresh
                     the page and try again.
@@ -1007,12 +1007,12 @@ export default function CheckoutPage() {
                 ) : (
                   <>
                     {cardStatus === "loading" && (
-                      <p className="text-sm text-gray-500 mb-2">
+                      <p className="text-sm text-gray-600 mb-2">
                         Loading secure payment form...
                       </p>
                     )}
                     <div id="card-container" />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-600 mt-1">
                       Payments are processed securely by Square — your card
                       details never touch our servers. Nothing is charged until
                       you confirm on the next step.
@@ -1035,7 +1035,7 @@ export default function CheckoutPage() {
                 <Link
                   href="/privacy"
                   target="_blank"
-                  className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+                  className="text-[#3A6270] underline hover:text-[#2A4A52]"
                 >
                   Privacy Policy
                 </Link>{" "}
@@ -1043,7 +1043,7 @@ export default function CheckoutPage() {
                 <Link
                   href="/terms"
                   target="_blank"
-                  className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+                  className="text-[#3A6270] underline hover:text-[#2A4A52]"
                 >
                   Terms of Service
                 </Link>
@@ -1090,7 +1090,7 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={removeCode}
-                    className="text-sm text-[#4A7C8A] underline hover:text-[#2A4A52]"
+                    className="text-sm text-[#3A6270] underline hover:text-[#2A4A52]"
                   >
                     Remove
                   </button>
@@ -1115,7 +1115,7 @@ export default function CheckoutPage() {
                 </div>
               )}
               {codeError && (
-                <p role="alert" className="text-red-500 text-sm mt-2">
+                <p role="alert" className="text-red-700 text-sm mt-2">
                   {codeError}
                 </p>
               )}
@@ -1137,7 +1137,7 @@ export default function CheckoutPage() {
             </h2>
 
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                 Contact
               </h3>
               <p className="text-[#2A4A52] mt-1">
@@ -1155,7 +1155,7 @@ export default function CheckoutPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                 Delivery
               </h3>
               {fulfillmentType === "shipping" ? (
@@ -1185,13 +1185,13 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               ) : (
-                <p className="text-red-500 mt-1">No pickup option selected.</p>
+                <p className="text-red-700 mt-1">No pickup option selected.</p>
               )}
             </div>
 
             {payment && (
               <div>
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                   Payment
                 </h3>
                 <p className="text-[#2A4A52] mt-1">
@@ -1206,7 +1206,7 @@ export default function CheckoutPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleBack}
-              className="sm:flex-1 border-2 border-[#4A7C8A] text-[#4A7C8A] py-3 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+              className="sm:flex-1 border-2 border-[#4A7C8A] text-[#3A6270] py-3 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
             >
               Back
             </button>
@@ -1217,7 +1217,7 @@ export default function CheckoutPage() {
                 (fulfillmentType === "pickup" && !pickupReady) ||
                 (Boolean(square?.appId) && !payment)
               }
-              className="sm:flex-[2] bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+              className="sm:flex-[2] bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
             >
               {submitting
                 ? "Processing…"

@@ -8,7 +8,7 @@ import { EVENT_COLORS, EVENT_COLOR_KEYS } from "@/lib/event-colors";
 import LocationInput from "@/components/LocationInput";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -58,7 +58,7 @@ function NewEventForm() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg"
         >
           {error}
         </p>
@@ -157,7 +157,7 @@ function NewEventForm() {
             onChange={(e) => update("endTime", e.target.value)}
             className={inputClass}
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-600 mt-1">
             Customers can’t book an order pickup on an event day.
           </p>
         </div>
@@ -176,11 +176,11 @@ function NewEventForm() {
                 checked={form.color === key}
                 onChange={() => update("color", key)}
                 aria-label={EVENT_COLORS[key].label}
-                className="sr-only"
+                className="sr-only peer"
               />
               <span
                 title={EVENT_COLORS[key].label}
-                className={`block w-9 h-9 rounded-full ${EVENT_COLORS[key].swatch} ${
+                className={`block w-9 h-9 rounded-full peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#2A4A52] ${EVENT_COLORS[key].swatch} ${
                   form.color === key
                     ? "ring-2 ring-offset-2 ring-[#2A4A52]"
                     : ""
@@ -193,7 +193,7 @@ function NewEventForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+        className="w-full bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
       >
         {submitting ? "Creating…" : "Create Event"}
       </button>
@@ -204,7 +204,7 @@ function NewEventForm() {
 export default function NewEventPage() {
   return (
     <AdminShell title="New Event" backTo="/admin">
-      <Suspense fallback={<p className="text-gray-500">Loading…</p>}>
+      <Suspense fallback={<p className="text-gray-600">Loading…</p>}>
         <NewEventForm />
       </Suspense>
     </AdminShell>

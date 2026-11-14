@@ -29,5 +29,4 @@
     <circle cx="0" cy="0" r="12" fill="#C8722A"/>
     <circle cx="0" cy="0" r="7" fill="#D4923A" opacity="0.6"/>
   </g>
-  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Puzzle Toy</text>
 </svg>

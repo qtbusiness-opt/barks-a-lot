@@ -1,0 +1,12 @@
+[
+  {
+    "date": "2026-11-12",
+    "scope": "app",
+    "macrostructure": "Bento Grid",
+    "theme": "custom",
+    "theme_axes": "light / rounded-sans / warm",
+    "vibe": "warm teal, friendly rounded, hand-baked",
+    "enrichment": "none (real photo or logo in H2 hero)",
+    "brief": "Redesign storefront: keep brand palette, WCAG AA, playful rounded dog-friendly font (Fredoka + Figtree); home page Bento + shared chrome; contrast and focus sweep"
+  }
+]

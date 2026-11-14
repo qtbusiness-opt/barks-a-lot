@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img" aria-label="Photo coming soon">
+  <!-- Neutral stand-in for a product without a photo yet. No product name:
+       the card already shows it, and a placeholder must never name the wrong item. -->
+  <rect width="400" height="400" fill="#F5F0E8" rx="8"/>
+  <g transform="translate(200,200) scale(7) translate(-12,-12)" fill="#3A6270" opacity="0.35">
+    <circle cx="5.5" cy="11" r="1.75"/>
+    <circle cx="9" cy="6.5" r="1.75"/>
+    <circle cx="15" cy="6.5" r="1.75"/>
+    <circle cx="18.5" cy="11" r="1.75"/>
+    <path d="M12 12.5c-2.9 0-5.5 3-5.5 5.2 0 1.5 1.4 2.3 3 2.3 1 0 1.6-.4 2.5-.4s1.5.4 2.5.4c1.6 0 3-.8 3-2.3 0-2.2-2.6-5.2-5.5-5.2z"/>
+  </g>
+</svg>

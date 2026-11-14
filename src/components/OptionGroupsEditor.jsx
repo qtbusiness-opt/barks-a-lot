@@ -10,7 +10,7 @@ import StoreImage from "@/components/StoreImage";
 // squeeze the choice field beside it down to a couple of pixels of text.
 // Every field below states its own width instead.
 const controlClass =
-  "border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 const MAX_GROUPS = 6;
 const MAX_CHOICES = 20;
@@ -68,7 +68,7 @@ export default function OptionGroupsEditor({
         <legend className="block text-sm font-medium text-gray-700 mb-1">
           Product Options (optional)
         </legend>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-600">
           Choices the customer picks on the product page, like Size and Style.
         </p>
       </div>
@@ -84,7 +84,7 @@ export default function OptionGroupsEditor({
         </span>
       </label>
       {trackOptionStock && (
-        <p className="text-xs text-gray-500 -mt-2">
+        <p className="text-xs text-gray-600 -mt-2">
           Tick one required group below to set the price (e.g. Size: Small $5,
           Large $7) — untick it to go back to the single price at the top. Every
           combination of the required groups gets its own stock count, which
@@ -112,7 +112,7 @@ export default function OptionGroupsEditor({
                 type="button"
                 onClick={() => onChange(groups.filter((_, i) => i !== gi))}
                 aria-label={`Remove option group ${gi + 1}`}
-                className="shrink-0 h-11 w-11 rounded-lg border border-red-300 text-red-500 hover:bg-red-500 hover:text-white transition"
+                className="shrink-0 h-11 w-11 rounded-lg border border-red-300 text-red-700 hover:bg-red-700 hover:text-white transition"
               >
                 ×
               </button>
@@ -143,7 +143,7 @@ export default function OptionGroupsEditor({
                 Must be chosen
               </label>
               {group.inputType === "checkbox" && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-600">
                   Customers can pick more than one.
                 </span>
               )}
@@ -203,7 +203,7 @@ export default function OptionGroupsEditor({
                     }
                     disabled={group.choices.length === 1}
                     aria-label={`Remove choice ${ci + 1}`}
-                    className="shrink-0 h-11 w-11 rounded-lg border border-red-300 text-red-500 hover:bg-red-500 hover:text-white transition disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-red-500"
+                    className="shrink-0 h-11 w-11 rounded-lg border border-red-300 text-red-700 hover:bg-red-700 hover:text-white transition disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-red-700"
                   >
                     ×
                   </button>
@@ -237,7 +237,7 @@ export default function OptionGroupsEditor({
                         <button
                           type="button"
                           onClick={() => setChoice(gi, ci, { image: null })}
-                          className="shrink-0 min-h-11 px-2 text-xs text-red-500 hover:underline"
+                          className="shrink-0 min-h-11 px-2 text-xs text-red-700 hover:underline"
                         >
                           Remove photo
                         </button>
@@ -258,7 +258,7 @@ export default function OptionGroupsEditor({
                       ],
                     })
                   }
-                  className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
+                  className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition"
                 >
                   + Add choice
                 </button>
@@ -273,7 +273,7 @@ export default function OptionGroupsEditor({
           type="button"
           id={`add-option-group-${idSuffix}`}
           onClick={() => onChange([...groups, emptyGroup()])}
-          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
+          className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition"
         >
           + Add option
         </button>

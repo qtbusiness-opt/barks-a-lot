@@ -17,5 +17,4 @@
     <line x1="20" y1="-42" x2="15" y2="-52" stroke="#C8722A" stroke-width="2.5" stroke-linecap="round"/>
     <line x1="40" y1="-42" x2="45" y2="-52" stroke="#C8722A" stroke-width="2.5" stroke-linecap="round"/>
   </g>
-  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Squeaky Bone</text>
 </svg>

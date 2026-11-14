@@ -2,8 +2,8 @@
 // classes stay in one place so the calendar, day view, and forms agree.
 export const EVENT_COLORS = {
   teal: { label: "Teal", badge: "bg-[#4A7C8A] text-white", swatch: "bg-[#4A7C8A]" },
-  orange: { label: "Orange", badge: "bg-[#C8722A] text-white", swatch: "bg-[#C8722A]" },
-  green: { label: "Green", badge: "bg-green-600 text-white", swatch: "bg-green-600" },
+  orange: { label: "Orange", badge: "bg-[#A85D1F] text-white", swatch: "bg-[#A85D1F]" },
+  green: { label: "Green", badge: "bg-green-700 text-white", swatch: "bg-green-700" },
   blue: { label: "Blue", badge: "bg-blue-600 text-white", swatch: "bg-blue-600" },
   purple: { label: "Purple", badge: "bg-purple-600 text-white", swatch: "bg-purple-600" },
   red: { label: "Red", badge: "bg-red-600 text-white", swatch: "bg-red-600" },

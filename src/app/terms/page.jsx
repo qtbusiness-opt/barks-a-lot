@@ -19,7 +19,7 @@ export default function TermsOfServicePage() {
       <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52]">
         Terms of Service
       </h1>
-      <p className="text-gray-500 mt-2">
+      <p className="text-gray-600 mt-2">
         Barks-A-Lot Treats &amp; More &middot; Effective Date: Nov 12, 2026
       </p>
 
@@ -73,7 +73,7 @@ export default function TermsOfServicePage() {
             Please notify us immediately at{" "}
             <a
               href="mailto:info@barks-a-lot.com"
-              className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+              className="text-[#3A6270] underline hover:text-[#2A4A52]"
             >
               info@barks-a-lot.com
             </a>{" "}
@@ -123,7 +123,7 @@ export default function TermsOfServicePage() {
             If you are unable to pick up as scheduled, contact us at{" "}
             <a
               href="mailto:info@barks-a-lot.com"
-              className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+              className="text-[#3A6270] underline hover:text-[#2A4A52]"
             >
               info@barks-a-lot.com
             </a>{" "}
@@ -141,7 +141,7 @@ export default function TermsOfServicePage() {
           pickup in unused condition — contact us at{" "}
           <a
             href="mailto:info@barks-a-lot.com"
-            className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+            className="text-[#3A6270] underline hover:text-[#2A4A52]"
           >
             info@barks-a-lot.com
           </a>{" "}
@@ -158,7 +158,7 @@ export default function TermsOfServicePage() {
           contacting us at{" "}
           <a
             href="mailto:info@barks-a-lot.com"
-            className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+            className="text-[#3A6270] underline hover:text-[#2A4A52]"
           >
             info@barks-a-lot.com
           </a>{" "}
@@ -251,7 +251,7 @@ export default function TermsOfServicePage() {
           Email:{" "}
           <a
             href="mailto:info@barks-a-lot.com"
-            className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+            className="text-[#3A6270] underline hover:text-[#2A4A52]"
           >
             info@barks-a-lot.com
           </a>

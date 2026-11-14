@@ -25,7 +25,7 @@ import { dayKeyOf, formatTime } from "@/lib/pickup-window";
 import { formatPickupDay } from "@/lib/format-date";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 const buttonClass =
   "min-h-11 px-4 rounded-lg font-semibold text-white bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] transition disabled:opacity-50 disabled:cursor-not-allowed";
 
@@ -43,7 +43,7 @@ function PickupHoursCard({ hours, saving, onChange }) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
       <h2 className="font-semibold text-[#2A4A52]">Pickup hours</h2>
-      <p className="text-sm text-gray-500 mt-1 mb-3">
+      <p className="text-sm text-gray-600 mt-1 mb-3">
         The same hours apply Monday through Saturday. Customers book a 30-minute
         slot, and each slot takes up to {SLOT_CAPACITY} orders — right now
         that&rsquo;s {slots.length} slot
@@ -94,7 +94,7 @@ function PickupHoursCard({ hours, saving, onChange }) {
           </select>
         </div>
       </div>
-      <p className="text-xs text-gray-500 mt-2">
+      <p className="text-xs text-gray-600 mt-2">
         Changing hours doesn&rsquo;t move orders already booked.
       </p>
     </div>
@@ -207,7 +207,7 @@ export default function AdminPickupPage() {
 
   return (
     <AdminShell title="Pickup" backTo="/admin">
-      <p className="text-sm text-gray-500 mb-6 -mt-4">
+      <p className="text-sm text-gray-600 mb-6 -mt-4">
         How customers collect online orders: a pickup day (Monday–Saturday) and
         a 30-minute time slot.
       </p>
@@ -215,7 +215,7 @@ export default function AdminPickupPage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4"
         >
           {error}
         </p>
@@ -230,7 +230,7 @@ export default function AdminPickupPage() {
       )}
 
       {settings === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading…</p>
+        <p className="text-gray-600 text-center py-10">Loading…</p>
       ) : (
         <div className="space-y-6 max-w-xl">
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
@@ -250,7 +250,7 @@ export default function AdminPickupPage() {
               />
               Offer pickup at checkout
             </label>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-gray-600 mt-2">
               Customers choose from the next 10 open days (Monday–Saturday),
               starting the day after they order. Sundays, closed days and any
               day with an event on the calendar are skipped automatically. While
@@ -273,7 +273,7 @@ export default function AdminPickupPage() {
             >
               Pickup details shown to customers
             </label>
-            <p className="text-sm text-gray-500 mb-3">
+            <p className="text-sm text-gray-600 mb-3">
               Where to collect — e.g. &ldquo;Porch pickup at 123 Main St,
               Meridian.&rdquo; Shown at checkout, in My Orders and in order
               emails. Anyone can see it at checkout, so leave out anything you
@@ -298,7 +298,7 @@ export default function AdminPickupPage() {
 
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
             <h2 className="font-semibold text-[#2A4A52]">Closed days</h2>
-            <p className="text-sm text-gray-500 mt-1 mb-3">
+            <p className="text-sm text-gray-600 mt-1 mb-3">
               Closed days never appear at checkout; customers still get 10 open
               days to choose from. Event days are blocked automatically, so
               there&rsquo;s no need to add them here. Closing a day (or adding
@@ -334,7 +334,7 @@ export default function AdminPickupPage() {
             </form>
 
             {closedDays.length === 0 ? (
-              <p className="text-sm text-gray-500 mt-4">No closed days.</p>
+              <p className="text-sm text-gray-600 mt-4">No closed days.</p>
             ) : (
               <ul className="mt-4 divide-y divide-gray-100 border-t border-gray-100">
                 {closedDays.map((day) => (
@@ -349,7 +349,7 @@ export default function AdminPickupPage() {
                       type="button"
                       onClick={() => reopen(day)}
                       disabled={saving}
-                      className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition disabled:opacity-50"
+                      className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition disabled:opacity-50"
                     >
                       Reopen
                     </button>

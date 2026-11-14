@@ -7,7 +7,7 @@ import AdminShell from "@/components/AdminShell";
 import { formatDate } from "@/lib/format-date";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 export default function AdminCustomersPage() {
   const { user } = useAuth();
@@ -86,7 +86,7 @@ export default function AdminCustomersPage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4"
         >
           {error}
         </p>
@@ -101,9 +101,9 @@ export default function AdminCustomersPage() {
       )}
 
       {customers === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading customers…</p>
+        <p className="text-gray-600 text-center py-10">Loading customers…</p>
       ) : customers?.length === 0 ? (
-        <p className="text-gray-500 text-center py-10">
+        <p className="text-gray-600 text-center py-10">
           No customers match that search.
         </p>
       ) : (
@@ -117,13 +117,13 @@ export default function AdminCustomersPage() {
                 <p className="font-semibold text-[#2A4A52] truncate">
                   {c.name}
                   {!c.emailVerified && (
-                    <span className="ml-2 text-xs font-medium text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">
+                    <span className="ml-2 text-xs font-medium text-yellow-800 bg-yellow-50 px-2 py-0.5 rounded-full">
                       Unverified
                     </span>
                   )}
                 </p>
-                <p className="text-sm text-gray-500 truncate">{c.email}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-600 truncate">{c.email}</p>
+                <p className="text-xs text-gray-600 mt-0.5">
                   {c._count.orders} {c._count.orders === 1 ? "order" : "orders"}{" "}
                   · joined {formatDate(c.createdAt)}
                 </p>
@@ -131,13 +131,13 @@ export default function AdminCustomersPage() {
               <div className="flex gap-2 shrink-0">
                 <button
                   onClick={() => sendReset(c)}
-                  className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+                  className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
                 >
                   Send Password Reset
                 </button>
                 <button
                   onClick={() => remove(c)}
-                  className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition"
+                  className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-700 hover:bg-red-700 hover:text-white active:bg-red-800 transition"
                 >
                   Delete
                 </button>
