@@ -19,7 +19,6 @@ import { getPickupSettings, getSettings } from "@/lib/site-settings";
 import { formatTime } from "@/lib/pickup-window";
 import { formatCalendarDay } from "@/lib/format-date";
 import { toDayKey } from "@/lib/calendar-days";
-import { ABOUT_IMAGE_KEYS } from "@/lib/about-images";
 import { SHIPPING_ENABLED } from "@/lib/features";
 
 // Featured products, the announcement, the next market and the pickup hours
@@ -38,10 +37,6 @@ async function safely(label, promise, fallback) {
     return fallback;
   }
 }
-
-// The photo's caption as the admin sees it ("Meeko & Evee"), used as alt text.
-const imageLabel = (key) =>
-  ABOUT_IMAGE_KEYS.find((k) => k.key === key)?.hint ?? "";
 
 // Shared look of the bento tiles: soft shadow is the single container
 // signal, no border. Linked tiles lift 2px on hover (hover-capable devices
@@ -64,15 +59,10 @@ export default async function HomePage() {
       safely("announcement", getLatestAnnouncement(), null),
       safely("next event", getNextEvent(), null),
       safely("pickup settings", getPickupSettings(), null),
-      safely(
-        "about images",
-        getSettings(["about_image_dogs", "about_image_family"]),
-        {}
-      ),
+      safely("family photo", getSettings(["about_image_family"]), {}),
     ]);
 
   const featured = products.slice(0, FEATURED_LIMIT);
-  const heroPhoto = images.about_image_dogs;
   const familyPhoto = images.about_image_family;
 
   return (
@@ -106,29 +96,18 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {heroPhoto ? (
-            <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-brand-paper-2">
-              <StoreImage
-                src={heroPhoto}
-                alt={imageLabel("about_image_dogs")}
-                fill
-                preload
-                sizes="(max-width: 1024px) 100vw, 42vw"
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="grid place-items-center aspect-square w-full max-w-md mx-auto lg:max-w-none rounded-xl bg-brand-paper-3">
-              <StoreImage
-                src="/images/barks-a-lot-logo.png"
-                alt="Barks-A-Lot Treats & More"
-                width={320}
-                height={320}
-                preload
-                className="h-3/5 w-3/5 rounded-full object-cover"
-              />
-            </div>
-          )}
+          {/* The logo is the hero picture by the owner's choice; the dog
+              photos live on the About page and the family tile below. */}
+          <div className="grid place-items-center aspect-square w-full max-w-md mx-auto lg:max-w-none rounded-xl bg-brand-paper-3">
+            <StoreImage
+              src="/images/barks-a-lot-logo.png"
+              alt="Barks-A-Lot Treats & More"
+              width={320}
+              height={320}
+              preload
+              className="h-3/5 w-3/5 rounded-full object-cover"
+            />
+          </div>
         </div>
       </section>
 

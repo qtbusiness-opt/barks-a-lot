@@ -51,6 +51,34 @@ test("emailImageUrl gives up when APP_URL is unset", () => {
   assert.equal(emailImageUrl("/api/uploads/abc123.png", undefined), null);
 });
 
+test("emailImageUrl gives up when APP_URL is a local address", () => {
+  // The inbox fetches the picture, not our server. Gmail goes through
+  // Google's image proxy, where "localhost" is Google's own machine, so a
+  // local APP_URL (the dev default) always drew a broken-image box.
+  for (const base of [
+    "http://localhost:3000",
+    "http://LOCALHOST",
+    "http://127.0.0.1:3000",
+    "http://0.0.0.0:3000",
+    "http://[::1]:3000",
+    "http://192.168.1.20:3000",
+    "http://10.0.0.5",
+    "http://172.20.0.3:3000",
+    "http://barks.local",
+    "not a url",
+  ]) {
+    assert.equal(
+      emailImageUrl("/api/uploads/abc123.png", base),
+      null,
+      `${base} can't serve an inbox`
+    );
+  }
+  // A public host still works, including one that merely starts with
+  // the same digits as a private range.
+  assert.ok(emailImageUrl("/api/uploads/abc123.png", "https://172.217.0.1"));
+  assert.ok(emailImageUrl("/api/uploads/abc123.png", "https://localhost.example.com"));
+});
+
 test("emailImageUrl passes an already-absolute URL through", () => {
   assert.equal(
     emailImageUrl("https://cdn.example/x.png", APP),
