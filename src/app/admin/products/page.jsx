@@ -9,8 +9,7 @@ import OptionGroupsEditor from "@/components/OptionGroupsEditor";
 import VariantStockGrid from "@/components/VariantStockGrid";
 import StoreImage from "@/components/StoreImage";
 
-const inputClass =
-  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
+const inputClass = "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 const EMPTY_FORM = {
   name: "",
@@ -30,6 +29,18 @@ const EMPTY_FORM = {
 };
 
 const MAX_NUTRITION_ROWS = 30;
+
+// Nutrition rows and gallery photos are editable lists with no id of
+// their own (and a gallery may hold the same URL twice), so each entry
+// gets a client-only key when it enters the form. Keying by position
+// would hand a removed row's input state to its neighbour. A counter
+// rather than crypto.randomUUID, which is missing on plain-HTTP origins
+// such as a LAN address. The key never leaves the form: cleanNutrition
+// and imageUrls below rebuild the exact payload the API expects.
+let nextRowKey = 0;
+const withRowKey = (entry) => ({ ...entry, _key: ++nextRowKey });
+const toImageEntry = (src) => withRowKey({ src });
+const imageUrls = (entries) => entries.map((e) => e.src);
 
 // A half-filled row would fail server validation and sink the whole
 // save, so incomplete rows are dropped on the way out instead. A
@@ -82,7 +93,7 @@ function NutritionFactsFields({ rows, onChange, idSuffix }) {
       {rows.length > 0 && (
         <div className="space-y-2 mb-2">
           {rows.map((row, i) => (
-            <div key={i} className="flex gap-2 items-start">
+            <div key={row._key} className="flex gap-2 items-start">
               <input
                 type="text"
                 value={row.label}
@@ -117,7 +128,9 @@ function NutritionFactsFields({ rows, onChange, idSuffix }) {
         {rows.length < MAX_NUTRITION_ROWS && (
           <button
             type="button"
-            onClick={() => onChange([...rows, { label: "", value: "" }])}
+            onClick={() =>
+              onChange([...rows, withRowKey({ label: "", value: "" })])
+            }
             className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition"
           >
             + Add row
@@ -126,7 +139,7 @@ function NutritionFactsFields({ rows, onChange, idSuffix }) {
         {rows.length === 0 && (
           <button
             type="button"
-            onClick={() => onChange(NUTRITION_STARTER.map((r) => ({ ...r })))}
+            onClick={() => onChange(NUTRITION_STARTER.map(withRowKey))}
             id={`nutrition-starter-${idSuffix}`}
             className="min-h-11 px-3 rounded-lg text-sm font-medium border border-gray-300 text-gray-600 hover:bg-gray-100 transition"
           >
@@ -175,7 +188,6 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
   const fieldId = useId();
   const showsIngredients =
     categories.find((c) => c.slug === form.category)?.showsIngredients ?? false;
-  const pricingGroup = pricingGroupOf(form);
   return (
     <>
       <div>
@@ -210,57 +222,12 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
           className={inputClass}
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label
-            htmlFor={`${fieldId}-price`}
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Price ($)
-          </label>
-          <input
-            id={`${fieldId}-price`}
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={pricingGroup ? priceToSave(form) : form.price}
-            onChange={(e) => update("price", e.target.value)}
-            required={!pricingGroup}
-            disabled={Boolean(pricingGroup)}
-            className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-600`}
-          />
-          {pricingGroup && (
-            <p className="text-xs text-gray-600 mt-1">
-              Price comes from the {pricingGroup.name || "pricing"} options
-              below.
-            </p>
-          )}
-        </div>
-        <div>
-          <label
-            htmlFor={`${fieldId}-quantity`}
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Quantity in stock
-          </label>
-          <input
-            id={`${fieldId}-quantity`}
-            type="number"
-            min="0"
-            step="1"
-            value={form.quantity}
-            onChange={(e) => update("quantity", e.target.value)}
-            required={!variantProduct}
-            disabled={variantProduct}
-            className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-600`}
-          />
-          {variantProduct && (
-            <p className="text-xs text-gray-600 mt-1">
-              Stock lives on this product&rsquo;s options.
-            </p>
-          )}
-        </div>
-      </div>
+      <PriceStockFields
+        form={form}
+        update={update}
+        fieldId={fieldId}
+        variantProduct={variantProduct}
+      />
       <div>
         <label
           htmlFor={`${fieldId}-category`}
@@ -286,104 +253,24 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
         onChange={(url) => update("image", url)}
       />
 
-      <div>
-        <span className="block text-sm font-medium text-gray-700 mb-1">
-          Additional photos ({form.images.length}/8)
-        </span>
-        {form.images.length > 0 && (
-          <div className="flex flex-wrap gap-3 mb-2">
-            {form.images.map((src, i) => (
-              <div key={`${src}-${i}`} className="relative">
-                <StoreImage
-                  src={src}
-                  alt={`Additional photo ${i + 1}`}
-                  width={64}
-                  height={64}
-                  className="w-16 h-16 rounded-lg object-cover bg-[#F5F0E8]"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    update(
-                      "images",
-                      form.images.filter((_, j) => j !== i)
-                    )
-                  }
-                  aria-label={`Remove additional photo ${i + 1}`}
-                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-700 text-white text-xs font-bold flex items-center justify-center hover:bg-red-800"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        {form.images.length < 8 && (
-          <ImageUpload
-            value=""
-            label="Add another photo"
-            onChange={(url) => update("images", [...form.images, url])}
-          />
-        )}
-        <p className="text-xs text-gray-600 mt-1">
-          Customers click through these on the product page.
-        </p>
-      </div>
+      <AdditionalPhotosField
+        images={form.images}
+        onChange={(next) => update("images", next)}
+      />
 
-      <div>
-        <label
-          htmlFor={`${fieldId}-item-details`}
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          {showsIngredients ? "Ingredients" : "Item Details"} (optional)
-        </label>
-        <textarea
-          id={`${fieldId}-item-details`}
-          value={form.itemDetails}
-          onChange={(e) => update("itemDetails", e.target.value)}
-          rows={3}
-          placeholder={
-            showsIngredients
-              ? "e.g. Organic peanut butter, oat flour, eggs, honey"
-              : "Materials, sizing, care instructions…"
-          }
-          className={inputClass}
-        />
-        <p className="text-xs text-gray-600 mt-1">
-          Shown on the product page under Add to Cart
-          {showsIngredients
-            ? " — this category always shows an Ingredients section."
-            : ", only when filled in."}
-        </p>
-      </div>
+      <ItemDetailsField
+        value={form.itemDetails}
+        onChange={(next) => update("itemDetails", next)}
+        fieldId={fieldId}
+        showsIngredients={showsIngredients}
+      />
 
-      {showsIngredients ? (
-        <NutritionFactsFields
-          rows={form.nutritionFacts}
-          onChange={(rows) => update("nutritionFacts", rows)}
-          idSuffix={fieldId}
-        />
-      ) : (
-        form.nutritionFacts.length > 0 && (
-          // Recategorized to a non-edible category: the rows are kept
-          // (never silently destroyed) but hidden from the storefront,
-          // so offer a way to clear them rather than stranding them.
-          <div className="bg-yellow-50 rounded-lg p-3">
-            <p className="text-xs text-yellow-800">
-              This product has {form.nutritionFacts.length} nutrition fact
-              {form.nutritionFacts.length === 1 ? "" : "s"}, hidden because this
-              category has no Ingredients section.
-            </p>
-            <button
-              type="button"
-              onClick={() => update("nutritionFacts", [])}
-              className="mt-2 min-h-11 px-3 rounded-lg text-sm font-medium border border-yellow-400 text-yellow-800 hover:bg-yellow-100 transition"
-            >
-              Clear nutrition facts
-            </button>
-          </div>
-        )
-      )}
+      <NutritionSection
+        rows={form.nutritionFacts}
+        onChange={(rows) => update("nutritionFacts", rows)}
+        fieldId={fieldId}
+        showsIngredients={showsIngredients}
+      />
 
       <OptionGroupsEditor
         groups={form.optionGroups}
@@ -420,6 +307,176 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
   );
 }
 
+// Price and stock sit side by side; each gives way to the product's
+// options when those take over pricing or stock.
+function PriceStockFields({ form, update, fieldId, variantProduct }) {
+  const pricingGroup = pricingGroupOf(form);
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <label
+          htmlFor={`${fieldId}-price`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Price ($)
+        </label>
+        <input
+          id={`${fieldId}-price`}
+          type="number"
+          min="0.01"
+          step="0.01"
+          value={pricingGroup ? priceToSave(form) : form.price}
+          onChange={(e) => update("price", e.target.value)}
+          required={!pricingGroup}
+          disabled={Boolean(pricingGroup)}
+          className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-600`}
+        />
+        {pricingGroup && (
+          <p className="text-xs text-gray-600 mt-1">
+            Price comes from the {pricingGroup.name || "pricing"} options below.
+          </p>
+        )}
+      </div>
+      <div>
+        <label
+          htmlFor={`${fieldId}-quantity`}
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Quantity in stock
+        </label>
+        <input
+          id={`${fieldId}-quantity`}
+          type="number"
+          min="0"
+          step="1"
+          value={form.quantity}
+          onChange={(e) => update("quantity", e.target.value)}
+          required={!variantProduct}
+          disabled={variantProduct}
+          className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-600`}
+        />
+        {variantProduct && (
+          <p className="text-xs text-gray-600 mt-1">
+            Stock lives on this product&rsquo;s options.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Gallery photos beyond the cover, each entry carrying the client-only
+// _key from toImageEntry so removing one doesn't remount its neighbours.
+function AdditionalPhotosField({ images, onChange }) {
+  return (
+    <div>
+      <span className="block text-sm font-medium text-gray-700 mb-1">
+        Additional photos ({images.length}/8)
+      </span>
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-3 mb-2">
+          {images.map(({ _key, src }, i) => (
+            <div key={_key} className="relative">
+              <StoreImage
+                src={src}
+                alt={`Additional photo ${i + 1}`}
+                width={64}
+                height={64}
+                className="w-16 h-16 rounded-lg object-cover bg-[#F5F0E8]"
+              />
+              <button
+                type="button"
+                onClick={() => onChange(images.filter((_, j) => j !== i))}
+                aria-label={`Remove additional photo ${i + 1}`}
+                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-700 text-white text-xs font-bold flex items-center justify-center hover:bg-red-800"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {images.length < 8 && (
+        <ImageUpload
+          value=""
+          label="Add another photo"
+          onChange={(url) => onChange([...images, toImageEntry(url)])}
+        />
+      )}
+      <p className="text-xs text-gray-600 mt-1">
+        Customers click through these on the product page.
+      </p>
+    </div>
+  );
+}
+
+// Free-text details under Add to Cart; edible categories relabel it as
+// the ingredients list they always show.
+function ItemDetailsField({ value, onChange, fieldId, showsIngredients }) {
+  return (
+    <div>
+      <label
+        htmlFor={`${fieldId}-item-details`}
+        className="block text-sm font-medium text-gray-700 mb-1"
+      >
+        {showsIngredients ? "Ingredients" : "Item Details"} (optional)
+      </label>
+      <textarea
+        id={`${fieldId}-item-details`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={3}
+        placeholder={
+          showsIngredients
+            ? "e.g. Organic peanut butter, oat flour, eggs, honey"
+            : "Materials, sizing, care instructions…"
+        }
+        className={inputClass}
+      />
+      <p className="text-xs text-gray-600 mt-1">
+        Shown on the product page under Add to Cart
+        {showsIngredients
+          ? " — this category always shows an Ingredients section."
+          : ", only when filled in."}
+      </p>
+    </div>
+  );
+}
+
+// Edible categories get the Nutrition Facts editor. Otherwise any rows
+// already saved are only flagged, never dropped.
+function NutritionSection({ rows, onChange, fieldId, showsIngredients }) {
+  if (showsIngredients) {
+    return (
+      <NutritionFactsFields
+        rows={rows}
+        onChange={onChange}
+        idSuffix={fieldId}
+      />
+    );
+  }
+  if (rows.length === 0) return null;
+  // Recategorized to a non-edible category: the rows are kept
+  // (never silently destroyed) but hidden from the storefront,
+  // so offer a way to clear them rather than stranding them.
+  return (
+    <div className="bg-yellow-50 rounded-lg p-3">
+      <p className="text-xs text-yellow-800">
+        This product has {rows.length} nutrition fact
+        {rows.length === 1 ? "" : "s"}, hidden because this category has no
+        Ingredients section.
+      </p>
+      <button
+        type="button"
+        onClick={() => onChange([])}
+        className="mt-2 min-h-11 px-3 rounded-lg text-sm font-medium border border-yellow-400 text-yellow-800 hover:bg-yellow-100 transition"
+      >
+        Clear nutrition facts
+      </button>
+    </div>
+  );
+}
+
 function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -434,9 +491,9 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
       description: product.description,
       price: String(product.price),
       image: product.image,
-      images: product.images ?? [],
+      images: (product.images ?? []).map(toImageEntry),
       itemDetails: product.itemDetails ?? "",
-      nutritionFacts: product.nutritionFacts ?? [],
+      nutritionFacts: (product.nutritionFacts ?? []).map(withRowKey),
       // ids preserved so the save below edits these groups/choices in
       // place instead of the write path seeing an all-new set and
       // orphaning whatever stock the old ones anchored.
@@ -480,7 +537,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
         description: form.description,
         price: Number(priceToSave(form)),
         image: form.image,
-        images: form.images,
+        images: imageUrls(form.images),
         itemDetails: form.itemDetails,
         nutritionFacts: cleanNutrition(form.nutritionFacts),
         optionGroups: cleanOptionGroups(form.optionGroups),
@@ -642,7 +699,7 @@ export default function AdminProductsPage() {
         description: form.description,
         price: Number(priceToSave(form)),
         image: form.image,
-        images: form.images,
+        images: imageUrls(form.images),
         itemDetails: form.itemDetails,
         nutritionFacts: cleanNutrition(form.nutritionFacts),
         optionGroups: cleanOptionGroups(form.optionGroups),

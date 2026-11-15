@@ -14,6 +14,7 @@ import {
   writeVariantStock,
   variantStockSchema,
 } from "@/lib/option-writes";
+import { lockProducts } from "@/lib/inventory";
 
 // All card fields optional — PATCH applies only what was sent. inStock
 // unchecked wipes the stock: quantity goes to 0 (all variant quantities
@@ -85,6 +86,9 @@ export async function PATCH(req, { params }) {
       fields.trackOptionStock ?? existing.trackOptionStock;
 
     const product = await prisma.$transaction(async (tx) => {
+      // Stock set here must not be overwritten by a checkout that read
+      // the old count a moment earlier — same lock checkout takes.
+      await lockProducts(tx, [id]);
       const {
         optionGroups,
         trackOptionStock: _tos,

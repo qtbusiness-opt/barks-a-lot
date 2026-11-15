@@ -253,11 +253,12 @@ export default async function HomePage() {
             </div>
           </Link>
 
-          {/* Custom bandanas — 2×1 */}
+          {/* Contact — 2×1 */}
           <Link href="/contact" className={`${tileLink} bg-brand-paper-2 text-brand-ink md:col-span-2`}>
-            <h3 className={tileTitle}>Want a custom bandana?</h3>
+            <h3 className={tileTitle}>Questions or feedback?</h3>
             <p className="mt-1 text-brand-ink-2">
-              Send us a message and ask.
+              Send us a message. Ask about a treat, leave a comment, or tell
+              us how your dog liked it.
             </p>
           </Link>
         </div>

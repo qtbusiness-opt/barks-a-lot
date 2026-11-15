@@ -18,13 +18,15 @@ import {
 } from "next-auth/react";
 import api, { setUnauthorizedHandler } from "@/lib/api";
 import { CART_KEY } from "@/lib/cart-storage";
+import { sessionEndAction } from "@/lib/session-end";
 
 const AuthContext = createContext(undefined);
 
-// The session cookie is httpOnly, so the browser can't see whether a
-// stale one is still being sent. This marker records "we were signed in"
-// in a place client code CAN read, which is what lets a page loaded with
-// an expired token tell itself apart from an ordinary signed-out visit.
+// The session cookie is httpOnly, so client code can't read it. This
+// marker records "this browser was signed in" where it can, so one tab
+// can tell that another tab already signed out, and a leftover from an
+// earlier visit can be cleaned up. On its own it never means "your
+// session just timed out" (see src/lib/session-end.js).
 const SESSION_FLAG = "barks-signed-in";
 
 function hadSession() {
@@ -69,19 +71,25 @@ async function reportAbandonedCart(reason) {
   }
 }
 
-function AuthState({ children }) {
-  const { data: session, status, update } = useSession();
+// The live value, falling back to the held one only mid-refetch.
+function whileRefreshing(live, held, refreshing) {
+  return live ?? (refreshing ? (held ?? null) : null);
+}
 
-  // Guards against running the logout sequence twice — signOut() flips
-  // status to "unauthenticated", which would otherwise look like an
-  // expiry and re-trigger it.
-  const loggingOut = useRef(false);
+function heldIsStale(held, live) {
+  return (
+    !held ||
+    held.user !== live.user ||
+    held.expiresAt !== live.expiresAt ||
+    held.issuedAt !== live.issuedAt
+  );
+}
 
-  // Renewing the session puts it back into "loading" with no data for a
-  // moment. Without these two, every renewal blanked whatever page the
-  // user was on (role-gated pages fell back to their "Loading..." state)
-  // and then refilled a beat later.
-  //
+// Renewing the session puts it back into "loading" with no data for a
+// moment. Without this hook, every renewal blanked whatever page the
+// user was on (role-gated pages fell back to their "Loading..." state)
+// and then refilled a beat later.
+function useHeldSession(session, status) {
   // They're state rather than refs because `user` and `loading` are read
   // during render and handed to consumers. A ref read during render can
   // hold a value React never re-rendered for, so the screen and the ref
@@ -101,25 +109,17 @@ function AuthState({ children }) {
   );
   // Epoch seconds; together these give the idle deadline and the length
   // of the window, which drive the expiry warning.
-  const liveExpiresAt = session?.user?.expiresAt ?? null;
-  const liveIssuedAt = session?.user?.issuedAt ?? null;
+  const live = {
+    user: liveUser,
+    expiresAt: session?.user?.expiresAt ?? null,
+    issuedAt: session?.user?.issuedAt ?? null,
+  };
 
   // Set during render, not in an effect: the held values have to be
   // correct in the very render that drops the live ones, or the page
   // blanks for a frame before the effect catches up. Both are guarded, so
   // they settle immediately instead of looping.
-  if (
-    liveUser &&
-    (held?.user !== liveUser ||
-      held.expiresAt !== liveExpiresAt ||
-      held.issuedAt !== liveIssuedAt)
-  ) {
-    setHeld({
-      user: liveUser,
-      expiresAt: liveExpiresAt,
-      issuedAt: liveIssuedAt,
-    });
-  }
+  if (liveUser && heldIsStale(held, live)) setHeld(live);
   if (status !== "loading" && !settled) setSettled(true);
 
   // Hold the last known session across a refresh so the UI doesn't flap.
@@ -128,14 +128,28 @@ function AuthState({ children }) {
   // "no deadline" every minute is its own bug.
   // A real sign-out reports "unauthenticated", which drops it properly.
   const refreshing = status === "loading" && settled;
-  const user = liveUser ?? (refreshing ? (held?.user ?? null) : null);
-  const expiresAt =
-    liveExpiresAt ?? (refreshing ? (held?.expiresAt ?? null) : null);
-  const issuedAt =
-    liveIssuedAt ?? (refreshing ? (held?.issuedAt ?? null) : null);
-  // Only the very first resolution counts as loading; a background
-  // refresh must never blank a page that already rendered.
-  const loading = status === "loading" && !settled;
+  return {
+    user: whileRefreshing(live.user, held?.user, refreshing),
+    expiresAt: whileRefreshing(live.expiresAt, held?.expiresAt, refreshing),
+    issuedAt: whileRefreshing(live.issuedAt, held?.issuedAt, refreshing),
+    // Only the very first resolution counts as loading; a background
+    // refresh must never blank a page that already rendered.
+    loading: status === "loading" && !settled,
+  };
+}
+
+function AuthState({ children }) {
+  const { data: session, status, update } = useSession();
+
+  // Guards against running the logout sequence twice — signOut() flips
+  // status to "unauthenticated", which would otherwise look like an
+  // expiry and re-trigger it.
+  const loggingOut = useRef(false);
+
+  const { user, expiresAt, issuedAt, loading } = useHeldSession(
+    session,
+    status
+  );
 
   // Returns the signed-in user so callers can route by role (admins land
   // on the dashboard).
@@ -215,30 +229,52 @@ function AuthState({ children }) {
     []
   );
 
+  // Whether this tab has seen the user signed in since it loaded. The
+  // marker alone can't say that — it survives any session nobody logged
+  // out of — so only this decides whether a timeout notice is honest.
+  const sawSession = useRef(false);
+
   useEffect(() => {
-    if (status === "authenticated") localStorage.setItem(SESSION_FLAG, "1");
+    if (status !== "authenticated") return;
+    sawSession.current = true;
+    localStorage.setItem(SESSION_FLAG, "1");
   }, [status]);
 
-  // The session stopped resolving while we still believe we're signed in
-  // — either the refetch below noticed it in an open tab, or the page was
-  // just loaded with an expired token still in the cookie jar. Either way
-  // the UI would otherwise render a signed-in shell whose every request
-  // fails, so end the session for real.
+  // The session is gone; src/lib/session-end.js decides what that means
+  // for this tab.
+  const handleSessionEnd = useCallback(() => {
+    const action = sessionEndAction({
+      sawSession: sawSession.current,
+      flagged: hadSession(),
+    });
+    if (action === "expire") expireSession();
+    else if (action === "follow") endSession("signed_out", "/");
+    else if (action === "clear") {
+      // A leftover from an earlier visit. Drop the marker and any stale
+      // cookie quietly — this visitor was never signed in here, so they
+      // stay on the page they opened.
+      localStorage.removeItem(SESSION_FLAG);
+      signOut({ redirect: false }).catch(() => {});
+    }
+  }, [expireSession, endSession]);
+
+  // The session stopped resolving: the refetch noticed it in an open tab,
+  // or the page loaded with nobody signed in.
   useEffect(() => {
-    if (status === "unauthenticated" && hadSession()) expireSession();
-  }, [status, expireSession]);
+    if (status === "unauthenticated") handleSessionEnd();
+  }, [status, handleSessionEnd]);
 
   // The impatient path: a request just failed with 401/403. Confirm the
   // session is genuinely gone (rather than a real permission error)
   // before ending it.
   useEffect(() => {
     setUnauthorizedHandler(async () => {
-      if (!hadSession() || loggingOut.current) return;
+      if (!sawSession.current || loggingOut.current) return;
       const fresh = await getSession();
-      if (!fresh?.user) expireSession();
+      if (!fresh?.user) handleSessionEnd();
     });
     return () => setUnauthorizedHandler(null);
-  }, [expireSession]);
+  }, [handleSessionEnd]);
 
   // Built inline, this object was new on every render, so the navbar,
   // the cart badge, the expiry warning and every role-gated page all

@@ -6,6 +6,48 @@ import { useCart } from "@/context/CartContext";
 import StoreImage from "@/components/StoreImage";
 import QuantityStepper from "@/components/QuantityStepper";
 import { CheckIcon, CrossIcon } from "@/components/Icons";
+import { summarizeCard } from "@/components/product-card-summary";
+
+// Stock is icon + word, never colour alone.
+function StockStatus({ inStock }) {
+  if (inStock) {
+    return (
+      <p className="flex items-center gap-1 font-semibold text-sm text-brand-success mt-1">
+        <CheckIcon className="h-4 w-4 shrink-0" />
+        In Stock
+      </p>
+    );
+  }
+  return (
+    <p className="flex items-center gap-1 font-semibold text-sm text-brand-error mt-1">
+      <CrossIcon className="h-4 w-4 shrink-0" />
+      Out of Stock
+    </p>
+  );
+}
+
+function PriceTag({ minPrice, maxPrice }) {
+  return (
+    <span className="text-lg font-bold text-brand-accent-deep tabular">
+      {minPrice === maxPrice
+        ? `$${minPrice.toFixed(2)}`
+        : `From $${minPrice.toFixed(2)}`}
+    </span>
+  );
+}
+
+function ChooseOptionsLink({ href, name }) {
+  return (
+    <Link
+      href={href}
+      aria-label={`Choose options for ${name}`}
+      className="whitespace-nowrap bg-brand-teal text-brand-on px-3 py-2.5 sm:py-1.5 rounded-full text-sm font-medium text-center hover:bg-brand-deep active:bg-brand-ink transition-colors duration-(--dur-micro) ease-(--ease-out)"
+    >
+      <span className="sm:hidden">Options</span>
+      <span className="hidden sm:inline">Choose Options</span>
+    </Link>
+  );
+}
 
 export default function ProductCard({
   id,
@@ -25,31 +67,13 @@ export default function ProductCard({
   // starts from 1 rather than inheriting the last order's count.
   const [qty, setQty] = useState(1);
 
-  // Anything the customer must choose before a price or an "add to
-  // cart" makes sense routes to the detail page instead of quick-adding.
-  // Checking variants alone used to miss option groups entirely — a
-  // product with a required group but no variants would quick-add with
-  // no options at all, then fail at checkout with nothing on the cart
-  // page able to fix it.
-  const needsSelection =
-    variants.length > 0 || optionGroups.length > 0 || trackOptionStock;
-
-  // The public API exposes availability as booleans only — exact stock
-  // counts are admin-side business data.
-  const inStock = trackOptionStock
-    ? variants.some((v) => v.inStock)
-    : variants.length > 0
-      ? variants.some((v) => v.inStock)
-      : productInStock;
-  const prices = trackOptionStock
-    ? (optionGroups.find((g) => g.setsPrice)?.choices ?? [])
-        .map((c) => c.price)
-        .filter((p) => p != null)
-    : variants.length > 0
-      ? variants.map((v) => v.price ?? price)
-      : [price];
-  const minPrice = prices.length > 0 ? Math.min(...prices) : price;
-  const maxPrice = prices.length > 0 ? Math.max(...prices) : price;
+  const { needsSelection, inStock, minPrice, maxPrice } = summarizeCard({
+    price,
+    inStock: productInStock,
+    variants,
+    optionGroups,
+    trackOptionStock,
+  });
   const href = `/products/${slug ?? id}`;
 
   return (
@@ -87,36 +111,14 @@ export default function ProductCard({
             {name}
           </Link>
         </h3>
-        {/* Stock is icon + word, never colour alone. */}
-        {inStock ? (
-          <p className="flex items-center gap-1 font-semibold text-sm text-brand-success mt-1">
-            <CheckIcon className="h-4 w-4 shrink-0" />
-            In Stock
-          </p>
-        ) : (
-          <p className="flex items-center gap-1 font-semibold text-sm text-brand-error mt-1">
-            <CrossIcon className="h-4 w-4 shrink-0" />
-            Out of Stock
-          </p>
-        )}
+        <StockStatus inStock={inStock} />
         {/* Cards are ~140px wide in the 2-up phone grid, so the price and
             the control beside it stack there and sit side by side from
             sm up. */}
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between mt-auto pt-3">
-          <span className="text-lg font-bold text-brand-accent-deep tabular">
-            {minPrice === maxPrice
-              ? `$${minPrice.toFixed(2)}`
-              : `From $${minPrice.toFixed(2)}`}
-          </span>
+          <PriceTag minPrice={minPrice} maxPrice={maxPrice} />
           {needsSelection ? (
-            <Link
-              href={href}
-              aria-label={`Choose options for ${name}`}
-              className="whitespace-nowrap bg-brand-teal text-brand-on px-3 py-2.5 sm:py-1.5 rounded-full text-sm font-medium text-center hover:bg-brand-deep active:bg-brand-ink transition-colors duration-(--dur-micro) ease-(--ease-out)"
-            >
-              <span className="sm:hidden">Options</span>
-              <span className="hidden sm:inline">Choose Options</span>
-            </Link>
+            <ChooseOptionsLink href={href} name={name} />
           ) : (
             <QuantityStepper
               value={qty}

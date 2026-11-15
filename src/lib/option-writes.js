@@ -233,19 +233,29 @@ export async function writeOptionGroups(
   }
 
   // Retire combinations no longer wanted — stock off, a participating
-  // group's required/type changed, or one of its choices is gone.
+  // group's required/type changed, or one of its choices is gone. Each
+  // retired row gets the same treatment regardless of its neighbours, so
+  // this is two set-based writes rather than one statement per row.
+  const archiveVariantIds = [];
+  const deleteVariantIds = [];
   for (const variant of existingVariants) {
     const key = combinationKey(variant.choices.map((c) => c.choiceId));
     if (wantedKeys.has(key)) continue;
-    if (variant.orderItems.length > 0) {
-      await tx.productVariant.update({
-        where: { id: variant.id },
-        data: { archivedAt: new Date() },
-      });
-    } else {
-      // Cascades its ProductVariantChoice rows.
-      await tx.productVariant.delete({ where: { id: variant.id } });
-    }
+    if (variant.orderItems.length > 0) archiveVariantIds.push(variant.id);
+    else deleteVariantIds.push(variant.id);
+  }
+  if (archiveVariantIds.length > 0) {
+    await tx.productVariant.updateMany({
+      where: { id: { in: archiveVariantIds } },
+      data: { archivedAt: new Date() },
+    });
+  }
+  if (deleteVariantIds.length > 0) {
+    // Cascades their ProductVariantChoice rows — which must be gone
+    // before the reference check below, so this stays ahead of it.
+    await tx.productVariant.deleteMany({
+      where: { id: { in: deleteVariantIds } },
+    });
   }
 
   // --- Remove groups/choices the admin dropped ---
@@ -253,30 +263,57 @@ export async function writeOptionGroups(
   // the whole transaction on a failed statement, so catching a
   // constraint violation here would poison every later write in this
   // same save, not just this one delete.
-  for (const [choiceId, choice] of existingChoiceById) {
-    if (incomingChoiceIds.has(choiceId) || choice.archivedAt) continue;
-    const stillReferenced = await tx.productVariantChoice.count({
-      where: { choiceId },
+  const droppedChoiceIds = [...existingChoiceById]
+    .filter(
+      ([choiceId, choice]) =>
+        !incomingChoiceIds.has(choiceId) && !choice.archivedAt
+    )
+    .map(([choiceId]) => choiceId);
+  if (droppedChoiceIds.length > 0) {
+    const referenced = await tx.productVariantChoice.findMany({
+      where: { choiceId: { in: droppedChoiceIds } },
+      select: { choiceId: true },
+      distinct: ["choiceId"],
     });
-    if (stillReferenced > 0) {
-      await tx.productOptionChoice.update({
-        where: { id: choiceId },
+    const referencedIds = new Set(referenced.map((r) => r.choiceId));
+    const archiveChoiceIds = droppedChoiceIds.filter((id) =>
+      referencedIds.has(id)
+    );
+    const deleteChoiceIds = droppedChoiceIds.filter(
+      (id) => !referencedIds.has(id)
+    );
+    if (archiveChoiceIds.length > 0) {
+      await tx.productOptionChoice.updateMany({
+        where: { id: { in: archiveChoiceIds } },
         data: { archivedAt: new Date() },
       });
-    } else {
-      await tx.productOptionChoice.delete({ where: { id: choiceId } });
+    }
+    if (deleteChoiceIds.length > 0) {
+      await tx.productOptionChoice.deleteMany({
+        where: { id: { in: deleteChoiceIds } },
+      });
     }
   }
-  for (const group of existingGroups) {
-    if (incomingGroupIds.has(group.id)) continue;
-    // Only deletable once every choice under it is gone — an archived
-    // choice left behind (still referenced by history) keeps the group
-    // alive too, holding it.
-    const remaining = await tx.productOptionChoice.count({
-      where: { groupId: group.id },
+
+  // Only deletable once every choice under it is gone — an archived
+  // choice left behind (still referenced by history) keeps the group
+  // alive too, holding it. Read after the choice deletes above, so it
+  // sees what they left.
+  const droppedGroupIds = existingGroups
+    .filter((group) => !incomingGroupIds.has(group.id))
+    .map((group) => group.id);
+  if (droppedGroupIds.length > 0) {
+    const held = await tx.productOptionChoice.findMany({
+      where: { groupId: { in: droppedGroupIds } },
+      select: { groupId: true },
+      distinct: ["groupId"],
     });
-    if (remaining === 0) {
-      await tx.productOptionGroup.delete({ where: { id: group.id } });
+    const heldIds = new Set(held.map((c) => c.groupId));
+    const emptyGroupIds = droppedGroupIds.filter((id) => !heldIds.has(id));
+    if (emptyGroupIds.length > 0) {
+      await tx.productOptionGroup.deleteMany({
+        where: { id: { in: emptyGroupIds } },
+      });
     }
   }
 }

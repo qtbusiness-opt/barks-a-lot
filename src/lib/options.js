@@ -55,10 +55,10 @@ export function parseSelectedOptions(raw) {
  */
 export function pickedImageChoice(groups, before, after) {
   for (const group of groups ?? []) {
-    const was = before?.[group.id] ?? [];
-    const now = after?.[group.id] ?? [];
+    const was = new Set(before?.[group.id] ?? []);
+    const now = new Set(after?.[group.id] ?? []);
     const choice = (group.choices ?? []).find(
-      (c) => c.image && now.includes(c.id) && !was.includes(c.id)
+      (c) => c.image && now.has(c.id) && !was.has(c.id)
     );
     if (choice) {
       return {
@@ -141,7 +141,10 @@ export function validateSelections(product, submitted) {
 
   for (const group of groups) {
     const chosenIds = byGroup.get(group.id) ?? [];
-    const valid = group.choices.filter((c) => chosenIds.includes(c.id));
+    // Membership only; the length check below still compares against the
+    // submitted array, so a repeated id is still caught as a mismatch.
+    const chosen = new Set(chosenIds);
+    const valid = group.choices.filter((c) => chosen.has(c.id));
 
     if (valid.length !== chosenIds.length) {
       return { ok: false, error: `Please re-check the ${group.name} options` };
@@ -158,9 +161,7 @@ export function validateSelections(product, submitted) {
 
     selections.push({
       group: group.name,
-      values: group.choices
-        .filter((c) => chosenIds.includes(c.id))
-        .map((c) => c.label),
+      values: valid.map((c) => c.label),
     });
 
     if (group.required && !allowsMultiple(group.inputType)) {
