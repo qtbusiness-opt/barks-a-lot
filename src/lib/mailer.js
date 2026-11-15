@@ -4,6 +4,7 @@
 import { readFileSync } from "fs";
 import path from "path";
 import { prisma } from "@/lib/prisma";
+import { escapeHtml } from "@/lib/email-format";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM =
@@ -49,12 +50,7 @@ export function brandedShell(innerHtml) {
 // Escapes plain text (preserving newlines) and drops it into the shell —
 // used by emails that only have a text body.
 export function brandedHtml(text) {
-  const escaped = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\n/g, "<br>");
-  return brandedShell(escaped);
+  return brandedShell(escapeHtml(text).replace(/\n/g, "<br>"));
 }
 
 export async function sendEmail({ to, subject, text, html, branded = false }) {

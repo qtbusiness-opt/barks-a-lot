@@ -50,12 +50,12 @@ export default function AdminNotificationsPage() {
     `min-h-11 px-4 rounded-lg text-sm font-medium transition ${
       active
         ? "bg-[#4A7C8A] text-white"
-        : "bg-white text-[#4A7C8A] border border-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white"
+        : "bg-white text-[#3A6270] border border-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white"
     }`;
 
   return (
     <AdminShell title="Customer Notifications" backTo="/admin">
-      <p className="text-sm text-gray-500 mb-4 -mt-4">
+      <p className="text-sm text-gray-600 mb-4 -mt-4">
         Order updates recorded against each customer&rsquo;s email. A
         notification is created every time an order&rsquo;s status changes.
       </p>
@@ -78,18 +78,18 @@ export default function AdminNotificationsPage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>
       )}
 
       {notifications === null && !error ? (
-        <p className="text-gray-500 text-center py-10">
+        <p className="text-gray-600 text-center py-10">
           Loading notifications…
         </p>
       ) : notifications?.length === 0 ? (
-        <p className="text-gray-500 text-center py-10">
+        <p className="text-gray-600 text-center py-10">
           {archived
             ? "No archived notifications."
             : "No notifications yet — they appear when order statuses change."}
@@ -106,12 +106,12 @@ export default function AdminNotificationsPage() {
                 <p className="text-sm text-gray-600 mt-1">{n.message}</p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-600">
                   {formatDateTime(n.createdAt)}
                 </p>
                 <button
                   onClick={() => setArchived(n.id, !archived)}
-                  className="min-h-9 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
+                  className="min-h-9 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition"
                 >
                   {archived ? "Restore" : "Archive"}
                 </button>

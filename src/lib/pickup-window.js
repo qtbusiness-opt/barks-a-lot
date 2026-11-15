@@ -2,6 +2,7 @@
 // drift apart.
 
 import { STORE_TIME_ZONE } from "@/lib/format-date";
+import { storeDayKey, storeDayStartUtc, slotEnd } from "@/lib/calendar-days";
 
 // event.date is a Date object straight from Prisma on the server and an
 // ISO string after JSON on the client — handle both. Events are stored
@@ -11,17 +12,23 @@ export const eventDayKey = (event) =>
     ? event.date.toISOString().slice(0, 10)
     : String(event.date).slice(0, 10);
 
-// en-CA renders as YYYY-MM-DD, directly comparable with eventDayKey.
-// Computed in STORE_TIME_ZONE explicitly rather than the process's own
-// clock — the container runs in UTC in production, and "today" needs to
-// mean the store's today, not the server's.
-const storeDayFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: STORE_TIME_ZONE,
-});
-
+// YYYY-MM-DD, directly comparable with eventDayKey. Computed in
+// STORE_TIME_ZONE explicitly rather than the process's own clock — the
+// container runs in UTC in production, and "today" needs to mean the
+// store's today, not the server's. (The rule itself lives in
+// src/lib/calendar-days.js, where it is tested at exact instants.)
 export function dayKeyOf(now = new Date()) {
-  return storeDayFormatter.format(now);
+  return storeDayKey(now, STORE_TIME_ZONE);
 }
+
+// Lower bound for "from today on" event queries: midnight UTC of the
+// store's today, matching how event days are stored. Taking the UTC date
+// instead drops today's events after ~5 PM in Boise.
+export const storeTodayStartUtc = (now = new Date()) =>
+  storeDayStartUtc(now, STORE_TIME_ZONE);
+
+// Shown wherever the owner hasn't written pickup details yet.
+export const PICKUP_FALLBACK = "We'll email you with where to pick up.";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -51,3 +58,7 @@ export function formatTimeRange(event) {
     ? `from ${formatTime(event.startTime)}`
     : `until ${formatTime(event.endTime)}`;
 }
+
+// "3:30 PM – 4:00 PM" for a pickup slot that starts at "15:30".
+export const formatSlot = (time) =>
+  formatTimeRange({ startTime: time, endTime: slotEnd(time) });

@@ -44,17 +44,49 @@ export function formatCalendarDay(day, options) {
     0,
     10
   );
-  return new Intl.DateTimeFormat(STORE_LOCALE, {
-    timeZone: "UTC",
-    ...options,
-  }).format(new Date(`${ymd}T00:00:00Z`));
+  return calendarDayFormatter(options).format(new Date(`${ymd}T00:00:00Z`));
 }
+
+// One formatter per distinct set of options. Callers pass a handful of
+// fixed shapes (weekday-only, day-only, the pickup formats...), so this
+// stays a few entries long while sparing every calendar cell and list row
+// a fresh formatter.
+const calendarDayFormatters = new Map();
+
+function calendarDayFormatter(options) {
+  const resolved = { timeZone: "UTC", ...options };
+  // Keyed on the merged options, so a caller overriding timeZone gets its
+  // own formatter. JSON.stringify drops undefined values, which matches
+  // Intl treating an undefined option as unset.
+  const key = JSON.stringify(resolved);
+  let formatter = calendarDayFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(STORE_LOCALE, resolved);
+    calendarDayFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+/** "Wednesday, Nov 4" — a pickup day at checkout, on confirmations, in emails. */
+export const formatPickupDay = (day) =>
+  formatCalendarDay(day, { weekday: "long", month: "short", day: "numeric" });
+
+/** "Wed, 11/4/2026" — a pickup day in order history, where the year matters. */
+export const formatPickupDayWithYear = (day) =>
+  formatCalendarDay(day, {
+    weekday: "short",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
+
+const monthAndYear = new Intl.DateTimeFormat(STORE_LOCALE, {
+  timeZone: "UTC",
+  month: "long",
+  year: "numeric",
+});
 
 /** "August 2026" for a calendar heading. */
 export function formatMonth(year, month) {
-  return new Intl.DateTimeFormat(STORE_LOCALE, {
-    timeZone: "UTC",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(Date.UTC(year, month, 1)));
+  return monthAndYear.format(new Date(Date.UTC(year, month, 1)));
 }

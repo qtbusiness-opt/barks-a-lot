@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getCategories } from "@/lib/storefront";
 
 // Public, read-only: drives the homepage tiles and the shop filter chips.
 export async function GET() {
-  const categories = await prisma.category.findMany({
-    orderBy: { createdAt: "asc" },
-  });
+  const categories = await getCategories();
   return NextResponse.json({ categories });
 }

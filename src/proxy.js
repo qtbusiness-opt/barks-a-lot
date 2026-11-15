@@ -58,6 +58,14 @@ function basicAuthGate(request) {
   });
 }
 
+// Host part of a client-supplied Origin header, or null when it isn't a
+// parseable URL (privacy-sensitive contexts send the literal "null").
+// null never equals a real Host, so a malformed Origin fails closed as
+// a 403 instead of throwing out of the proxy as a server error.
+function originHost(origin) {
+  return URL.canParse(origin) ? new URL(origin).host : null;
+}
+
 export function proxy(request) {
   const denied = basicAuthGate(request);
   if (denied) return denied;
@@ -71,7 +79,7 @@ export function proxy(request) {
   ) {
     const origin = request.headers.get("origin");
     const host = request.headers.get("host");
-    if (origin && host && new URL(origin).host !== host) {
+    if (origin && host && originHost(origin) !== host) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }

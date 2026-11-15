@@ -38,16 +38,16 @@ export default function AdminAboutPage() {
 
   return (
     <AdminShell title="About Page" backTo="/admin">
-      <p className="text-sm text-gray-500 mb-6 -mt-4">
+      <p className="text-sm text-gray-600 mb-6 -mt-4">
         Photos shown on the public{" "}
-        <a href="/about" className="text-[#4A7C8A] underline" target="_blank" rel="noreferrer">
+        <a href="/about" className="text-[#3A6270] underline" target="_blank" rel="noreferrer">
           About Us
         </a>{" "}
         page. Each section shows its placeholder until you add a photo.
       </p>
 
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">
+        <p role="alert" className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4">
           {error}
         </p>
       )}
@@ -58,7 +58,7 @@ export default function AdminAboutPage() {
       )}
 
       {settings === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading…</p>
+        <p className="text-gray-600 text-center py-10">Loading…</p>
       ) : (
         <div className="space-y-6 max-w-xl">
           {ABOUT_IMAGE_KEYS.map((slot) => {
@@ -68,7 +68,7 @@ export default function AdminAboutPage() {
                 <h2 className="text-lg font-semibold text-[#2A4A52]">
                   {slot.label}
                 </h2>
-                <p className="text-xs text-gray-500 mb-3">Suggested: {slot.hint}</p>
+                <p className="text-xs text-gray-600 mb-3">Suggested: {slot.hint}</p>
                 <ImageUpload
                   value={value}
                   label="Section photo"
@@ -77,7 +77,7 @@ export default function AdminAboutPage() {
                 {value && (
                   <button
                     onClick={() => save(slot.key, "")}
-                    className="mt-3 text-sm text-red-500 underline hover:text-red-600"
+                    className="mt-3 text-sm text-red-700 underline hover:text-red-800"
                   >
                     Remove photo (show placeholder)
                   </button>

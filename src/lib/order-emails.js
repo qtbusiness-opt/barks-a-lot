@@ -1,5 +1,17 @@
-import { sendEmail, adminEmails } from "@/lib/mailer";
-import { formatTimeRange } from "@/lib/pickup-window";
+import { sendEmail, adminEmails, brandedShell } from "@/lib/mailer";
+import {
+  escapeHtml,
+  emailParagraphs,
+  orderItemName,
+  orderItemsHtml,
+} from "@/lib/email-format";
+import {
+  formatTimeRange,
+  formatSlot,
+  PICKUP_FALLBACK,
+} from "@/lib/pickup-window";
+import { formatPickupDay } from "@/lib/format-date";
+import { getPickupSettings } from "@/lib/site-settings";
 import { logEvent } from "@/lib/log";
 
 // Order mail used to fail only into the server console, which on a hosted
@@ -47,11 +59,30 @@ function deliveryLine(order) {
   return `Shipping to ${order.address}, ${order.city}, ${order.state} ${order.zip}`;
 }
 
+// The delivery line for any order, scheduled pickups included. Never
+// throws: the orders route awaits these emails inside its own try, so a
+// settings hiccup here would otherwise turn an already-charged order into
+// a "Server error" — and the customer would lose their confirmation too.
+// On failure the generic copy stands in for the owner's details.
+async function deliveryLineFor(order) {
+  if (order.fulfillmentType !== "pickup" || !order.pickupDate) {
+    return deliveryLine(order);
+  }
+  let details = "";
+  try {
+    ({ details } = await getPickupSettings());
+  } catch {
+    // Fall back to the generic copy below.
+  }
+  const when = order.pickupTime ? `, ${formatSlot(order.pickupTime)}` : "";
+  return `Pickup on ${formatPickupDay(order.pickupDate)}${when} — ${details || PICKUP_FALLBACK}`;
+}
+
 function itemLines(order) {
   return order.items
     .map(
       (i) =>
-        `  - ${i.product.name}${i.variant ? ` (${i.variant.name})` : ""} x ${i.quantity} — $${(i.price * i.quantity).toFixed(2)}`
+        `  - ${orderItemName(i)} x ${i.quantity} — $${(i.price * i.quantity).toFixed(2)}`
     )
     .join("\n");
 }
@@ -72,11 +103,26 @@ export async function sendOrderConfirmationEmail(order) {
   if (!to) return;
 
   try {
+    const delivery = await deliveryLineFor(order);
     const result = await sendEmail({
       to,
       subject: `Order confirmed — ${order.confirmationNumber}`,
-      text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}\n${deliveryLine(order)}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
-      branded: true,
+      text: `Thanks for your order from Barks-A-Lot Treats & More!\n\nConfirmation number: ${order.confirmationNumber}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}\n${delivery}\n\nWe'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.`,
+      // The pictures matter most here: a bandana is bought by its
+      // pattern, and the confirmation is the cheapest place for a
+      // customer to notice they picked the wrong one. Passing html
+      // explicitly replaces what `branded: true` would have produced —
+      // brandedShell is the same wrapper, so the inline logo still
+      // resolves — and the text body above stays the fallback for
+      // clients that don't render HTML or block remote images.
+      html: brandedShell(
+        `<p>Thanks for your order from Barks-A-Lot Treats &amp; More!</p>
+         <p>Confirmation number: <strong>${escapeHtml(order.confirmationNumber)}</strong></p>
+         ${orderItemsHtml(order.items)}
+         <hr style="border:none;border-top:1px solid #eee;margin:12px 0" />
+         ${emailParagraphs(`${totalsBlock(order)}\n${delivery}`)}
+         <p style="margin-top:12px">We'll email you when your order's status changes. If you have any questions, you can reach us at info@barks-a-lot.com.</p>`
+      ),
     });
     await noteIfUndelivered(
       result,
@@ -111,6 +157,7 @@ export async function sendAdminOrderAlert(order) {
       return;
     }
 
+    const delivery = await deliveryLineFor(order);
     const customer = order.user
       ? `${order.user.name} (${order.user.email})`
       : `${order.guestName ? `${order.guestName} — ` : ""}${order.guestEmail} (guest)`;
@@ -118,7 +165,21 @@ export async function sendAdminOrderAlert(order) {
     const result = await sendEmail({
       to,
       subject: `New order ${order.confirmationNumber} — $${order.total.toFixed(2)}`,
-      text: `A new order just came in.\n\nConfirmation number: ${order.confirmationNumber}\nCustomer: ${customer}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${deliveryLine(order)}\n\nManage it in the admin dashboard under Orders.`,
+      text: `A new order just came in.\n\nConfirmation number: ${order.confirmationNumber}\nCustomer: ${customer}\n\nItems:\n${itemLines(order)}\n\n${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${delivery}\n\nManage it in the admin dashboard under Orders.`,
+      // Deliberately not run through brandedShell: this is the internal
+      // heads-up, and the shell would attach the 13KB logo to every one
+      // of them to put a masthead on a note you send yourself. The
+      // pictures are here to show what needs packing.
+      html: `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;color:#2A4A52;font-size:15px;line-height:1.6">
+        <p>A new order just came in.</p>
+        ${emailParagraphs(`Confirmation number: ${order.confirmationNumber}\nCustomer: ${customer}`)}
+        ${orderItemsHtml(order.items)}
+        <hr style="border:none;border-top:1px solid #eee;margin:12px 0" />
+        ${emailParagraphs(
+          `${totalsBlock(order)}${order.promoCode ? `\nPromo code: ${order.promoCode}` : ""}\n${delivery}`
+        )}
+        <p style="margin-top:12px">Manage it in the admin dashboard under Orders.</p>
+      </div>`,
     });
     await noteIfUndelivered(
       result,
@@ -139,10 +200,11 @@ export async function sendOrderStatusEmail(order, message) {
   if (!to) return;
 
   try {
+    const delivery = await deliveryLineFor(order);
     await sendEmail({
       to,
       subject: `Order update — ${order.confirmationNumber}`,
-      text: `${message}\n\n${deliveryLine(order)}\n\nQuestions? You can reach us at info@barks-a-lot.com.`,
+      text: `${message}\n\n${delivery}\n\nQuestions? You can reach us at info@barks-a-lot.com.`,
       branded: true,
     });
   } catch (err) {

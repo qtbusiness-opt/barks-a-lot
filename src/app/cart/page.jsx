@@ -11,7 +11,7 @@ export default function CartPage() {
     return (
       <div className="max-w-7xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">Your Cart</h1>
-        <p className="text-gray-500 mb-6">Your cart is empty.</p>
+        <p className="text-gray-600 mb-6">Your cart is empty.</p>
         <Link
           href="/products"
           className="inline-block bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] active:bg-[#2A4A52] transition"
@@ -45,9 +45,9 @@ export default function CartPage() {
                   {item.name}
                 </h3>
                 {item.optionsLabel && (
-                  <p className="text-xs text-gray-500">{item.optionsLabel}</p>
+                  <p className="text-xs text-gray-600">{item.optionsLabel}</p>
                 )}
-                <p className="text-[#C8722A] font-bold">
+                <p className="text-[#8A4D1A] font-bold">
                   ${item.price.toFixed(2)}
                 </p>
               </div>
@@ -78,13 +78,13 @@ export default function CartPage() {
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center text-lg">
             <span className="font-semibold text-[#2A4A52]">Total</span>
-            <span className="text-2xl font-bold text-[#C8722A]">
+            <span className="text-2xl font-bold text-[#8A4D1A]">
               ${total.toFixed(2)}
             </span>
           </div>
           <Link
             href="/checkout"
-            className="mt-3 sm:mt-4 block text-center bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition"
+            className="mt-3 sm:mt-4 block text-center bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition"
           >
             Proceed to Checkout
           </Link>
@@ -123,7 +123,7 @@ function RemoveButton({ item, removeItem }) {
     <button
       onClick={() => removeItem(item.key)}
       aria-label={`Remove ${item.name} from cart`}
-      className="flex items-center justify-center w-11 h-11 sm:w-auto sm:h-auto text-red-400 hover:text-red-600 active:text-red-700 transition"
+      className="flex items-center justify-center w-11 h-11 text-red-700 hover:text-red-800 active:text-red-700 transition"
     >
       <svg
         className="w-5 h-5"

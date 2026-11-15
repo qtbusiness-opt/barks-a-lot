@@ -26,7 +26,7 @@ export default function EventMap({ location }) {
         href={`https://www.google.com/maps/search/?api=1&query=${query}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#4A7C8A]/40 bg-[#F5F0E8] py-6 text-[#4A7C8A] font-medium hover:border-[#4A7C8A] transition"
+        className="mt-4 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#4A7C8A]/40 bg-[#F5F0E8] py-6 text-[#3A6270] font-medium hover:border-[#4A7C8A] transition"
       >
         🗺️ Open &ldquo;{location}&rdquo; in Google Maps
       </a>

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { storeTodayStartUtc } from "@/lib/pickup-window";
 
 const monthParam = z.string().regex(/^\d{4}-\d{2}$/);
 const dateParam = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 // Public, read-only. ?month=YYYY-MM returns a month of events for the
 // calendar; ?date=YYYY-MM-DD returns one day for the details page;
-// ?upcoming=true returns today-onward events for pickup selection.
+// ?upcoming=true returns events from the store's today (store time)
+// onward, for pickup selection.
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const month = searchParams.get("month");
@@ -16,9 +18,7 @@ export async function GET(req) {
 
   let where = {};
   if (upcoming === "true") {
-    const startOfToday = new Date();
-    startOfToday.setUTCHours(0, 0, 0, 0);
-    where = { date: { gte: startOfToday } };
+    where = { date: { gte: storeTodayStartUtc() } };
   } else if (date && dateParam.safeParse(date).success) {
     const start = new Date(`${date}T00:00:00.000Z`);
     const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);

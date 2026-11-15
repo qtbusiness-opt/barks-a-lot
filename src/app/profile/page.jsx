@@ -10,7 +10,7 @@ import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 function AddressRow({ addr, onSaved, onDeleted, onError }) {
   const [editing, setEditing] = useState(false);
@@ -65,13 +65,13 @@ function AddressRow({ addr, onSaved, onDeleted, onError }) {
         <div className="flex gap-2 shrink-0">
           <button
             onClick={editing ? () => setEditing(false) : startEdit}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
           >
             {editing ? "Close" : "Edit"}
           </button>
           <button
             onClick={remove}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-700 hover:bg-red-700 hover:text-white active:bg-red-800 transition"
           >
             Delete
           </button>
@@ -126,6 +126,230 @@ function AddressRow({ addr, onSaved, onDeleted, onError }) {
         </form>
       )}
     </div>
+  );
+}
+
+function StatusMessages({ error, notice }) {
+  return (
+    <>
+      {error && (
+        <p
+          role="alert"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4"
+        >
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p
+          role="status"
+          className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4"
+        >
+          {notice}
+        </p>
+      )}
+    </>
+  );
+}
+
+function AccountCard({
+  account,
+  name,
+  onNameChange,
+  editingName,
+  onEditName,
+  onSaveName,
+  savingName,
+  onSendReset,
+  sendingReset,
+}) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+      <h2 className="text-xl font-semibold text-[#2A4A52] mb-4">Account</h2>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-600">Name</p>
+          {editingName ? null : (
+            <p className="text-[#2A4A52] font-semibold">{account.name}</p>
+          )}
+        </div>
+        {!editingName && (
+          <button
+            onClick={onEditName}
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+      {editingName && (
+        <form onSubmit={onSaveName} className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            aria-label="Name"
+            required
+            className={inputClass}
+          />
+          <button
+            type="submit"
+            disabled={savingName}
+            className="shrink-0 bg-[#4A7C8A] hover:bg-[#3A6270] text-white px-4 rounded-lg font-semibold transition disabled:opacity-50"
+          >
+            {savingName ? "…" : "Save"}
+          </button>
+        </form>
+      )}
+
+      <div className="mb-4">
+        <p className="text-sm font-medium text-gray-600">Email</p>
+        <p className="text-[#2A4A52]">{account.email}</p>
+      </div>
+
+      <button
+        onClick={onSendReset}
+        disabled={sendingReset}
+        className="w-full sm:w-auto border-2 border-[#C8722A] text-[#8A4D1A] px-4 py-2.5 rounded-lg font-semibold hover:bg-[#A85D1F] hover:text-white transition disabled:opacity-50"
+      >
+        {sendingReset ? "Sending…" : "Send Password Reset Email"}
+      </button>
+    </div>
+  );
+}
+
+function OrdersSummaryCard({ summary }) {
+  return (
+    <Link
+      href="/orders"
+      className="block bg-white rounded-xl shadow-sm p-4 sm:p-6 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-[#2A4A52]">
+          My Orders ({summary.total})
+        </h2>
+        <span className="text-[#3A6270] font-medium text-sm">
+          View all &rarr;
+        </span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <div className="bg-yellow-50 rounded-lg p-3">
+          <p className="text-2xl font-bold text-yellow-700">
+            {summary.pending}
+          </p>
+          <p className="text-xs font-medium text-yellow-700">Pending</p>
+        </div>
+        <div className="bg-blue-50 rounded-lg p-3">
+          <p className="text-2xl font-bold text-blue-700">{summary.shipped}</p>
+          <p className="text-xs font-medium text-blue-700">
+            {ORDER_STATUS_LABELS.shipped}
+          </p>
+        </div>
+        <div className="bg-green-50 rounded-lg p-3">
+          <p className="text-2xl font-bold text-green-700">
+            {summary.delivered}
+          </p>
+          <p className="text-xs font-medium text-green-700">
+            {ORDER_STATUS_LABELS.delivered}
+          </p>
+        </div>
+        <div className="bg-red-50 rounded-lg p-3">
+          <p className="text-2xl font-bold text-red-700">
+            {summary.cancelled}
+          </p>
+          <p className="text-xs font-medium text-red-700">Cancelled</p>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function AddressBook({ addresses, onSaved, onDeleted, onError }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+      <h2 className="text-xl font-semibold text-[#2A4A52] mb-1">
+        Shipping Addresses
+      </h2>
+      <p className="text-sm text-gray-600 mb-4">
+        Addresses you&rsquo;ve shipped orders to. Removing one here
+        doesn&rsquo;t change past orders.
+      </p>
+      {addresses.length === 0 ? (
+        <p className="text-gray-600 text-sm">
+          No addresses yet — they&rsquo;re saved automatically when you place
+          a shipping order.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {addresses.map((addr) => (
+            <AddressRow
+              key={addr.id}
+              addr={addr}
+              onSaved={onSaved}
+              onDeleted={onDeleted}
+              onError={onError}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeleteAccountCard({ onDelete, deleting }) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-red-200">
+      <h2 className="text-xl font-semibold text-red-700 mb-1">
+        Delete Account
+      </h2>
+      <p className="text-sm text-gray-600 mb-4">
+        Permanently removes your profile and login. Past order records are
+        kept for our bookkeeping (required for taxes), but they will no longer
+        be linked to an account.
+      </p>
+      <button
+        onClick={onDelete}
+        disabled={deleting}
+        className="w-full sm:w-auto border-2 border-red-400 text-red-700 px-4 py-2.5 rounded-lg font-semibold hover:bg-red-700 hover:border-red-500 hover:text-white transition disabled:opacity-50"
+      >
+        {deleting ? "Deleting…" : "Delete My Account"}
+      </button>
+    </div>
+  );
+}
+
+// The sections only a customer account has. Rendered as siblings of the
+// account card (a fragment, not a wrapper) so the page's spacing is
+// unchanged.
+function CustomerSections({
+  profile,
+  onAddressSaved,
+  onAddressDeleted,
+  onError,
+  onDeleteAccount,
+  deleting,
+}) {
+  const summary = profile.orderSummary;
+  return (
+    <>
+      {/* Orders summary */}
+      {summary && <OrdersSummaryCard summary={summary} />}
+
+      {/* Address book — hidden while the store is pickup-only since no
+          addresses are recorded. */}
+      {SHIPPING_ENABLED && (
+        <AddressBook
+          addresses={profile.addresses}
+          onSaved={onAddressSaved}
+          onDeleted={onAddressDeleted}
+          onError={onError}
+        />
+      )}
+
+      {/* Danger zone — customers can close their own account. */}
+      <DeleteAccountCard onDelete={onDeleteAccount} deleting={deleting} />
+    </>
   );
 }
 
@@ -186,7 +410,7 @@ export default function ProfilePage() {
 
   if (loading || (user && profile === null && !error)) {
     return (
-      <div className="max-w-2xl mx-auto safe-x py-20 text-center text-gray-500">
+      <div className="max-w-2xl mx-auto safe-x py-20 text-center text-gray-600">
         Loading...
       </div>
     );
@@ -196,7 +420,7 @@ export default function ProfilePage() {
     return (
       <div className="max-w-2xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">My Profile</h1>
-        <p className="text-gray-500 mb-6">
+        <p className="text-gray-600 mb-6">
           Please log in to view your profile.
         </p>
         <Link
@@ -230,7 +454,17 @@ export default function ProfilePage() {
     }
   };
 
-  const summary = profile?.orderSummary;
+  const replaceAddress = (updated) =>
+    setProfile((prev) => ({
+      ...prev,
+      addresses: prev.addresses.map((a) => (a.id === updated.id ? updated : a)),
+    }));
+
+  const removeAddress = (id) =>
+    setProfile((prev) => ({
+      ...prev,
+      addresses: prev.addresses.filter((a) => a.id !== id),
+    }));
 
   return (
     <div className="max-w-2xl mx-auto safe-x py-6 sm:py-10">
@@ -238,190 +472,30 @@ export default function ProfilePage() {
         My Profile
       </h1>
 
-      {error && (
-        <p
-          role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4"
-        >
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p
-          role="status"
-          className="text-green-700 text-sm bg-green-50 p-3 rounded-lg mb-4"
-        >
-          {notice}
-        </p>
-      )}
+      <StatusMessages error={error} notice={notice} />
 
       <div className="space-y-6">
-        {/* Account card */}
-        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
-          <h2 className="text-xl font-semibold text-[#2A4A52] mb-4">Account</h2>
+        <AccountCard
+          account={profile.user}
+          name={name}
+          onNameChange={setName}
+          editingName={editingName}
+          onEditName={() => setEditingName(true)}
+          onSaveName={saveName}
+          savingName={savingName}
+          onSendReset={sendReset}
+          sendingReset={sendingReset}
+        />
 
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-500">Name</p>
-              {editingName ? null : (
-                <p className="text-[#2A4A52] font-semibold">
-                  {profile.user.name}
-                </p>
-              )}
-            </div>
-            {!editingName && (
-              <button
-                onClick={() => setEditingName(true)}
-                className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
-              >
-                Edit
-              </button>
-            )}
-          </div>
-          {editingName && (
-            <form onSubmit={saveName} className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                aria-label="Name"
-                required
-                className={inputClass}
-              />
-              <button
-                type="submit"
-                disabled={savingName}
-                className="shrink-0 bg-[#4A7C8A] hover:bg-[#3A6270] text-white px-4 rounded-lg font-semibold transition disabled:opacity-50"
-              >
-                {savingName ? "…" : "Save"}
-              </button>
-            </form>
-          )}
-
-          <div className="mb-4">
-            <p className="text-sm font-medium text-gray-500">Email</p>
-            <p className="text-[#2A4A52]">{profile.user.email}</p>
-          </div>
-
-          <button
-            onClick={sendReset}
-            disabled={sendingReset}
-            className="w-full sm:w-auto border-2 border-[#C8722A] text-[#C8722A] px-4 py-2.5 rounded-lg font-semibold hover:bg-[#C8722A] hover:text-white transition disabled:opacity-50"
-          >
-            {sendingReset ? "Sending…" : "Send Password Reset Email"}
-          </button>
-        </div>
-
-        {/* Orders summary — customers only */}
-        {isCustomer && summary && (
-          <Link
-            href="/orders"
-            className="block bg-white rounded-xl shadow-sm p-4 sm:p-6 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-[#2A4A52]">
-                My Orders ({summary.total})
-              </h2>
-              <span className="text-[#4A7C8A] font-medium text-sm">
-                View all &rarr;
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-              <div className="bg-yellow-50 rounded-lg p-3">
-                <p className="text-2xl font-bold text-yellow-700">
-                  {summary.pending}
-                </p>
-                <p className="text-xs font-medium text-yellow-700">Pending</p>
-              </div>
-              <div className="bg-blue-50 rounded-lg p-3">
-                <p className="text-2xl font-bold text-blue-700">
-                  {summary.shipped}
-                </p>
-                <p className="text-xs font-medium text-blue-700">
-                  {ORDER_STATUS_LABELS.shipped}
-                </p>
-              </div>
-              <div className="bg-green-50 rounded-lg p-3">
-                <p className="text-2xl font-bold text-green-700">
-                  {summary.delivered}
-                </p>
-                <p className="text-xs font-medium text-green-700">
-                  {ORDER_STATUS_LABELS.delivered}
-                </p>
-              </div>
-              <div className="bg-red-50 rounded-lg p-3">
-                <p className="text-2xl font-bold text-red-700">
-                  {summary.cancelled}
-                </p>
-                <p className="text-xs font-medium text-red-700">Cancelled</p>
-              </div>
-            </div>
-          </Link>
-        )}
-
-        {/* Address book — customers only; hidden while the store is
-            pickup-only since no addresses are recorded. */}
-        {isCustomer && SHIPPING_ENABLED && (
-          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
-            <h2 className="text-xl font-semibold text-[#2A4A52] mb-1">
-              Shipping Addresses
-            </h2>
-            <p className="text-sm text-gray-500 mb-4">
-              Addresses you&rsquo;ve shipped orders to. Removing one here
-              doesn&rsquo;t change past orders.
-            </p>
-            {profile.addresses.length === 0 ? (
-              <p className="text-gray-500 text-sm">
-                No addresses yet — they&rsquo;re saved automatically when you
-                place a shipping order.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {profile.addresses.map((addr) => (
-                  <AddressRow
-                    key={addr.id}
-                    addr={addr}
-                    onSaved={(updated) =>
-                      setProfile((prev) => ({
-                        ...prev,
-                        addresses: prev.addresses.map((a) =>
-                          a.id === updated.id ? updated : a
-                        ),
-                      }))
-                    }
-                    onDeleted={(id) =>
-                      setProfile((prev) => ({
-                        ...prev,
-                        addresses: prev.addresses.filter((a) => a.id !== id),
-                      }))
-                    }
-                    onError={setError}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Danger zone — customers can close their own account. */}
         {isCustomer && (
-          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-red-200">
-            <h2 className="text-xl font-semibold text-red-600 mb-1">
-              Delete Account
-            </h2>
-            <p className="text-sm text-gray-500 mb-4">
-              Permanently removes your profile and login. Past order records are
-              kept for our bookkeeping (required for taxes), but they will no
-              longer be linked to an account.
-            </p>
-            <button
-              onClick={deleteAccount}
-              disabled={deleting}
-              className="w-full sm:w-auto border-2 border-red-400 text-red-500 px-4 py-2.5 rounded-lg font-semibold hover:bg-red-500 hover:border-red-500 hover:text-white transition disabled:opacity-50"
-            >
-              {deleting ? "Deleting…" : "Delete My Account"}
-            </button>
-          </div>
+          <CustomerSections
+            profile={profile}
+            onAddressSaved={replaceAddress}
+            onAddressDeleted={removeAddress}
+            onError={setError}
+            onDeleteAccount={deleteAccount}
+            deleting={deleting}
+          />
         )}
       </div>
     </div>

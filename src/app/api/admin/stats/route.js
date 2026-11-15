@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
+import { storeTodayStartUtc } from "@/lib/pickup-window";
 
 // Counts backing the four dashboard panels.
 export async function GET() {
@@ -9,8 +10,9 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const startOfToday = new Date();
-  startOfToday.setUTCHours(0, 0, 0, 0);
+  // Store time, matching the events list — the UTC date would stop
+  // counting today's events after ~5 PM in Boise.
+  const startOfToday = storeTodayStartUtc();
 
   const [
     totalOrders,
@@ -54,7 +56,8 @@ export async function GET() {
       orders: { total: totalOrders, pending: pendingOrders },
       products: {
         inStock: productsInStock,
-        units: (stockUnits._sum.quantity ?? 0) + (variantUnits._sum.quantity ?? 0),
+        units:
+          (stockUnits._sum.quantity ?? 0) + (variantUnits._sum.quantity ?? 0),
       },
       announcements,
       notifications,

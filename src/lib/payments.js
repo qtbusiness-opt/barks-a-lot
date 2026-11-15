@@ -39,9 +39,13 @@ async function squareRequest(path, body) {
     },
     body: JSON.stringify(body),
   });
-  const data = await res.json().catch(() => ({}));
+  // Square answers failures with a JSON { errors } body, but a proxy or
+  // outage page may not be JSON at all — a body we can't parse becomes
+  // "no error codes", which surfaces as the generic try-again message
+  // rather than a crash.
   if (!res.ok) {
-    const errors = data.errors ?? [];
+    const failure = await res.json().catch(() => ({}));
+    const errors = failure?.errors ?? [];
     console.error(`[payments] Square ${path} failed:`, JSON.stringify(errors));
     // Card declines come back as specific error codes; everything else is
     // an integration/availability problem the customer can't fix.
@@ -64,7 +68,10 @@ async function squareRequest(path, body) {
       errors
     );
   }
-  return data;
+  // Success bodies are parsed strictly: if Square says 2xx but the body
+  // is unreadable we can't know the payment id, so this throws (not a
+  // PaymentError) and the caller treats it as an unexpected failure.
+  return res.json();
 }
 
 // Charges the tokenized card for the server-computed total. amountCents

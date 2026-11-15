@@ -59,12 +59,12 @@ export default function AdminLogsPage() {
     `min-h-11 px-4 rounded-lg text-sm font-medium transition ${
       active
         ? "bg-[#4A7C8A] text-white"
-        : "bg-white text-[#4A7C8A] border border-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white"
+        : "bg-white text-[#3A6270] border border-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white"
     }`;
 
   return (
     <AdminShell title="Activity Log" backTo="/admin">
-      <p className="text-sm text-gray-500 mb-6 -mt-4">
+      <p className="text-sm text-gray-600 mb-6 -mt-4">
         User logins, server errors, and carts abandoned at logout. Every event
         is also written to the container&rsquo;s stdout, so it shows up in{" "}
         <code>docker logs</code> too.
@@ -73,7 +73,7 @@ export default function AdminLogsPage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>
@@ -118,7 +118,7 @@ export default function AdminLogsPage() {
                   className="inline-flex items-center gap-2 bg-[#F5F0E8] rounded-full px-3 py-1 text-sm"
                 >
                   <span className="text-[#2A4A52]">{eventLabel(ev)}</span>
-                  <span className="font-semibold text-[#C8722A]">{count}</span>
+                  <span className="font-semibold text-[#8A4D1A]">{count}</span>
                 </span>
               ))}
           </div>
@@ -153,16 +153,16 @@ export default function AdminLogsPage() {
       </div>
 
       {events === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading events…</p>
+        <p className="text-gray-600 text-center py-10">Loading events…</p>
       ) : events?.length === 0 ? (
-        <p className="text-gray-500 text-center py-10">
+        <p className="text-gray-600 text-center py-10">
           No events recorded yet.
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm tabular-nums">
             <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-200">
+              <tr className="text-left text-gray-600 border-b border-gray-200">
                 <th className="py-2 pr-4 font-medium">When</th>
                 <th className="py-2 pr-4 font-medium">Event</th>
                 <th className="py-2 pr-4 font-medium">Who</th>
@@ -172,7 +172,7 @@ export default function AdminLogsPage() {
             <tbody>
               {events?.map((e) => (
                 <tr key={e.id} className="border-b border-gray-100 align-top">
-                  <td className="py-2 pr-4 whitespace-nowrap text-gray-500">
+                  <td className="py-2 pr-4 whitespace-nowrap text-gray-600">
                     {formatDateTime(e.createdAt)}
                   </td>
                   <td className="py-2 pr-4 whitespace-nowrap">
@@ -187,7 +187,7 @@ export default function AdminLogsPage() {
                   <td className="py-2 pr-4 text-gray-700">
                     {e.email || "—"}
                     {e.ip && (
-                      <span className="block text-xs text-gray-400">
+                      <span className="block text-xs text-gray-600">
                         {e.ip}
                       </span>
                     )}
@@ -195,7 +195,7 @@ export default function AdminLogsPage() {
                   <td className="py-2 pr-4 text-gray-600">
                     {e.message}
                     {e.path && (
-                      <span className="block text-xs text-gray-400">
+                      <span className="block text-xs text-gray-600">
                         {e.path}
                       </span>
                     )}

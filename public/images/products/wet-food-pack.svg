@@ -29,5 +29,4 @@
     <line x1="-44" y1="-28" x2="44" y2="-28" stroke="#5A8C9A" stroke-width="0.5" opacity="0.5"/>
     <line x1="-44" y1="30" x2="44" y2="30" stroke="#5A8C9A" stroke-width="0.5" opacity="0.5"/>
   </g>
-  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Wet Food Pack</text>
 </svg>

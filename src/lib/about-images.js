@@ -1,5 +1,5 @@
 // Client-safe constants (no server imports): the About page photo slots.
-// Whitelisted so an arbitrary settings key can never be written.
+// The settings whitelist built from these lives in src/lib/setting-keys.js.
 export const ABOUT_IMAGE_KEYS = [
   {
     key: "about_image_family",
@@ -17,7 +17,3 @@ export const ABOUT_IMAGE_KEYS = [
     hint: "Home-baked treats",
   },
 ];
-
-export const ALLOWED_SETTING_KEYS = new Set(
-  ABOUT_IMAGE_KEYS.map((k) => k.key)
-);

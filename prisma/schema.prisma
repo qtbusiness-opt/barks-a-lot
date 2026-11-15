@@ -206,11 +206,21 @@ model Order {
   // "online" (web checkout) | "market" (in-person sale recorded after the
   // fact) — one inventory ledger across both sales channels.
   channel            String      @default("online")
-  // "shipping" | "pickup" — pickup orders (markets/expos) need no address.
+  // "shipping" | "pickup" — pickup orders (a scheduled pickup day and
+  // slot, or a market/expo) need no address.
   fulfillmentType    String      @default("shipping")
   // The market/expo the customer chose to pick up at.
   pickupEventId      String?
   pickupEvent        Event?      @relation(fields: [pickupEventId], references: [id])
+  // Scheduled pickup (Mon–Sat): the calendar day chosen, stored as
+  // midnight UTC like Event.date and compared by YYYY-MM-DD key. At most
+  // one of pickupEventId / pickupDate is set (the orders API rejects
+  // both). Null on orders that predate scheduled pickup.
+  pickupDate         DateTime?
+  // Start of the 30-minute pickup slot on pickupDate, "HH:MM" 24h store
+  // time. At most SLOT_CAPACITY non-cancelled orders share a slot. Null on
+  // event pickups and on day-only pickups booked before slots existed.
+  pickupTime         String?
   total              Float
   // Square payment id for the charge — the only payment detail we store
   // (never card numbers). Null when payments aren't configured (dev) or
@@ -230,6 +240,8 @@ model Order {
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
   items              OrderItem[]
+
+  @@index([pickupDate, pickupTime])
 }
 
 model OrderItem {
@@ -247,6 +259,15 @@ model OrderItem {
   // labels, so renaming or deleting an option later can't rewrite what
   // the customer actually ordered.
   options   String?
+  // The photo this line was bought as: the chosen option's own picture
+  // when it has one (the bandana pattern the customer clicked), else the
+  // product's cover at the time of the order. A snapshot for the same
+  // reason as `options` above — replacing a product photo or retiring an
+  // option must not change what a past order looks like. Resolved
+  // server-side from the stored choice, never accepted from the browser.
+  // Null on orders placed before this column existed; readers fall back
+  // to the product's current cover.
+  image     String?
 }
 
 // Product categories, managed by admins. Products reference the slug as

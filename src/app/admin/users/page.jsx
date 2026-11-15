@@ -7,7 +7,7 @@ import AdminShell from "@/components/AdminShell";
 import { formatDate } from "@/lib/format-date";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 const EMPTY_FORM = { name: "", email: "", password: "" };
 
@@ -59,7 +59,7 @@ export default function AdminUsersPage() {
           className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-4 self-start"
         >
           <h2 className="text-xl font-semibold text-[#2A4A52]">New Admin</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-600">
             Admin accounts can manage products, orders, events, announcements,
             and other admins. No email verification needed — they can log in
             immediately.
@@ -67,7 +67,7 @@ export default function AdminUsersPage() {
           {error && (
             <p
               role="alert"
-              className="text-red-500 text-sm bg-red-50 p-3 rounded-lg"
+              className="text-red-700 text-sm bg-red-50 p-3 rounded-lg"
             >
               {error}
             </p>
@@ -128,14 +128,14 @@ export default function AdminUsersPage() {
               minLength={8}
               className={inputClass}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-600 mt-1">
               At least 8 characters, including a letter and a number.
             </p>
           </div>
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+            className="w-full bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
             {submitting ? "Creating…" : "Create Admin Account"}
           </button>
@@ -146,7 +146,7 @@ export default function AdminUsersPage() {
             Current Admins ({admins?.length ?? "…"})
           </h2>
           {admins === null ? (
-            <p className="text-gray-500">Loading admin accounts…</p>
+            <p className="text-gray-600">Loading admin accounts…</p>
           ) : (
             <div className="space-y-3">
               {admins.map((a) => (
@@ -158,14 +158,14 @@ export default function AdminUsersPage() {
                     <p className="font-semibold text-[#2A4A52] truncate">
                       {a.name}
                       {a.id === user?.id && (
-                        <span className="ml-2 text-xs font-medium text-[#4A7C8A]">
+                        <span className="ml-2 text-xs font-medium text-[#3A6270]">
                           (you)
                         </span>
                       )}
                     </p>
-                    <p className="text-sm text-gray-500 truncate">{a.email}</p>
+                    <p className="text-sm text-gray-600 truncate">{a.email}</p>
                   </div>
-                  <p className="text-xs text-gray-500 shrink-0">
+                  <p className="text-xs text-gray-600 shrink-0">
                     Since {formatDate(a.createdAt)}
                   </p>
                 </div>
