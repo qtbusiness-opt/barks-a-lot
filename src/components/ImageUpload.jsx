@@ -22,8 +22,8 @@ export default function ImageUpload({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      // Plain fetch: the shared axios instance forces a JSON content type,
-      // but multipart needs the browser-set boundary header.
+      // Plain fetch: the shared api client sends JSON, but multipart needs
+      // the browser-set boundary header.
       const res = await fetch("/api/admin/uploads", {
         method: "POST",
         body: fd,

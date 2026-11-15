@@ -3095,3 +3095,65 @@ test("events page lists upcoming events by month; the calendar is one click away
     }
   }
 });
+
+test("concurrent checkouts can't oversell the last of a product", async () => {
+  // Each order books a different slot, so the per-slot advisory lock
+  // can't line them up; only the stock rows themselves can. Before they
+  // were locked, every checkout read "2 left", passed the check, and wrote
+  // its own absolute remainder over the others' — all six got through.
+  const cookie = await loginAs(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const created = await api("POST", "/admin/products", {
+    body: {
+      name: "Last Two Biscuits",
+      description: "Two left, many buyers",
+      price: 4.5,
+      image: "/images/products/placeholder.svg",
+      category: "treats",
+      quantity: 2,
+    },
+    cookie,
+  });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  const product = created.data.product;
+
+  try {
+    const open = (await api("GET", "/pickup/days")).data.days
+      .flatMap(({ day, slots }) =>
+        slots.filter((s) => s.available).map((s) => ({ day, time: s.time }))
+      )
+      .slice(-6);
+    assert.equal(open.length, 6, "need six free slots");
+
+    const results = await Promise.all(
+      open.map(({ day, time }, i) =>
+        api("POST", "/orders", {
+          body: {
+            items: [{ productId: product.id, quantity: 1 }],
+            fulfillmentType: "pickup",
+            pickupDate: day,
+            pickupTime: time,
+            guestEmail: `race-${i}@test.local`,
+          },
+        })
+      )
+    );
+    const statuses = results.map((r) => r.status);
+    assert.equal(statuses.filter((s) => s === 201).length, 2, String(statuses));
+    assert.equal(statuses.filter((s) => s === 409).length, 4, String(statuses));
+
+    const after = await adminStock(product.id);
+    assert.equal(after.quantity, 0);
+    assert.equal(after.inStock, false);
+  } finally {
+    // Cancelling frees the booked slots for any later test.
+    const orders = (await api("GET", "/admin/orders", { cookie })).data.orders;
+    for (const o of orders.filter((o) =>
+      o.items?.some((i) => i.productId === product.id)
+    )) {
+      await api("PATCH", `/admin/orders/${o.id}`, {
+        body: { status: "cancelled" },
+        cookie,
+      });
+    }
+  }
+});

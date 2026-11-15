@@ -16,8 +16,8 @@ collected only by a pickup day and time slot booked at checkout.
 - A redesigned home page: a split hero with the shop's own photo (or the
   logo), then tiles for shopping by category, the next market from the
   events calendar, how pickup works (hours read from the admin settings),
-  what goes into the treats, the family, and custom bandanas, then the
-  four newest featured products.
+  what goes into the treats, the family, and an invitation to send
+  questions or feedback, then the four newest featured products.
 - Order lines remember the photo they were bought as. The picture the
   customer picked — the bandana pattern, not just the product's cover —
   is frozen onto the order at checkout and shown in order history, in
@@ -68,6 +68,11 @@ collected only by a pickup day and time slot booked at checkout.
   orders are unchanged.
 - Terms of Service §4, the Privacy Policy and the homepage describe
   scheduled pickup.
+- The `axios` dependency is gone; the pages call the API through a small
+  built-in `fetch` client with the same interface. This removes a
+  supply-chain risk and every open axios security advisory.
+- The checkout, product, profile and admin product pages are split into
+  smaller co-located components, with no change to how they work.
 
 ### Fixed
 
@@ -86,6 +91,25 @@ collected only by a pickup day and time slot booked at checkout.
   ("Meekois", "Your shopping cartis").
 - The shop page shows a message and a "Try again" button when the
   products can't load, instead of "Loading…" forever.
+- Two customers buying the last of something at the same moment can no
+  longer both succeed. Checkout read the stock, checked it and wrote the
+  new count without holding the row, so simultaneous orders all passed
+  the check and the product oversold. Checkout, cancellations and admin
+  stock edits now lock the product's stock while they work.
+- A request with a missing or malformed `Origin` header is refused with
+  403 instead of crashing the request with a server error.
+- The "Added to cart" panel and the "Still there?" warning are real modal
+  dialogs: keyboard focus stays inside them and Escape works the same way
+  everywhere.
+- Removing a nutrition row or a gallery photo in the admin product form
+  no longer shifts what's typed into the rows below it.
+- Leaving checkout while the card form was still loading could leave a
+  second card form behind.
+- Opening the site after an earlier session had lapsed (a closed tab, an
+  expired cookie) no longer sends the visitor to the login page with a
+  "session timed out" notice. That notice is now only shown in a tab
+  where someone was actually signed in; a tab following a sign-out made
+  in another tab goes to the home page without it.
 - The verification and password-reset emails escape the customer's name
   and the link before putting them into the email's HTML.
 

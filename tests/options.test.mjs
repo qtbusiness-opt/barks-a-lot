@@ -200,3 +200,31 @@ test("with two picture-carrying groups the earlier one wins, whatever the answer
   assert.equal(forwards.chosenImage, "/images/plaid.png");
   assert.equal(backwards.chosenImage, forwards.chosenImage);
 });
+
+// The checks that keep a tampered request from slipping an unpriced or
+// out-of-stock answer through checkout.
+
+test("an id the product doesn't offer is turned away", () => {
+  const groups = [required(SIZE, { inputType: "select" })];
+  const res = validateSelections(product(groups), [answer(SIZE, "c-nope")]);
+  assert.equal(res.ok, false);
+});
+
+test("the same id sent twice is turned away, not counted once", () => {
+  const groups = [required(STYLE, { inputType: "checkbox", required: false })];
+  const res = validateSelections(product(groups), [
+    { groupId: STYLE.id, choiceIds: ["c-plaid", "c-plaid"] },
+  ]);
+  assert.equal(res.ok, false);
+});
+
+test("several answers are recorded in the product's order, not the click order", () => {
+  const groups = [required(STYLE, { inputType: "checkbox", required: false })];
+  const res = validateSelections(product(groups), [
+    { groupId: STYLE.id, choiceIds: ["c-bones", "c-plaid"] },
+  ]);
+  assert.equal(res.ok, true);
+  assert.deepEqual(res.selections, [
+    { group: "Style", values: ["Plaid", "Bones"] },
+  ]);
+});

@@ -18,7 +18,7 @@ import {
   sendAdminOrderAlert,
 } from "@/lib/order-emails";
 import { SHIPPING_ENABLED, EVENT_PICKUP_ENABLED } from "@/lib/features";
-import { restockOrderItems } from "@/lib/inventory";
+import { lockProducts, restockOrderItems } from "@/lib/inventory";
 import {
   isPaymentConfigured,
   chargePayment,
@@ -277,6 +277,9 @@ export async function POST(req) {
       }
 
       const productIds = items.map((i) => i.productId);
+      // Before the read below, so it sees the stock any concurrent
+      // checkout for the same product left behind — see lockProducts.
+      await lockProducts(tx, productIds);
       const products = await tx.product.findMany({
         where: { id: { in: productIds } },
         include: PRODUCT_DETAIL_INCLUDE,

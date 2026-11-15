@@ -39,6 +39,14 @@ const ACTIVITY_EVENTS = [
   "mousemove",
 ];
 
+// Shows the dialog as a modal and puts focus on Stay signed in, the safe
+// default. Guarded because showModal throws on a dialog that's already open.
+const showDialog = (dialog, focusTarget) => {
+  if (!dialog) return;
+  if (!dialog.open) dialog.showModal();
+  focusTarget?.focus();
+};
+
 const mmss = (seconds) => {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -65,7 +73,6 @@ export default function SessionTimeoutModal() {
 
   useEffect(() => {
     const tick = () => setNow(Math.floor(Date.now() / 1000));
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
@@ -127,7 +134,7 @@ export default function SessionTimeoutModal() {
     // A session that already lapsed can't be renewed — the server says
     // so, and the usual unauthenticated handling takes it from there.
     Promise.resolve(extendSession()).catch(() => {});
-  }, [now, user, expiresAt, open, extendSession]);
+  }, [now, user, expiresAt, issuedAt, open, extendSession]);
 
   // Out of time — end it here rather than waiting for the next session
   // refetch, so the sign-out lands when the countdown says it will.
@@ -135,97 +142,91 @@ export default function SessionTimeoutModal() {
     if (remaining === 0) expireSession();
   }, [remaining, expireSession]);
 
-  // Move focus into the dialog when it opens and keep Tab inside it.
+  // The native modal dialog traps focus, makes the page behind it inert
+  // and sits above everything else, so none of that is hand-rolled here.
+  // It's only rendered while open, and removing an open dialog from the
+  // page also takes it out of the top layer, so there's nothing to close
+  // on the way out. The open check keeps StrictMode's second run from
+  // calling showModal on a dialog that's already showing, which throws.
   useEffect(() => {
-    if (!open) return undefined;
-    stayRef.current?.focus();
+    if (open) showDialog(dialogRef.current, stayRef.current);
+  }, [open]);
 
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") {
-        // Escape shouldn't strand a keyboard user in an undismissable
-        // dialog; treat it as the safe, non-destructive choice.
-        e.preventDefault();
-        stay();
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const focusable = dialogRef.current?.querySelectorAll("button");
-      if (!focusable?.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
+  // Escape shouldn't strand a keyboard user in an undismissable dialog;
+  // treat it as the safe, non-destructive choice instead of closing.
+  const onCancel = (e) => {
+    e.preventDefault();
+    stay();
+  };
 
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, stay]);
+  // The browser can refuse to let a cancel be prevented (a second Escape
+  // with no click in between) and close the dialog anyway. The countdown
+  // is still running, so put it back rather than leave an invisible timer.
+  const onClose = (e) => {
+    if (e.currentTarget.isConnected) {
+      showDialog(e.currentTarget, stayRef.current);
+    }
+  };
 
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 animate-fade-in"
-      role="dialog"
-      aria-modal="true"
+    // Tailwind's preflight zeroes the margin the browser centres a dialog
+    // with, hence m-auto; the width leaves the same 1rem gutter on phones
+    // that the old full-screen overlay's padding did.
+    <dialog
+      ref={dialogRef}
+      onCancel={onCancel}
+      onClose={onClose}
       aria-labelledby="session-timeout-title"
       aria-describedby="session-timeout-copy"
+      className="m-auto w-[calc(100%-2rem)] max-w-sm bg-white text-foreground rounded-xl shadow-xl p-6 text-center animate-fade-in backdrop:bg-[rgb(0_0_0/0.5)] backdrop:animate-[fade-in_var(--dur-short)_var(--ease-out)] motion-reduce:backdrop:animate-none"
     >
-      <div
-        ref={dialogRef}
-        className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center"
+      <h2
+        id="session-timeout-title"
+        className="text-xl font-semibold text-[#2A4A52]"
       >
-        <h2
-          id="session-timeout-title"
-          className="text-xl font-semibold text-[#2A4A52]"
-        >
-          Still there?
-        </h2>
-        <p id="session-timeout-copy" className="text-sm text-gray-600 mt-2">
-          You&rsquo;ll be signed out automatically when the timer runs out.
-        </p>
+        Still there?
+      </h2>
+      <p id="session-timeout-copy" className="text-sm text-gray-600 mt-2">
+        You&rsquo;ll be signed out automatically when the timer runs out.
+      </p>
 
-        {/* The digits tick every second, which would make a screen reader
+      {/* The digits tick every second, which would make a screen reader
             unbearable — announce once a minute instead. */}
-        <p
-          aria-hidden="true"
-          className="text-4xl font-bold text-[#8A4D1A] tabular-nums mt-4"
-        >
-          {mmss(remaining)}
-        </p>
-        <p className="sr-only" aria-live="polite">
-          {remaining > 60
-            ? `Your session ends in ${Math.ceil(remaining / 60)} minutes.`
-            : "Your session ends in less than a minute."}
-        </p>
+      <p
+        aria-hidden="true"
+        className="text-4xl font-bold text-[#8A4D1A] tabular-nums mt-4"
+      >
+        {mmss(remaining)}
+      </p>
+      <p className="sr-only" aria-live="polite">
+        {remaining > 60
+          ? `Your session ends in ${Math.ceil(remaining / 60)} minutes.`
+          : "Your session ends in less than a minute."}
+      </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          <button
-            ref={stayRef}
-            type="button"
-            onClick={stay}
-            disabled={extending}
-            className="sm:flex-[2] min-h-11 bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
-          >
-            {extending ? "Staying signed in…" : "Stay signed in"}
-          </button>
-          {/* Chosen deliberately, so this is an ordinary sign-out (home
+      <div className="flex flex-col sm:flex-row gap-3 mt-6">
+        <button
+          ref={stayRef}
+          type="button"
+          onClick={stay}
+          disabled={extending}
+          className="sm:flex-[2] min-h-11 bg-[#4A7C8A] hover:bg-[#3A6270] active:bg-[#2A4A52] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+        >
+          {extending ? "Staying signed in…" : "Stay signed in"}
+        </button>
+        {/* Chosen deliberately, so this is an ordinary sign-out (home
               page, no "you timed out" notice) — only the timer running
               out counts as an expiry. */}
-          <button
-            type="button"
-            onClick={logout}
-            className="sm:flex-1 min-h-11 border-2 border-[#4A7C8A] text-[#3A6270] py-3 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white transition"
-          >
-            Log out
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={logout}
+          className="sm:flex-1 min-h-11 border-2 border-[#4A7C8A] text-[#3A6270] py-3 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white transition"
+        >
+          Log out
+        </button>
       </div>
-    </div>
+    </dialog>
   );
 }

@@ -8,134 +8,19 @@ import { useCart } from "@/context/CartContext";
 import ProductOptions from "@/components/ProductOptions";
 import {
   formatSelectedOptions,
-  allowsMultiple,
-  combinationKey,
   pickedImageChoice,
   isChoiceSelected,
 } from "@/lib/options";
-import StoreImage from "@/components/StoreImage";
-import { CheckIcon, CrossIcon } from "@/components/Icons";
-
-// The product's cover image, its gallery extras, and — when the customer
-// picks an option choice that has a thumbnail of its own — that choice's
-// photo, appended as one more entry. Clicking the big photo advances to
-// the next one; thumbnails jump straight to an image.
-//
-// `photos` is [{ src, label }], where a label marks a choice's photo
-// ("Style: Plaid") and null marks one of the product's own.
-function GalleryColumn({ productName, photos, imageIndex, setImageIndex }) {
-  // The list shrinks when a choice is unpicked, so never trust the index
-  // to still be in range.
-  const index = Math.min(Math.max(imageIndex, 0), photos.length - 1);
-  const altFor = (photo, i) =>
-    photo.label
-      ? `${productName} — ${photo.label}`
-      : `${productName} — photo ${i + 1} of ${photos.length}`;
-
-  if (photos.length <= 1) {
-    return (
-      <div className="relative aspect-square bg-[#F5F0E8] rounded-xl overflow-hidden self-start">
-        <StoreImage
-          src={photos[0].src}
-          alt={productName}
-          fill
-          priority
-          sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-contain"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="self-start">
-      <button
-        type="button"
-        onClick={() => setImageIndex((index + 1) % photos.length)}
-        aria-label={`${altFor(photos[index], index)} — show next photo`}
-        className="relative block w-full aspect-square bg-[#F5F0E8] rounded-xl overflow-hidden cursor-pointer"
-      >
-        <StoreImage
-          src={photos[index].src}
-          alt={altFor(photos[index], index)}
-          fill
-          priority
-          sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-contain"
-        />
-      </button>
-      <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-        {photos.map((photo, i) => (
-          <button
-            key={`${photo.src}-${i}`}
-            type="button"
-            onClick={() => setImageIndex(i)}
-            aria-label={
-              photo.label
-                ? `Show ${photo.label}`
-                : `Show photo ${i + 1} of ${photos.length}`
-            }
-            aria-current={index === i ? "true" : undefined}
-            className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition ${
-              index === i
-                ? "border-[#4A7C8A]"
-                : "border-transparent opacity-70 hover:opacity-100"
-            }`}
-          >
-            <StoreImage
-              src={photo.src}
-              alt=""
-              width={48}
-              height={48}
-              className="w-full h-full object-cover"
-            />
-          </button>
-        ))}
-      </div>
-      <p className="text-center text-xs text-gray-600 mt-2">
-        Click the photo to see the next one
-      </p>
-    </div>
-  );
-}
-
-// Nutrition facts for edible products, as a simple two-column table.
-// Row headers carry the labels so screen readers announce "Crude Protein
-// (min), 24%" instead of reading two disconnected cells.
-function NutritionTable({ rows }) {
-  return (
-    <div className="mt-6 bg-white rounded-xl shadow-sm p-4 sm:p-6">
-      <h2 className="text-lg font-semibold text-[#2A4A52] mb-3">
-        Nutrition Facts
-      </h2>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm tabular-nums">
-          <caption className="sr-only">
-            Nutrition facts, per guaranteed analysis
-          </caption>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr
-                key={`${row.label}-${i}`}
-                className="border-b border-gray-100 last:border-0"
-              >
-                <th
-                  scope="row"
-                  className="py-2 pr-4 text-left font-medium text-gray-700"
-                >
-                  {row.label}
-                </th>
-                <td className="py-2 text-right text-[#2A4A52] whitespace-nowrap">
-                  {row.value}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+import GalleryColumn from "./_components/GalleryColumn";
+import PriceAndStock from "./_components/PriceAndStock";
+import PurchaseControls from "./_components/PurchaseControls";
+import ProductDetails from "./_components/ProductDetails";
+import {
+  buildGallery,
+  deriveSelectionState,
+  productPhotosOf,
+  slotFor,
+} from "./_lib/product-view";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -170,22 +55,17 @@ export default function ProductDetailPage() {
     );
   }
 
-  const optionGroups = product.optionGroups ?? [];
-
-  // The gallery: the product's own photos, plus the picked choice's
-  // thumbnail as one extra entry. A choice photo that's already in the
-  // gallery is shown in its existing place rather than listed twice.
-  const productPhotos = [product.image, ...(product.images ?? [])];
-  const slotFor = (src) => {
-    const existing = productPhotos.indexOf(src);
-    return existing === -1 ? productPhotos.length : existing;
-  };
-  const photos = [
-    ...productPhotos.map((src) => ({ src, label: null })),
-    ...(optionImage && slotFor(optionImage.src) === productPhotos.length
-      ? [{ src: optionImage.src, label: optionImage.label }]
-      : []),
-  ];
+  const productPhotos = productPhotosOf(product);
+  const photos = buildGallery(productPhotos, optionImage);
+  const {
+    optionGroups,
+    missingGroup,
+    combination,
+    price,
+    inStock,
+    purchasable,
+    chosenOptions,
+  } = deriveSelectionState(product, optionChoices);
 
   // Picking a carousel thumbnail (or any choice with a photo) brings that
   // photo up as the main image — the customer sees the style they chose
@@ -196,7 +76,7 @@ export default function ProductDetailPage() {
     const picked = pickedImageChoice(optionGroups, optionChoices, next);
     if (picked) {
       setOptionImage(picked);
-      setImageIndex(slotFor(picked.src));
+      setImageIndex(slotFor(productPhotos, picked.src));
     } else if (optionImage && !isChoiceSelected(next, optionImage.choiceId)) {
       // Its choice was unticked, so the photo goes with it. Only the
       // appended slot can dangle; an index into the product's own photos
@@ -206,69 +86,6 @@ export default function ProductDetailPage() {
     }
     setOptionChoices(next);
   };
-
-  // The order API re-checks all of this; answering here just saves the
-  // customer a round trip.
-  const missingGroup = optionGroups.find(
-    (g) => g.required && !(optionChoices[g.id] ?? []).length
-  );
-
-  // The groups that define a stock combination — the same rule the
-  // server uses (src/lib/options.js, src/lib/option-writes.js): required
-  // and single-select. Once every one of these is answered, `combination`
-  // resolves to the matching row in product.variants.
-  const matrixGroups = optionGroups.filter(
-    (g) => g.required && !allowsMultiple(g.inputType)
-  );
-  const matrixAnswered = matrixGroups.every(
-    (g) => (optionChoices[g.id] ?? []).length > 0
-  );
-  const combination =
-    product.trackOptionStock && matrixAnswered
-      ? (product.variants.find(
-          (v) =>
-            combinationKey(v.choices.map((c) => c.choiceId)) ===
-            combinationKey(matrixGroups.map((g) => optionChoices[g.id][0]))
-        ) ?? null)
-      : null;
-
-  const pricingGroup = optionGroups.find((g) => g.setsPrice) ?? null;
-  const pricingChoiceId = pricingGroup
-    ? (optionChoices[pricingGroup.id] ?? [])[0]
-    : null;
-  const pricingChoice =
-    pricingGroup && pricingChoiceId
-      ? pricingGroup.choices.find((c) => c.id === pricingChoiceId)
-      : null;
-  const price = product.trackOptionStock
-    ? (pricingChoice?.price ?? product.price)
-    : product.price;
-
-  // Availability is boolean-only on the storefront; exact counts live on
-  // the admin side. Before every matrix group is answered, "in stock"
-  // means "some combination is" — the same way it read before a variant
-  // was chosen under the old picker.
-  const inStock = product.trackOptionStock
-    ? combination
-      ? combination.inStock
-      : product.variants.some((v) => v.inStock)
-    : product.inStock;
-  const purchasable =
-    product.available &&
-    !missingGroup &&
-    (!product.trackOptionStock ||
-      (combination !== null && combination.inStock));
-  // Labels for the cart line, resolved from the ids the customer picked.
-  const chosenOptions = optionGroups
-    .map((g) => ({
-      groupId: g.id,
-      group: g.name,
-      choiceIds: optionChoices[g.id] ?? [],
-      values: g.choices
-        .filter((c) => (optionChoices[g.id] ?? []).includes(c.id))
-        .map((c) => c.label),
-    }))
-    .filter((o) => o.choiceIds.length > 0);
 
   // The added-to-cart notice (drawer/bottom sheet) provides the feedback.
   const handleAdd = () => {
@@ -332,25 +149,11 @@ export default function ProductDetailPage() {
             </p>
           )}
 
-          <p className="text-xl sm:text-2xl font-bold mt-4 justify-between flex items-center gap-4">
-            <span className="text-[#8A4D1A]">${price.toFixed(2)}</span>
-            <span
-              className={`flex items-center gap-1 text-sm font-semibold ${
-                inStock ? "text-brand-success" : "text-brand-error"
-              }`}
-            >
-              {inStock ? (
-                <CheckIcon className="h-4 w-4 shrink-0" />
-              ) : (
-                <CrossIcon className="h-4 w-4 shrink-0" />
-              )}
-              {!product.available
-                ? "Not currently available"
-                : inStock
-                  ? "In Stock"
-                  : "Out of Stock"}
-            </span>
-          </p>
+          <PriceAndStock
+            price={price}
+            inStock={inStock}
+            available={product.available}
+          />
           <p className="text-brand-ink-2 mt-4 leading-relaxed">
             {product.description}
           </p>
@@ -374,72 +177,20 @@ export default function ProductDetailPage() {
             </p>
           )}
 
-          <div className="mt-6 flex items-center gap-4">
-            <label htmlFor="qty" className="text-sm font-medium text-brand-ink">
-              Qty:
-            </label>
-            <select
-              id="qty"
-              value={qty}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              className="border border-brand-teal rounded-lg px-3 py-2 min-h-11 text-base sm:text-sm bg-white text-brand-ink"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
+          <PurchaseControls
+            qty={qty}
+            onQtyChange={setQuantity}
+            onAdd={handleAdd}
+            available={product.available}
+            missingGroup={missingGroup}
+            purchasable={purchasable}
+          />
 
-          <button
-            onClick={handleAdd}
-            disabled={!purchasable}
-            className={`mt-6 w-full sm:w-auto whitespace-nowrap px-8 py-3 rounded-full font-semibold transition-colors duration-(--dur-micro) ease-(--ease-out) ${
-              purchasable
-                ? "bg-brand-accent-strong text-brand-on hover:bg-brand-accent-deep"
-                : "bg-brand-paper-3 text-brand-ink-2 cursor-not-allowed"
-            }`}
-          >
-            {!product.available
-              ? "Not Available"
-              : missingGroup
-                ? "Choose an Option"
-                : !purchasable
-                  ? "Out of Stock"
-                  : "Add to Cart"}
-          </button>
-
-          {/* The category's admin-set toggle decides the flavor: an
-              always-visible Ingredients section, or an Item Details
-              section that only appears when filled in. */}
-          {(product.categoryShowsIngredients || product.itemDetails) && (
-            <div className="mt-8 bg-white rounded-xl shadow-sm p-4 sm:p-6">
-              <h2 className="text-lg font-semibold text-[#2A4A52] mb-2">
-                {product.categoryShowsIngredients
-                  ? "Ingredients"
-                  : "Item Details"}
-              </h2>
-              {product.itemDetails ? (
-                <p className="text-gray-600 leading-relaxed whitespace-pre-line">
-                  {product.itemDetails}
-                </p>
-              ) : (
-                <p className="text-gray-600 text-sm">
-                  Full ingredient list coming soon — ask us at the booth or
-                  email info@barks-a-lot.com.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Same edible-category gate as the Ingredients section, so a
-              product moved to a non-food category doesn't keep showing a
-              nutrition panel (its rows are preserved, just hidden). */}
-          {product.categoryShowsIngredients &&
-            product.nutritionFacts?.length > 0 && (
-              <NutritionTable rows={product.nutritionFacts} />
-            )}
+          <ProductDetails
+            showsIngredients={product.categoryShowsIngredients}
+            itemDetails={product.itemDetails}
+            nutritionFacts={product.nutritionFacts}
+          />
         </div>
       </div>
     </div>

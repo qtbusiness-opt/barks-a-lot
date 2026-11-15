@@ -23,3 +23,26 @@ test("formatPickupDay reads the same from a key, a JSON date, or a Date", () => 
 test("formatPickupDayWithYear keeps the year for order history", () => {
   assert.equal(formatPickupDayWithYear("2026-11-04"), "Wed, 11/4/2026");
 });
+
+const { formatCalendarDay, formatMonth } =
+  await import("../src/lib/format-date.js");
+
+test("formatMonth names the month in UTC, whatever the machine's zone", () => {
+  assert.equal(formatMonth(2026, 10), "November 2026");
+  assert.equal(formatMonth(2027, 0), "January 2027");
+});
+
+test("each set of options keeps its own formatter", () => {
+  // Formatters are cached per options; a second, different shape must
+  // not be answered by the first one's formatter.
+  assert.equal(formatCalendarDay("2026-11-04", { weekday: "short" }), "Wed");
+  assert.equal(formatCalendarDay("2026-11-04", { day: "numeric" }), "4");
+  assert.equal(formatCalendarDay("2026-11-04", { weekday: "short" }), "Wed");
+  // An overridden zone is part of the key: midnight UTC on the 4th is
+  // still the evening of the 3rd in Boise.
+  assert.equal(
+    formatCalendarDay("2026-11-04", { timeZone: "America/Boise", day: "numeric" }),
+    "3"
+  );
+  assert.equal(formatCalendarDay("2026-11-04", { day: "numeric" }), "4");
+});

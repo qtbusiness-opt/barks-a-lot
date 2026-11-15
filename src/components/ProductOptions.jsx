@@ -25,6 +25,9 @@ function OptionGroup({ group, selected, onChange }) {
   const [edges, setEdges] = useState({ atStart: true, atEnd: true });
   const legendId = `opt-${group.id}-label`;
   const multiple = allowsMultiple(group.inputType);
+  // Every choice row below asks "is this one picked?"; a Set answers that
+  // without rescanning the selection for each row.
+  const selectedIds = new Set(selected);
 
   const syncEdges = () => {
     const el = scrollRef.current;
@@ -143,7 +146,7 @@ function OptionGroup({ group, selected, onChange }) {
           >
             <div className="flex gap-3 py-1">
               {visible.map((choice) => {
-                const isOn = selected.includes(choice.id);
+                const isOn = selectedIds.has(choice.id);
                 return (
                   // relative is load-bearing: the radio below is sr-only,
                   // which is position:absolute. With no positioned
@@ -219,7 +222,7 @@ function OptionGroup({ group, selected, onChange }) {
       </legend>
       <div className="space-y-2">
         {group.choices.map((choice) => {
-          const isOn = selected.includes(choice.id);
+          const isOn = selectedIds.has(choice.id);
           return (
             <label
               key={choice.id}

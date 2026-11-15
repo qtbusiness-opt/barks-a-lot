@@ -25,10 +25,14 @@ function PromoFields({ form, update, products }) {
   // Rendered by the create form and by each open edit form, so the ids
   // tying labels to inputs have to be unique per instance.
   const fieldId = useId();
+  // The eligible-products list checks every product against the
+  // selection, so build the lookup once per render rather than scanning
+  // the array for each row.
+  const selectedIds = new Set(form.productIds);
   const toggleProduct = (id) =>
     update(
       "productIds",
-      form.productIds.includes(id)
+      selectedIds.has(id)
         ? form.productIds.filter((p) => p !== id)
         : [...form.productIds, id]
     );
@@ -169,7 +173,7 @@ function PromoFields({ form, update, products }) {
                 >
                   <input
                     type="checkbox"
-                    checked={form.productIds.includes(p.id)}
+                    checked={selectedIds.has(p.id)}
                     onChange={() => toggleProduct(p.id)}
                   />
                   {p.name}
