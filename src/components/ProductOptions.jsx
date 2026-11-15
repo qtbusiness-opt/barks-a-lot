@@ -66,7 +66,7 @@ function OptionGroup({ group, selected, onChange }) {
     <>
       {group.name}
       {!group.required && (
-        <span className="font-normal text-gray-500"> (optional)</span>
+        <span className="font-normal text-gray-600"> (optional)</span>
       )}
     </>
   );
@@ -84,7 +84,7 @@ function OptionGroup({ group, selected, onChange }) {
           id={`opt-${group.id}`}
           value={selected[0] ?? ""}
           onChange={(e) => onChange(e.target.value ? [e.target.value] : [])}
-          className="w-full border border-gray-300 rounded-lg px-4 py-3 min-h-11 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]"
+          className="w-full border border-[#4A7C8A] rounded-lg px-4 py-3 min-h-11 text-base sm:text-sm"
         >
           <option value="">Choose {group.name.toLowerCase()}…</option>
           {group.choices.map((choice) => (
@@ -117,7 +117,7 @@ function OptionGroup({ group, selected, onChange }) {
         >
           {heading}
           {selected[0] && (
-            <span className="text-gray-500">
+            <span className="text-gray-600">
               {" — "}
               {visible.find((c) => c.id === selected[0])?.label}
             </span>
@@ -129,7 +129,7 @@ function OptionGroup({ group, selected, onChange }) {
             onClick={() => step(-1)}
             disabled={edges.atStart}
             aria-label={`Scroll ${group.name} choices left`}
-            className="shrink-0 h-11 w-8 rounded-lg border border-gray-300 text-[#4A7C8A] disabled:opacity-30"
+            className="shrink-0 h-11 w-8 rounded-lg border border-gray-300 text-[#3A6270] disabled:opacity-30"
           >
             ‹
           </button>
@@ -168,7 +168,7 @@ function OptionGroup({ group, selected, onChange }) {
                       onChange={() => toggle(choice.id)}
                       className="sr-only peer"
                     />
-                    <span className="block w-16 h-16 rounded-md overflow-hidden bg-[#F5F0E8] peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-[#C8722A]">
+                    <span className="block w-16 h-16 rounded-md overflow-hidden bg-[#F5F0E8] peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#2A4A52]">
                       {choice.image ? (
                         <StoreImage
                           src={choice.image}
@@ -180,13 +180,16 @@ function OptionGroup({ group, selected, onChange }) {
                       ) : (
                         <span
                           aria-hidden="true"
-                          className="flex h-full items-center justify-center text-xs text-gray-400"
+                          className="flex h-full items-center justify-center text-xs text-gray-600"
                         >
                           {choice.label.slice(0, 2)}
                         </span>
                       )}
                     </span>
-                    <span className="block w-16 truncate text-xs mt-1 text-[#2A4A52]">
+                    <span
+                      title={choice.label}
+                      className="w-16 line-clamp-2 break-words leading-tight text-xs mt-1 text-brand-ink"
+                    >
                       {choice.label}
                     </span>
                   </label>
@@ -199,7 +202,7 @@ function OptionGroup({ group, selected, onChange }) {
             onClick={() => step(1)}
             disabled={edges.atEnd}
             aria-label={`Scroll ${group.name} choices right`}
-            className="shrink-0 h-11 w-8 rounded-lg border border-gray-300 text-[#4A7C8A] disabled:opacity-30"
+            className="shrink-0 h-11 w-8 rounded-lg border border-gray-300 text-[#3A6270] disabled:opacity-30"
           >
             ›
           </button>

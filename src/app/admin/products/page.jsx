@@ -10,13 +10,14 @@ import VariantStockGrid from "@/components/VariantStockGrid";
 import StoreImage from "@/components/StoreImage";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 const EMPTY_FORM = {
   name: "",
   description: "",
   price: "",
-  image: "/images/products/squeaky-bone.svg",
+  // Neutral, unlabelled stand-in until a real photo is uploaded.
+  image: "/images/products/placeholder.svg",
   images: [],
   itemDetails: "",
   nutritionFacts: [],
@@ -104,7 +105,7 @@ function NutritionFactsFields({ rows, onChange, idSuffix }) {
                 type="button"
                 onClick={() => onChange(rows.filter((_, j) => j !== i))}
                 aria-label={`Remove nutrition row ${i + 1}`}
-                className="shrink-0 h-11 w-11 rounded-lg border border-red-300 text-red-500 hover:bg-red-500 hover:text-white transition"
+                className="shrink-0 h-11 w-11 rounded-lg border border-red-300 text-red-700 hover:bg-red-700 hover:text-white transition"
               >
                 ×
               </button>
@@ -117,7 +118,7 @@ function NutritionFactsFields({ rows, onChange, idSuffix }) {
           <button
             type="button"
             onClick={() => onChange([...rows, { label: "", value: "" }])}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition"
           >
             + Add row
           </button>
@@ -133,7 +134,7 @@ function NutritionFactsFields({ rows, onChange, idSuffix }) {
           </button>
         )}
       </div>
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-gray-600 mt-1">
         Shown as a table on the product page. Rows missing a name or an amount
         are dropped when you save.
       </p>
@@ -226,10 +227,10 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
             onChange={(e) => update("price", e.target.value)}
             required={!pricingGroup}
             disabled={Boolean(pricingGroup)}
-            className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`}
+            className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-600`}
           />
           {pricingGroup && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-600 mt-1">
               Price comes from the {pricingGroup.name || "pricing"} options
               below.
             </p>
@@ -251,10 +252,10 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
             onChange={(e) => update("quantity", e.target.value)}
             required={!variantProduct}
             disabled={variantProduct}
-            className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`}
+            className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-600`}
           />
           {variantProduct && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-600 mt-1">
               Stock lives on this product&rsquo;s options.
             </p>
           )}
@@ -309,7 +310,7 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
                     )
                   }
                   aria-label={`Remove additional photo ${i + 1}`}
-                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center hover:bg-red-600"
+                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-700 text-white text-xs font-bold flex items-center justify-center hover:bg-red-800"
                 >
                   ×
                 </button>
@@ -324,7 +325,7 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
             onChange={(url) => update("images", [...form.images, url])}
           />
         )}
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-600 mt-1">
           Customers click through these on the product page.
         </p>
       </div>
@@ -348,7 +349,7 @@ function ProductFields({ form, update, variantProduct, variants, categories }) {
           }
           className={inputClass}
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-600 mt-1">
           Shown on the product page under Add to Cart
           {showsIngredients
             ? " — this category always shows an Ingredients section."
@@ -533,7 +534,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
           <p className="font-semibold text-[#2A4A52] truncate">
             {product.name}
           </p>
-          <p className="text-xs text-gray-500 capitalize">
+          <p className="text-xs text-gray-600 capitalize">
             {product.category}
             {product.featured && " · Featured"}
             {product.limitedQuantity != null && " · Limited drop"}
@@ -542,7 +543,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
           </p>
           <p
             className={`text-xs font-medium ${
-              stockOf(product) > 0 ? "text-green-600" : "text-red-600"
+              stockOf(product) > 0 ? "text-green-700" : "text-red-700"
             }`}
           >
             ${product.price.toFixed(2)} ·{" "}
@@ -554,13 +555,13 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
         <div className="flex gap-2 shrink-0">
           <button
             onClick={editing ? () => setEditing(false) : startEdit}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
           >
             {editing ? "Close" : "Edit"}
           </button>
           <button
             onClick={remove}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-700 hover:bg-red-700 hover:text-white active:bg-red-800 transition"
           >
             Delete
           </button>
@@ -587,7 +588,7 @@ function EditProductRow({ product, categories, onSaved, onDeleted, onError }) {
             />
             <span className="text-sm font-medium text-gray-700">In Stock</span>
           </label>
-          <p className="text-xs text-gray-500 -mt-2">
+          <p className="text-xs text-gray-600 -mt-2">
             Unchecking In Stock wipes the quantity to zero
             {variantProduct ? " across all options" : ""}.
           </p>
@@ -665,7 +666,7 @@ export default function AdminProductsPage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>
@@ -691,14 +692,14 @@ export default function AdminProductsPage() {
             variantProduct={form.trackOptionStock}
             categories={categories}
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-600">
             Stock status is set automatically: products with quantity 0 show as
             out of stock.
           </p>
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+            className="w-full bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
           >
             {submitting ? "Creating…" : "Create Product"}
           </button>
@@ -710,7 +711,7 @@ export default function AdminProductsPage() {
             Catalog ({products?.length ?? "…"})
           </h2>
           {products === null ? (
-            <p className="text-gray-500">Loading products…</p>
+            <p className="text-gray-600">Loading products…</p>
           ) : (
             <div className="space-y-3">
               {products.map((p) => (

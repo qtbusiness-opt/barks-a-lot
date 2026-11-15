@@ -194,7 +194,7 @@ export default function SessionTimeoutModal() {
             unbearable — announce once a minute instead. */}
         <p
           aria-hidden="true"
-          className="text-4xl font-bold text-[#C8722A] tabular-nums mt-4"
+          className="text-4xl font-bold text-[#8A4D1A] tabular-nums mt-4"
         >
           {mmss(remaining)}
         </p>
@@ -220,7 +220,7 @@ export default function SessionTimeoutModal() {
           <button
             type="button"
             onClick={logout}
-            className="sm:flex-1 min-h-11 border-2 border-[#4A7C8A] text-[#4A7C8A] py-3 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white transition"
+            className="sm:flex-1 min-h-11 border-2 border-[#4A7C8A] text-[#3A6270] py-3 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white transition"
           >
             Log out
           </button>

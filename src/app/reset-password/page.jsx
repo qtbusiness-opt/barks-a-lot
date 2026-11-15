@@ -6,7 +6,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -83,7 +83,7 @@ function ResetPasswordContent() {
         Choose a New Password
       </h1>
       {error && (
-        <p role="alert" className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
+        <p role="alert" className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4">{error}</p>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -130,7 +130,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="max-w-md mx-auto safe-x py-10 sm:py-16">
       <Suspense
-        fallback={<p className="text-center text-gray-500">Loading…</p>}
+        fallback={<p className="text-center text-gray-600">Loading…</p>}
       >
         <ResetPasswordContent />
       </Suspense>

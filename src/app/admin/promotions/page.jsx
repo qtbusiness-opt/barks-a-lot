@@ -7,7 +7,7 @@ import AdminShell from "@/components/AdminShell";
 import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 const EMPTY = {
   name: "",
@@ -293,24 +293,24 @@ function PromoRow({ promo, products, onSaved, onDeleted, onError }) {
               </span>
             )}
           </p>
-          <p className="text-xs text-gray-500 mt-0.5">{summary}</p>
+          <p className="text-xs text-gray-600 mt-0.5">{summary}</p>
         </div>
         <div className="flex gap-2 shrink-0">
           <button
             onClick={toggleActive}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition"
           >
             {promo.active ? "Deactivate" : "Activate"}
           </button>
           <button
             onClick={() => setEditing((v) => !v)}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition"
           >
             {editing ? "Close" : "Edit"}
           </button>
           <button
             onClick={remove}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-700 hover:bg-red-700 hover:text-white transition"
           >
             Delete
           </button>
@@ -373,14 +373,14 @@ export default function AdminPromotionsPage() {
 
   return (
     <AdminShell title="Promotions" backTo="/admin">
-      <p className="text-sm text-gray-500 mb-6 -mt-4">
+      <p className="text-sm text-gray-600 mb-6 -mt-4">
         Discount codes apply when a customer enters the code at checkout;
         bundles (mix &amp; match) apply automatically when the cart qualifies.
       </p>
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>
@@ -395,16 +395,16 @@ export default function AdminPromotionsPage() {
         <button
           type="submit"
           disabled={creating}
-          className="w-full bg-[#C8722A] hover:bg-[#A85D1F] text-white py-2.5 rounded-lg font-semibold transition disabled:opacity-50"
+          className="w-full bg-[#A85D1F] hover:bg-[#8A4D1A] text-white py-2.5 rounded-lg font-semibold transition disabled:opacity-50"
         >
           {creating ? "Creating…" : "Create Promotion"}
         </button>
       </form>
 
       {promotions === null && !error ? (
-        <p className="text-gray-500 text-center py-10">Loading promotions…</p>
+        <p className="text-gray-600 text-center py-10">Loading promotions…</p>
       ) : promotions?.length === 0 ? (
-        <p className="text-gray-500 text-center py-10">
+        <p className="text-gray-600 text-center py-10">
           No promotions yet — create one above.
         </p>
       ) : (

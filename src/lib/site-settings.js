@@ -1,18 +1,22 @@
 import { prisma } from "@/lib/prisma";
-import { parseClosedDays } from "@/lib/calendar-days";
+import { parseClosedDays, pickupHours } from "@/lib/calendar-days";
 import {
-  WEEKDAY_PICKUP_ENABLED,
-  WEEKDAY_PICKUP_DETAILS,
-  WEEKDAY_PICKUP_CLOSED_DAYS,
+  PICKUP_ENABLED,
+  PICKUP_DETAILS,
+  PICKUP_CLOSED_DAYS,
+  PICKUP_HOURS_START,
+  PICKUP_HOURS_END,
 } from "@/lib/setting-keys";
 
 // Re-export the client-safe constants so server code has one import site.
 export { ABOUT_IMAGE_KEYS } from "@/lib/about-images";
 export {
   ALLOWED_SETTING_KEYS,
-  WEEKDAY_PICKUP_ENABLED,
-  WEEKDAY_PICKUP_DETAILS,
-  WEEKDAY_PICKUP_CLOSED_DAYS,
+  PICKUP_ENABLED,
+  PICKUP_DETAILS,
+  PICKUP_CLOSED_DAYS,
+  PICKUP_HOURS_START,
+  PICKUP_HOURS_END,
 } from "@/lib/setting-keys";
 
 // Returns a { key: value } map for the requested keys (missing → absent).
@@ -23,17 +27,20 @@ export async function getSettings(keys) {
   return Object.fromEntries(rows.map((r) => [r.key, r.value]));
 }
 
-// Weekday pickup as the owner set it in Admin → Weekday Pickup. Off,
-// with no details and no closed days, until they change it.
-export async function getWeekdayPickupSettings() {
+// Scheduled pickup as the owner set it in Admin → Pickup. Off, with no
+// details, no closed days and the default hours, until they change it.
+export async function getPickupSettings() {
   const s = await getSettings([
-    WEEKDAY_PICKUP_ENABLED,
-    WEEKDAY_PICKUP_DETAILS,
-    WEEKDAY_PICKUP_CLOSED_DAYS,
+    PICKUP_ENABLED,
+    PICKUP_DETAILS,
+    PICKUP_CLOSED_DAYS,
+    PICKUP_HOURS_START,
+    PICKUP_HOURS_END,
   ]);
   return {
-    enabled: s[WEEKDAY_PICKUP_ENABLED] === "true",
-    details: s[WEEKDAY_PICKUP_DETAILS] ?? "",
-    closedDays: parseClosedDays(s[WEEKDAY_PICKUP_CLOSED_DAYS]),
+    enabled: s[PICKUP_ENABLED] === "true",
+    details: s[PICKUP_DETAILS] ?? "",
+    closedDays: parseClosedDays(s[PICKUP_CLOSED_DAYS]),
+    hours: pickupHours(s[PICKUP_HOURS_START], s[PICKUP_HOURS_END]),
   };
 }

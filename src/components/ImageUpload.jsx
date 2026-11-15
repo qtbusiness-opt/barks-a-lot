@@ -79,7 +79,7 @@ export default function ImageUpload({
           </span>
         )}
         <span className="min-w-0">
-          <span className="block font-medium text-[#4A7C8A]">
+          <span className="block font-medium text-[#3A6270]">
             {uploading
               ? "Uploading…"
               : dragging
@@ -88,7 +88,7 @@ export default function ImageUpload({
                   ? "Click or drop a new image to replace"
                   : "Click to upload, or drag & drop"}
           </span>
-          <span className="block text-xs text-gray-500 mt-0.5">
+          <span className="block text-xs text-gray-600 mt-0.5">
             PNG, JPEG, WebP, or GIF · up to 5 MB
           </span>
         </span>
@@ -106,7 +106,7 @@ export default function ImageUpload({
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-2 rounded-lg mt-2"
+          className="text-red-700 text-sm bg-red-50 p-2 rounded-lg mt-2"
         >
           {error}
         </p>

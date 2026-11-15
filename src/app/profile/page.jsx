@@ -10,7 +10,7 @@ import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { useAsyncAction } from "@/lib/use-async-action";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 function AddressRow({ addr, onSaved, onDeleted, onError }) {
   const [editing, setEditing] = useState(false);
@@ -65,13 +65,13 @@ function AddressRow({ addr, onSaved, onDeleted, onError }) {
         <div className="flex gap-2 shrink-0">
           <button
             onClick={editing ? () => setEditing(false) : startEdit}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
           >
             {editing ? "Close" : "Edit"}
           </button>
           <button
             onClick={remove}
-            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 transition"
+            className="min-h-11 px-3 rounded-lg text-sm font-medium border border-red-300 text-red-700 hover:bg-red-700 hover:text-white active:bg-red-800 transition"
           >
             Delete
           </button>
@@ -186,7 +186,7 @@ export default function ProfilePage() {
 
   if (loading || (user && profile === null && !error)) {
     return (
-      <div className="max-w-2xl mx-auto safe-x py-20 text-center text-gray-500">
+      <div className="max-w-2xl mx-auto safe-x py-20 text-center text-gray-600">
         Loading...
       </div>
     );
@@ -196,7 +196,7 @@ export default function ProfilePage() {
     return (
       <div className="max-w-2xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">My Profile</h1>
-        <p className="text-gray-500 mb-6">
+        <p className="text-gray-600 mb-6">
           Please log in to view your profile.
         </p>
         <Link
@@ -241,7 +241,7 @@ export default function ProfilePage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-4"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-4"
         >
           {error}
         </p>
@@ -262,7 +262,7 @@ export default function ProfilePage() {
 
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-500">Name</p>
+              <p className="text-sm font-medium text-gray-600">Name</p>
               {editingName ? null : (
                 <p className="text-[#2A4A52] font-semibold">
                   {profile.user.name}
@@ -272,7 +272,7 @@ export default function ProfilePage() {
             {!editingName && (
               <button
                 onClick={() => setEditingName(true)}
-                className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white transition"
+                className="min-h-11 px-3 rounded-lg text-sm font-medium border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white transition"
               >
                 Edit
               </button>
@@ -299,14 +299,14 @@ export default function ProfilePage() {
           )}
 
           <div className="mb-4">
-            <p className="text-sm font-medium text-gray-500">Email</p>
+            <p className="text-sm font-medium text-gray-600">Email</p>
             <p className="text-[#2A4A52]">{profile.user.email}</p>
           </div>
 
           <button
             onClick={sendReset}
             disabled={sendingReset}
-            className="w-full sm:w-auto border-2 border-[#C8722A] text-[#C8722A] px-4 py-2.5 rounded-lg font-semibold hover:bg-[#C8722A] hover:text-white transition disabled:opacity-50"
+            className="w-full sm:w-auto border-2 border-[#C8722A] text-[#8A4D1A] px-4 py-2.5 rounded-lg font-semibold hover:bg-[#A85D1F] hover:text-white transition disabled:opacity-50"
           >
             {sendingReset ? "Sending…" : "Send Password Reset Email"}
           </button>
@@ -322,7 +322,7 @@ export default function ProfilePage() {
               <h2 className="text-xl font-semibold text-[#2A4A52]">
                 My Orders ({summary.total})
               </h2>
-              <span className="text-[#4A7C8A] font-medium text-sm">
+              <span className="text-[#3A6270] font-medium text-sm">
                 View all &rarr;
               </span>
             </div>
@@ -366,12 +366,12 @@ export default function ProfilePage() {
             <h2 className="text-xl font-semibold text-[#2A4A52] mb-1">
               Shipping Addresses
             </h2>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-gray-600 mb-4">
               Addresses you&rsquo;ve shipped orders to. Removing one here
               doesn&rsquo;t change past orders.
             </p>
             {profile.addresses.length === 0 ? (
-              <p className="text-gray-500 text-sm">
+              <p className="text-gray-600 text-sm">
                 No addresses yet — they&rsquo;re saved automatically when you
                 place a shipping order.
               </p>
@@ -406,10 +406,10 @@ export default function ProfilePage() {
         {/* Danger zone — customers can close their own account. */}
         {isCustomer && (
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-red-200">
-            <h2 className="text-xl font-semibold text-red-600 mb-1">
+            <h2 className="text-xl font-semibold text-red-700 mb-1">
               Delete Account
             </h2>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-gray-600 mb-4">
               Permanently removes your profile and login. Past order records are
               kept for our bookkeeping (required for taxes), but they will no
               longer be linked to an account.
@@ -417,7 +417,7 @@ export default function ProfilePage() {
             <button
               onClick={deleteAccount}
               disabled={deleting}
-              className="w-full sm:w-auto border-2 border-red-400 text-red-500 px-4 py-2.5 rounded-lg font-semibold hover:bg-red-500 hover:border-red-500 hover:text-white transition disabled:opacity-50"
+              className="w-full sm:w-auto border-2 border-red-400 text-red-700 px-4 py-2.5 rounded-lg font-semibold hover:bg-red-700 hover:border-red-500 hover:text-white transition disabled:opacity-50"
             >
               {deleting ? "Deleting…" : "Delete My Account"}
             </button>

@@ -6,10 +6,18 @@ follows [Semantic Versioning](https://semver.org/) — `MAJOR.MINOR.PATCH`,
 where MAJOR breaks how the site is used, MINOR adds a capability without
 breaking anything, and PATCH fixes a bug with no new capability.
 
-## [Unreleased]
+## [2.0.0] — 2026-11-14
+
+A major release: the storefront has a new look, and online orders are now
+collected only by a pickup day and time slot booked at checkout.
 
 ### Added
 
+- A redesigned home page: a split hero with the shop's own photo (or the
+  logo), then tiles for shopping by category, the next market from the
+  events calendar, how pickup works (hours read from the admin settings),
+  what goes into the treats, the family, and custom bandanas, then the
+  four newest featured products.
 - Order lines remember the photo they were bought as. The picture the
   customer picked — the bandana pattern, not just the product's cover —
   is frozen onto the order at checkout and shown in order history, in
@@ -21,20 +29,45 @@ breaking anything, and PATCH fixes a bug with no new capability.
   and the photo is a raster: a message that has left the site can't load
   a relative path, and mail clients won't draw SVG. Otherwise the emails
   stay exactly as they were.
-- Weekday pickup: customers can collect an online order Monday–Friday
-  instead of at a market or event, choosing from the next 10 open
-  weekdays, never the same day (store time). Managed in Admin → Weekday
-  Pickup — an on/off switch (off by default), the where/when details shown
+- Scheduled pickup: customers collect an online order on a day and
+  30-minute time slot they book at checkout — Monday through Saturday,
+  never the same day (store time), from the next 10 open days. Each slot
+  takes up to 5 orders; a full slot shows as full and can't be booked.
+  Managed in Admin → Pickup: an on/off switch (off by default), pickup
+  hours (3:00–6:00 PM until changed), the where-to-collect details shown
   to customers, and closed days for holidays or days off.
+- Events take priority over pickup: a day with an event on the calendar is
+  blocked out of the pickup days automatically.
 - Events list by month: `/events` lists upcoming events grouped by month,
   this month open (or the nearest month with events), others one click
   away. Each event links to its day page.
 
 ### Changed
 
+- New type across the whole site: Fredoka, a rounded face, for headings
+  and the wordmark, and Figtree for body text. The brand colours are
+  unchanged.
+- The navigation bar has four main links (Shop, Events, About, Contact)
+  with the account and cart on the right, and marks the page you're on.
+  The footer is a single closing line with the links beneath it.
+- Product cards have one soft shadow, pill-shaped buttons, and stock
+  shown with an icon and a word. The product page matches: stock with an
+  icon, brand-coloured buttons and selects, the whole photo visible, and
+  long style names wrap instead of being cut off.
+- Placeholder product pictures no longer carry a name caption, and new
+  products start with a plain paw placeholder instead of the squeaky-bone
+  picture.
+- The design system is written down in `design.md` and `tokens.css`, so
+  later pages follow the same colours, type and spacing.
 - `/events` opens on the list; the calendar is one click away
   ("Calendar view", top right). The day page links "Back to Events".
-- Terms of Service §4 and the Privacy Policy cover weekday pickup.
+- Orders can no longer be reserved for collection at a market or event.
+  The "Next Event" and "Choose Event" options are gone from checkout and
+  the orders API refuses them; the code is parked behind
+  `EVENT_PICKUP_ENABLED`, the same way shipping is. Existing event-pickup
+  orders are unchanged.
+- Terms of Service §4, the Privacy Policy and the homepage describe
+  scheduled pickup.
 
 ### Fixed
 
@@ -42,7 +75,19 @@ breaking anything, and PATCH fixes a bug with no new capability.
   the UTC date, so the events list, checkout and the dashboard dropped
   them after about 5 PM in Boise.
 - The admin event forms no longer claim online pickup closes 2 hours
-  before the event ends; it closes the day before.
+  before the event ends; they say event days can't be booked for pickup.
+- Text and buttons across the site meet WCAG AA contrast: white text on
+  orange, orange prices, teal text on cream, error and stock messages,
+  and form field borders all fell short before.
+- A visible keyboard focus ring on every page, including on the teal
+  navigation bar and footer, where the old orange ring couldn't be seen.
+  The colour swatches on the product and event forms now show focus too.
+- Missing spaces after bold words on the About and Privacy pages
+  ("Meekois", "Your shopping cartis").
+- The shop page shows a message and a "Try again" button when the
+  products can't load, instead of "Loading…" forever.
+- The verification and password-reset emails escape the customer's name
+  and the link before putting them into the email's HTML.
 
 ## [1.1.0] — 2026-08-20
 

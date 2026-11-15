@@ -1,0 +1,11 @@
+{
+  "scanned": "2026-11-12",
+  "framework": "Next.js 16 (App Router), React 19, Tailwind CSS v4",
+  "fontStack": { "before": "Fraunces (display) + Geist (body) via next/font/google (src/app/layout.jsx)", "after": "Fredoka (display) + Figtree (body) via next/font/google" },
+  "palette": "Hard-coded hex classes (#4A7C8A teal, #3A6270 deep teal, #2A4A52 ink, #C8722A orange, #F5F0E8 cream, #E8DFC8 sand, #FEFCF8 paper); --background/--foreground in src/app/globals.css. Preserved and lifted into OKLCH role tokens in tokens.css.",
+  "motion": "No motion library; CSS keyframes in globals.css, prefers-reduced-motion override present",
+  "spacing": "Tailwind default scale; safe-x/safe-top/safe-bottom utilities. Role-named --space-* added in tokens.css",
+  "designMd": "design.md written at project root (multi-page system)",
+  "preserved": ["brand palette", "routes and component ownership", "auth, cart and data logic", "safe-area utilities", "reduced-motion override"],
+  "introduced": ["tokens.css", "design.md", "Fredoka + Figtree", "Bento Grid home with H2 hero", "N1b nav", "Ft5 footer", "two-surface focus ring", "src/lib/storefront.js", "src/components/Icons.jsx"]
+}

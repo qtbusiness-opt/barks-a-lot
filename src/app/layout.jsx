@@ -1,31 +1,32 @@
 import "./globals.css";
-import { Fraunces, Geist } from "next/font/google";
+import { Fredoka, Figtree } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AddedToCartNotice from "@/components/AddedToCartNotice";
 import SessionTimeoutModal from "@/components/SessionTimeoutModal";
-import Script from "next/script";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 
-// Display face for headings/wordmark — a warm, characterful serif that
-// suits a handmade, organic brand. Body stays a clean, neutral sans so the
-// overall layout reads the same as before.
-const fraunces = Fraunces({
+// Display face for headings and the wordmark: Fredoka's rounded terminals
+// read as friendly and dog-park casual without tipping into cartoonish.
+// Body is Figtree, a clean geometric sans with real italics. Two families
+// only; tokens.css names them --font-display / --font-body.
+const fredoka = Fredoka({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-fraunces",
+  variable: "--font-fredoka",
 });
 
-const geist = Geist({
+const figtree = Figtree({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-geist",
+  variable: "--font-figtree",
 });
 
 export const metadata = {
   title: "Barks-A-Lot Treats & More",
-  description: "Premium treats and accessories for your furry friend",
+  description:
+    "Handmade, organic dog treats and bandanas from the Treasure Valley. Order online and pick up locally.",
   icons: {
     icon: "/images/barks-a-lot-logo.png",
     apple: "/images/barks-a-lot-logo.png",
@@ -50,7 +51,7 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
-      className={`h-full antialiased ${geist.variable} ${fraunces.variable}`}
+      className={`h-full antialiased ${figtree.variable} ${fredoka.variable}`}
     >
       <body className="min-h-full flex flex-col">
         <a href="#main-content" className="skip-link">
@@ -67,11 +68,6 @@ export default function RootLayout({ children }) {
             <SessionTimeoutModal />
           </CartProvider>
         </AuthProvider>
-        <Script
-          src="https://cdn.jsdelivr.net/npm/@tailwindplus/elements@1"
-          type="module"
-          strategy="afterInteractive"
-        />
       </body>
     </html>
   );

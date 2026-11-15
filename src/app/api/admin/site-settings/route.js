@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth";
-import { ALLOWED_SETTING_KEYS, getSettings } from "@/lib/site-settings";
+import {
+  ALLOWED_SETTING_KEYS,
+  PICKUP_HOURS_START,
+  PICKUP_HOURS_END,
+  getSettings,
+} from "@/lib/site-settings";
+import { isSlotTime } from "@/lib/calendar-days";
 
 export async function GET() {
   const auth = await getAuthUser();
@@ -33,6 +39,19 @@ export async function PATCH(req) {
     const { key, value } = parsed.data;
     if (!ALLOWED_SETTING_KEYS.has(key)) {
       return NextResponse.json({ error: "Unknown setting" }, { status: 400 });
+    }
+
+    // Pickup hours are times on the half hour (or cleared, for the
+    // default) — anything else would leave checkout with odd slots.
+    if (
+      (key === PICKUP_HOURS_START || key === PICKUP_HOURS_END) &&
+      value !== "" &&
+      !isSlotTime(value)
+    ) {
+      return NextResponse.json(
+        { error: "Pickup hours must be on the hour or half hour" },
+        { status: 400 }
+      );
     }
 
     if (value === "") {

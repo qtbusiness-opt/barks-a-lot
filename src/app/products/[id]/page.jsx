@@ -14,6 +14,7 @@ import {
   isChoiceSelected,
 } from "@/lib/options";
 import StoreImage from "@/components/StoreImage";
+import { CheckIcon, CrossIcon } from "@/components/Icons";
 
 // The product's cover image, its gallery extras, and — when the customer
 // picks an option choice that has a thumbnail of its own — that choice's
@@ -40,7 +41,7 @@ function GalleryColumn({ productName, photos, imageIndex, setImageIndex }) {
           fill
           priority
           sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-cover"
+          className="object-contain"
         />
       </div>
     );
@@ -60,7 +61,7 @@ function GalleryColumn({ productName, photos, imageIndex, setImageIndex }) {
           fill
           priority
           sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-cover"
+          className="object-contain"
         />
       </button>
       <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
@@ -91,7 +92,7 @@ function GalleryColumn({ productName, photos, imageIndex, setImageIndex }) {
           </button>
         ))}
       </div>
-      <p className="text-center text-xs text-gray-500 mt-2">
+      <p className="text-center text-xs text-gray-600 mt-2">
         Click the photo to see the next one
       </p>
     </div>
@@ -163,7 +164,7 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-500">
+      <div className="max-w-7xl mx-auto px-4 py-20 text-center text-gray-600">
         Loading...
       </div>
     );
@@ -302,7 +303,7 @@ export default function ProductDetailPage() {
     <div className="max-w-7xl mx-auto safe-x py-6 sm:py-10">
       <Link
         href="/products"
-        className="inline-flex items-center min-h-11 text-[#4A7C8A] hover:underline mb-2 sm:mb-6"
+        className="inline-flex items-center min-h-11 text-[#3A6270] hover:underline mb-2 sm:mb-6"
       >
         &larr; Back to Products
       </Link>
@@ -316,7 +317,7 @@ export default function ProductDetailPage() {
         />
 
         <div>
-          <span className="text-sm text-[#4A7C8A] font-medium uppercase tracking-wide">
+          <span className="text-sm text-[#3A6270] font-medium uppercase tracking-wide">
             {product.category}
           </span>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52] mt-2">
@@ -324,7 +325,7 @@ export default function ProductDetailPage() {
           </h1>
 
           {product.limitedQuantity != null && (
-            <p className="inline-block bg-[#C8722A] text-white text-sm font-semibold px-3 py-1 rounded-full mt-2">
+            <p className="inline-block bg-[#A85D1F] text-white text-sm font-semibold px-3 py-1 rounded-full mt-2">
               {inStock
                 ? "Limited edition drop — get yours before it's gone"
                 : "This limited drop has sold out"}
@@ -332,8 +333,17 @@ export default function ProductDetailPage() {
           )}
 
           <p className="text-xl sm:text-2xl font-bold mt-4 justify-between flex items-center gap-4">
-            <span className="text-[#C8722A]">${price.toFixed(2)}</span>
-            <span className={inStock ? "text-green-600" : "text-red-600"}>
+            <span className="text-[#8A4D1A]">${price.toFixed(2)}</span>
+            <span
+              className={`flex items-center gap-1 text-sm font-semibold ${
+                inStock ? "text-brand-success" : "text-brand-error"
+              }`}
+            >
+              {inStock ? (
+                <CheckIcon className="h-4 w-4 shrink-0" />
+              ) : (
+                <CrossIcon className="h-4 w-4 shrink-0" />
+              )}
               {!product.available
                 ? "Not currently available"
                 : inStock
@@ -341,7 +351,7 @@ export default function ProductDetailPage() {
                   : "Out of Stock"}
             </span>
           </p>
-          <p className="text-gray-600 mt-4 leading-relaxed">
+          <p className="text-brand-ink-2 mt-4 leading-relaxed">
             {product.description}
           </p>
 
@@ -358,21 +368,21 @@ export default function ProductDetailPage() {
           {optionError && (
             <p
               role="alert"
-              className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mt-4"
+              className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mt-4"
             >
               {optionError}
             </p>
           )}
 
           <div className="mt-6 flex items-center gap-4">
-            <label htmlFor="qty" className="text-sm font-medium text-gray-700">
+            <label htmlFor="qty" className="text-sm font-medium text-brand-ink">
               Qty:
             </label>
             <select
               id="qty"
               value={qty}
               onChange={(e) => setQuantity(Number(e.target.value))}
-              className="border border-gray-300 rounded-lg px-3 py-2 min-h-11 text-base sm:text-sm"
+              className="border border-brand-teal rounded-lg px-3 py-2 min-h-11 text-base sm:text-sm bg-white text-brand-ink"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                 <option key={n} value={n}>
@@ -385,10 +395,10 @@ export default function ProductDetailPage() {
           <button
             onClick={handleAdd}
             disabled={!purchasable}
-            className={`mt-6 w-full sm:w-auto px-8 py-3 rounded-lg font-semibold text-white transition ${
+            className={`mt-6 w-full sm:w-auto whitespace-nowrap px-8 py-3 rounded-full font-semibold transition-colors duration-(--dur-micro) ease-(--ease-out) ${
               purchasable
-                ? "bg-[#C8722A] hover:bg-[#A85D1F]"
-                : "bg-gray-400 cursor-not-allowed"
+                ? "bg-brand-accent-strong text-brand-on hover:bg-brand-accent-deep"
+                : "bg-brand-paper-3 text-brand-ink-2 cursor-not-allowed"
             }`}
           >
             {!product.available
@@ -415,7 +425,7 @@ export default function ProductDetailPage() {
                   {product.itemDetails}
                 </p>
               ) : (
-                <p className="text-gray-500 text-sm">
+                <p className="text-gray-600 text-sm">
                   Full ingredient list coming soon — ask us at the booth or
                   email info@barks-a-lot.com.
                 </p>

@@ -6,19 +6,20 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import api from "@/lib/api";
 import Link from "next/link";
-import { SHIPPING_ENABLED } from "@/lib/features";
+import { SHIPPING_ENABLED, EVENT_PICKUP_ENABLED } from "@/lib/features";
 import {
   isPickupSelectable,
   formatTimeRange,
   eventDayKey,
   dayKeyOf,
-  WEEKDAY_PICKUP_FALLBACK,
+  PICKUP_FALLBACK,
+  formatSlot,
 } from "@/lib/pickup-window";
 import { getPublicConfig } from "@/lib/public-config";
 import { formatCalendarDay, formatPickupDay } from "@/lib/format-date";
 
 const inputClass =
-  "w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#4A7C8A]";
+  "w-full border border-[#4A7C8A] rounded-lg px-4 py-3";
 
 // Square Web Payments SDK. The app id is public by design (it only
 // tokenizes cards in the browser); the secret access token lives
@@ -99,7 +100,7 @@ function Stepper({ step }) {
             >
               {done ? "✓" : i + 1}
             </span>
-            <span className={active ? "text-[#2A4A52]" : "text-gray-500"}>
+            <span className={active ? "text-[#2A4A52]" : "text-gray-600"}>
               {label}
               {done && <span className="sr-only"> (completed)</span>}
             </span>
@@ -123,7 +124,7 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
             <span>
               {item.name} x {item.quantity}
               {item.optionsLabel && (
-                <span className="block text-xs text-gray-500">
+                <span className="block text-xs text-gray-600">
                   {item.optionsLabel}
                 </span>
               )}
@@ -133,19 +134,19 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
             </span>
           </div>
         ))}
-        <hr className="border-[#D4CCBC]" />
+        <hr className="border-[#E8DFC8]" />
         {discount > 0 && (
           <>
             <div className="flex justify-between text-sm">
               <span>Subtotal</span>
               <span>${subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-sm text-green-700">
+            <div className="flex justify-between text-sm text-green-800">
               <span>Discount</span>
               <span>−${discount.toFixed(2)}</span>
             </div>
             {applied.length > 0 && (
-              <ul className="text-xs text-green-700/90 list-disc pl-4">
+              <ul className="text-xs text-green-800 list-disc pl-4">
                 {applied.map((a) => (
                   <li key={a}>{a}</li>
                 ))}
@@ -155,18 +156,88 @@ function OrderSummary({ items, subtotal, discount = 0, applied = [] }) {
         )}
         <div className="flex justify-between font-bold text-lg">
           <span>Total</span>
-          <span className="text-[#C8722A]">${total.toFixed(2)}</span>
+          <span className="text-[#8A4D1A]">${total.toFixed(2)}</span>
         </div>
       </div>
     </div>
   );
 }
 
-// The pickup choice on the info step: next event, a chosen event, or a
-// weekday pickup day — each option only when it's actually on offer.
+// The day and half-hour slot pickers. Full days and full slots stay in
+// the lists, disabled, so the customer can see they exist.
+function PickupDayAndTime({
+  schedule,
+  chosenDay,
+  setPickupDay,
+  chosenTime,
+  setPickupTime,
+  pickupDetails,
+}) {
+  const daySlots = schedule.days.find((d) => d.day === chosenDay)?.slots ?? [];
+  return (
+    <div className="mt-3 space-y-2">
+      <label htmlFor="pickup-day" className="sr-only">
+        Pickup day
+      </label>
+      <select
+        id="pickup-day"
+        value={chosenDay}
+        onChange={(e) => setPickupDay(e.target.value)}
+        required
+        className={inputClass}
+      >
+        <option value="" disabled>
+          Choose a day...
+        </option>
+        {schedule.days.map(({ day, slots }) => {
+          const full = !slots.some((slot) => slot.available);
+          return (
+            <option key={day} value={day} disabled={full}>
+              {formatPickupDay(day)}
+              {full ? " — fully booked" : ""}
+            </option>
+          );
+        })}
+      </select>
+      <label htmlFor="pickup-time" className="sr-only">
+        Pickup time
+      </label>
+      <select
+        id="pickup-time"
+        value={chosenTime}
+        onChange={(e) => setPickupTime(e.target.value)}
+        required
+        disabled={!chosenDay}
+        className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-600`}
+      >
+        <option value="" disabled>
+          {chosenDay ? "Choose a time..." : "Choose a day first"}
+        </option>
+        {daySlots.map(({ time, available }) => (
+          <option key={time} value={time} disabled={!available}>
+            {formatSlot(time)}
+            {available ? "" : " — full"}
+          </option>
+        ))}
+      </select>
+      <p className="text-sm text-gray-700 bg-[#F5F0E8] p-3 rounded-lg">
+        {pickupDetails}
+      </p>
+      <p className="text-xs text-gray-600">
+        Pickup is Monday–Saturday in 30-minute time slots, booked at least a day
+        ahead.
+      </p>
+    </div>
+  );
+}
+
+// The pickup choice on the info step: a pickup day and half-hour slot.
+// The event options (next event, a chosen event) only appear while
+// EVENT_PICKUP_ENABLED is on; with one kind of pickup there's nothing to
+// choose between, so the radios go away too.
 function PickupOptions({
   hasEvents,
-  offersWeekday,
+  offersScheduled,
   activePickupMode,
   setPickupMode,
   pickupChoiceLost,
@@ -174,15 +245,17 @@ function PickupOptions({
   events,
   pickupChoice,
   setPickupChoice,
-  weekday,
+  schedule,
   chosenDay,
   setPickupDay,
-  weekdayDetails,
+  chosenTime,
+  setPickupTime,
+  pickupDetails,
 }) {
   return (
     <fieldset>
       <legend className="block text-xl font-semibold text-[#2A4A52] mb-2">
-        Pickup Option
+        {hasEvents ? "Pickup Option" : "Pickup Day & Time"}
       </legend>
       {pickupChoiceLost && (
         <p
@@ -218,16 +291,16 @@ function PickupOptions({
             </label>
           </>
         )}
-        {offersWeekday && (
+        {hasEvents && offersScheduled && (
           <label className="flex items-center gap-3 border border-gray-300 rounded-lg px-4 py-3 min-h-12 cursor-pointer has-checked:border-[#4A7C8A] has-checked:bg-[#F5F0E8]">
             <input
               type="radio"
               name="pickup-mode"
-              value="weekday"
-              checked={activePickupMode === "weekday"}
-              onChange={() => setPickupMode("weekday")}
+              value="scheduled"
+              checked={activePickupMode === "scheduled"}
+              onChange={() => setPickupMode("scheduled")}
             />
-            <span className="text-sm font-medium">Weekday Pickup</span>
+            <span className="text-sm font-medium">Pickup Day &amp; Time</span>
           </label>
         )}
       </div>
@@ -260,35 +333,15 @@ function PickupOptions({
             ))}
           </select>
         </div>
-      ) : activePickupMode === "weekday" ? (
-        <div className="mt-3 space-y-2">
-          <label htmlFor="pickup-day" className="sr-only">
-            Pickup day
-          </label>
-          <select
-            id="pickup-day"
-            value={chosenDay}
-            onChange={(e) => setPickupDay(e.target.value)}
-            required
-            className={inputClass}
-          >
-            <option value="" disabled>
-              Choose a day...
-            </option>
-            {weekday.days.map((day) => (
-              <option key={day} value={day}>
-                {formatPickupDay(day)}
-              </option>
-            ))}
-          </select>
-          <p className="text-sm text-gray-700 bg-[#F5F0E8] p-3 rounded-lg">
-            {weekdayDetails}
-          </p>
-          <p className="text-xs text-gray-500">
-            Weekday pickup is Monday–Friday and must be booked at least a day
-            ahead.
-          </p>
-        </div>
+      ) : activePickupMode === "scheduled" ? (
+        <PickupDayAndTime
+          schedule={schedule}
+          chosenDay={chosenDay}
+          setPickupDay={setPickupDay}
+          chosenTime={chosenTime}
+          setPickupTime={setPickupTime}
+          pickupDetails={pickupDetails}
+        />
       ) : null}
     </fieldset>
   );
@@ -300,22 +353,25 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [step, setStep] = useState(0);
-  // Pickup-only launch: every order is collected at a market/event or on
-  // a weekday pickup day.
+  // Pickup-only launch: every order is collected on a booked pickup day
+  // and time slot.
   const [fulfillmentType, setFulfillmentType] = useState(
     SHIPPING_ENABLED ? "shipping" : "pickup"
   );
   // null until the customer picks a radio; then "next" (nearest open
-  // event), "choose" (pick from the list) or "weekday" (a weekday day).
+  // event), "choose" (pick from the list) or "scheduled" (a day and slot).
   const [pickupMode, setPickupMode] = useState(null);
   // Event id when pickupMode is "choose".
   const [pickupChoice, setPickupChoice] = useState("");
   const [upcomingEvents, setUpcomingEvents] = useState(null);
-  // Weekday pickup as the server offers it — { enabled, details, days } —
-  // or null while loading. The server decides which days are bookable.
-  const [weekday, setWeekday] = useState(null);
-  // YYYY-MM-DD when pickupMode is "weekday".
+  // Scheduled pickup as the server offers it — { enabled, details, days:
+  // [{ day, slots: [{ time, available }] }] } — or null while loading.
+  // The server decides which days and slots are bookable.
+  const [schedule, setSchedule] = useState(null);
+  // YYYY-MM-DD when pickupMode is "scheduled".
   const [pickupDay, setPickupDay] = useState("");
+  // "HH:MM" start of the slot on that day.
+  const [pickupTime, setPickupTime] = useState("");
   const [form, setForm] = useState({
     guestName: "",
     guestEmail: "",
@@ -352,20 +408,20 @@ export default function CheckoutPage() {
       .catch(() => setUpcomingEvents([]));
   }, []);
 
-  // Also called again after a refused weekday order, so a day that just
-  // became same-day (store midnight) drops out of the list.
-  const loadWeekdayPickup = useCallback(
+  // Also called again after a refused order, so a day that just became
+  // same-day (store midnight) or a slot that just filled drops out.
+  const loadSchedule = useCallback(
     () =>
       api
-        .get("/pickup/weekdays")
-        .then((res) => setWeekday(res.data))
-        .catch(() => setWeekday({ enabled: false, details: "", days: [] })),
+        .get("/pickup/days")
+        .then((res) => setSchedule(res.data))
+        .catch(() => setSchedule({ enabled: false, details: "", days: [] })),
     []
   );
 
   useEffect(() => {
-    loadWeekdayPickup();
-  }, [loadWeekdayPickup]);
+    loadSchedule();
+  }, [loadSchedule]);
 
   useEffect(() => {
     getPublicConfig().then((cfg) => {
@@ -470,24 +526,27 @@ export default function CheckoutPage() {
 
   // No same-day pickup (shared rule with the orders API). "Next Event"
   // is the nearest event still open for pickup.
-  const events = (upcomingEvents ?? []).filter((e) => isPickupSelectable(e));
+  const events = EVENT_PICKUP_ENABLED
+    ? (upcomingEvents ?? []).filter((e) => isPickupSelectable(e))
+    : [];
   const hasEvents = events.length > 0;
   const nextEvent = events[0] ?? null;
-  const offersWeekday =
-    Boolean(weekday?.enabled) && (weekday?.days.length ?? 0) > 0;
-  const canPickup = hasEvents || offersWeekday;
-  const pickupOptionsLoaded = upcomingEvents !== null && weekday !== null;
-  const isOffered = (mode) => (mode === "weekday" ? offersWeekday : hasEvents);
+  const offersScheduled =
+    Boolean(schedule?.enabled) && (schedule?.days.length ?? 0) > 0;
+  const canPickup = hasEvents || offersScheduled;
+  const pickupOptionsLoaded = upcomingEvents !== null && schedule !== null;
+  const isOffered = (mode) =>
+    mode === "scheduled" ? offersScheduled : hasEvents;
   // An explicit pick is never swapped for another kind of pickup behind
   // the customer's back: if it stops being offered (the owner switched
-  // weekday pickup off, the last event passed), nothing is selected and
+  // pickup off, the last event passed), nothing is selected and
   // they choose again. Before they pick, events come first.
   const activePickupMode =
     pickupMode === null
       ? hasEvents
         ? "next"
-        : offersWeekday
-          ? "weekday"
+        : offersScheduled
+          ? "scheduled"
           : null
       : isOffered(pickupMode)
         ? pickupMode
@@ -500,18 +559,28 @@ export default function CheckoutPage() {
       : activePickupMode === "choose"
         ? events.find((e) => e.id === pickupChoice)
         : undefined;
-  const chosenDay =
-    activePickupMode === "weekday" && weekday.days.includes(pickupDay)
-      ? pickupDay
+  // A day or slot that stopped being bookable (filled up, got closed)
+  // reads as not chosen, so the customer has to pick again.
+  const dayEntry =
+    activePickupMode === "scheduled"
+      ? schedule.days.find((d) => d.day === pickupDay)
+      : undefined;
+  const chosenDay = dayEntry?.slots.some((slot) => slot.available)
+    ? pickupDay
+    : "";
+  const chosenTime =
+    chosenDay &&
+    dayEntry.slots.some((slot) => slot.time === pickupTime && slot.available)
+      ? pickupTime
       : "";
   const pickupReady =
-    activePickupMode === "weekday" ? chosenDay !== "" : Boolean(chosenEvent);
-  const weekdayDetails = weekday?.details || WEEKDAY_PICKUP_FALLBACK;
+    activePickupMode === "scheduled" ? chosenTime !== "" : Boolean(chosenEvent);
+  const pickupDetails = schedule?.details || PICKUP_FALLBACK;
   // True only when today's own event is the thing missing from the list
   // above, so the note doesn't show for an ordinary quiet week.
-  const hasSameDayEvent = (upcomingEvents ?? []).some(
-    (e) => eventDayKey(e) === dayKeyOf()
-  );
+  const hasSameDayEvent =
+    EVENT_PICKUP_ENABLED &&
+    (upcomingEvents ?? []).some((e) => eventDayKey(e) === dayKeyOf());
 
   // Guest orders finish here (guests have no orders page), so show the
   // confirmation inline after the cart has been cleared.
@@ -522,20 +591,22 @@ export default function CheckoutPage() {
           Thank You for Your Order!
         </h1>
         <p className="text-gray-600 mb-2">Your confirmation number is</p>
-        <p className="text-2xl font-bold text-[#C8722A] mb-6">
+        <p className="text-2xl font-bold text-[#8A4D1A] mb-6">
           {confirmation.number}
         </p>
         {confirmation.pickupDate ? (
-          <div className="text-gray-500 mb-8 space-y-2">
+          <div className="text-gray-600 mb-8 space-y-2">
             <p>
               We&rsquo;ll have your order ready for pickup on{" "}
-              {formatPickupDay(confirmation.pickupDate)} — bring your
-              confirmation number.
+              {formatPickupDay(confirmation.pickupDate)}
+              {confirmation.pickupTime &&
+                `, ${formatSlot(confirmation.pickupTime)}`}{" "}
+              — bring your confirmation number.
             </p>
-            <p>{weekdayDetails}</p>
+            <p>{pickupDetails}</p>
           </div>
         ) : (
-          <p className="text-gray-500 mb-8">
+          <p className="text-gray-600 mb-8">
             {confirmation.event
               ? `We'll have your order ready at ${confirmation.event.title} on ${formatEventDate(confirmation.event)} — just give us your confirmation number at the booth.`
               : "Keep this number for your records — you'll need it if you contact us about your order."}
@@ -555,7 +626,7 @@ export default function CheckoutPage() {
     return (
       <div className="max-w-4xl mx-auto safe-x py-20 text-center">
         <h1 className="text-3xl font-bold text-[#2A4A52] mb-4">Checkout</h1>
-        <p className="text-gray-500 mb-6">Your cart is empty.</p>
+        <p className="text-gray-600 mb-6">Your cart is empty.</p>
         <Link
           href="/products"
           className="inline-block bg-[#4A7C8A] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3A6270] transition"
@@ -647,8 +718,8 @@ export default function CheckoutPage() {
               state: form.state,
               zip: form.zip,
             }
-          : activePickupMode === "weekday"
-            ? { pickupDate: chosenDay }
+          : activePickupMode === "scheduled"
+            ? { pickupDate: chosenDay, pickupTime: chosenTime }
             : {
                 pickupEventId:
                   activePickupMode === "next" ? "next" : pickupChoice,
@@ -667,6 +738,7 @@ export default function CheckoutPage() {
           number: res.data.order.confirmationNumber,
           event: res.data.order.pickupEvent,
           pickupDate: res.data.order.pickupDate,
+          pickupTime: res.data.order.pickupTime,
         });
       }
     } catch (err) {
@@ -674,10 +746,10 @@ export default function CheckoutPage() {
         err.response?.data?.error || "Failed to place order. Please try again."
       );
       setSubmitting(false);
-      // A refused weekday day has usually just become same-day (store
-      // midnight) or been closed — refresh the list so it drops out.
-      if (err.response?.status === 409 && activePickupMode === "weekday") {
-        loadWeekdayPickup();
+      // A refused day or slot has usually just filled up, become same-day
+      // (store midnight) or been closed — refresh so it drops out.
+      if (err.response?.status === 409 && activePickupMode === "scheduled") {
+        loadSchedule();
       }
       // A declined charge consumes the one-time token — back to the info
       // step so the customer can re-enter or change the card.
@@ -700,7 +772,7 @@ export default function CheckoutPage() {
       {error && (
         <p
           role="alert"
-          className="text-red-500 text-sm bg-red-50 p-3 rounded-lg mb-6"
+          className="text-red-700 text-sm bg-red-50 p-3 rounded-lg mb-6"
         >
           {error}
         </p>
@@ -720,7 +792,7 @@ export default function CheckoutPage() {
                   </h2>
                   <Link
                     href="/login"
-                    className="text-sm text-[#4A7C8A] font-medium hover:underline"
+                    className="text-sm text-[#3A6270] font-medium hover:underline"
                   >
                     Have an account? Log in
                   </Link>
@@ -793,7 +865,7 @@ export default function CheckoutPage() {
                     <span className="text-sm font-medium">
                       Pickup
                       {pickupOptionsLoaded && !canPickup && (
-                        <span className="block text-xs text-gray-500 font-normal">
+                        <span className="block text-xs text-gray-600 font-normal">
                           No pickup options available right now
                         </span>
                       )}
@@ -808,19 +880,13 @@ export default function CheckoutPage() {
                 </h2>
                 {pickupOptionsLoaded && !canPickup ? (
                   <p className="text-sm text-amber-800 bg-amber-50 p-3 rounded-lg">
-                    Online orders are picked up at our markets and events, and
-                    nothing is on the calendar just yet. Check back soon — new
-                    events are added all the time!
-                  </p>
-                ) : offersWeekday ? (
-                  <p className="text-sm text-gray-600 bg-[#F5F0E8] p-3 rounded-lg">
-                    Pick up at one of our markets or events, or on a weekday
-                    (Monday–Friday) — choose what works best for you below.
+                    Online orders are collected by scheduled pickup, and there
+                    are no pickup times open right now. Please check back soon!
                   </p>
                 ) : (
                   <p className="text-sm text-gray-600 bg-[#F5F0E8] p-3 rounded-lg">
-                    All online orders are picked up at one of our markets or
-                    events — choose the one that works best for you below.
+                    All online orders are collected by pickup — choose the day
+                    and 30-minute time slot that work best for you below.
                   </p>
                 )}
               </div>
@@ -908,7 +974,7 @@ export default function CheckoutPage() {
             ) : canPickup ? (
               <PickupOptions
                 hasEvents={hasEvents}
-                offersWeekday={offersWeekday}
+                offersScheduled={offersScheduled}
                 activePickupMode={activePickupMode}
                 setPickupMode={setPickupMode}
                 pickupChoiceLost={pickupChoiceLost}
@@ -916,10 +982,12 @@ export default function CheckoutPage() {
                 events={events}
                 pickupChoice={pickupChoice}
                 setPickupChoice={setPickupChoice}
-                weekday={weekday}
+                schedule={schedule}
                 chosenDay={chosenDay}
                 setPickupDay={setPickupDay}
-                weekdayDetails={weekdayDetails}
+                chosenTime={chosenTime}
+                setPickupTime={setPickupTime}
+                pickupDetails={pickupDetails}
               />
             ) : null}
 
@@ -931,7 +999,7 @@ export default function CheckoutPage() {
                 {cardStatus === "error" ? (
                   <p
                     role="alert"
-                    className="text-red-500 text-sm bg-red-50 p-3 rounded-lg"
+                    className="text-red-700 text-sm bg-red-50 p-3 rounded-lg"
                   >
                     The payment form couldn&rsquo;t be loaded. Please refresh
                     the page and try again.
@@ -939,12 +1007,12 @@ export default function CheckoutPage() {
                 ) : (
                   <>
                     {cardStatus === "loading" && (
-                      <p className="text-sm text-gray-500 mb-2">
+                      <p className="text-sm text-gray-600 mb-2">
                         Loading secure payment form...
                       </p>
                     )}
                     <div id="card-container" />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-600 mt-1">
                       Payments are processed securely by Square — your card
                       details never touch our servers. Nothing is charged until
                       you confirm on the next step.
@@ -967,7 +1035,7 @@ export default function CheckoutPage() {
                 <Link
                   href="/privacy"
                   target="_blank"
-                  className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+                  className="text-[#3A6270] underline hover:text-[#2A4A52]"
                 >
                   Privacy Policy
                 </Link>{" "}
@@ -975,7 +1043,7 @@ export default function CheckoutPage() {
                 <Link
                   href="/terms"
                   target="_blank"
-                  className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+                  className="text-[#3A6270] underline hover:text-[#2A4A52]"
                 >
                   Terms of Service
                 </Link>
@@ -1022,7 +1090,7 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={removeCode}
-                    className="text-sm text-[#4A7C8A] underline hover:text-[#2A4A52]"
+                    className="text-sm text-[#3A6270] underline hover:text-[#2A4A52]"
                   >
                     Remove
                   </button>
@@ -1047,7 +1115,7 @@ export default function CheckoutPage() {
                 </div>
               )}
               {codeError && (
-                <p role="alert" className="text-red-500 text-sm mt-2">
+                <p role="alert" className="text-red-700 text-sm mt-2">
                   {codeError}
                 </p>
               )}
@@ -1069,7 +1137,7 @@ export default function CheckoutPage() {
             </h2>
 
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                 Contact
               </h3>
               <p className="text-[#2A4A52] mt-1">
@@ -1087,20 +1155,20 @@ export default function CheckoutPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                 Delivery
               </h3>
               {fulfillmentType === "shipping" ? (
                 <p className="text-[#2A4A52] mt-1">
                   Ship to: {form.address}, {form.city}, {form.state} {form.zip}
                 </p>
-              ) : activePickupMode === "weekday" && chosenDay ? (
+              ) : activePickupMode === "scheduled" && chosenTime ? (
                 <div className="text-[#2A4A52] mt-1">
-                  <p className="font-medium">Weekday pickup</p>
+                  <p className="font-medium">Pickup</p>
                   <p className="text-sm text-gray-600">
-                    {formatPickupDay(chosenDay)}
+                    {formatPickupDay(chosenDay)} · {formatSlot(chosenTime)}
                   </p>
-                  <p className="text-sm text-gray-600">{weekdayDetails}</p>
+                  <p className="text-sm text-gray-600">{pickupDetails}</p>
                 </div>
               ) : chosenEvent ? (
                 <div className="text-[#2A4A52] mt-1">
@@ -1117,13 +1185,13 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               ) : (
-                <p className="text-red-500 mt-1">No pickup option selected.</p>
+                <p className="text-red-700 mt-1">No pickup option selected.</p>
               )}
             </div>
 
             {payment && (
               <div>
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                   Payment
                 </h3>
                 <p className="text-[#2A4A52] mt-1">
@@ -1138,7 +1206,7 @@ export default function CheckoutPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleBack}
-              className="sm:flex-1 border-2 border-[#4A7C8A] text-[#4A7C8A] py-3 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+              className="sm:flex-1 border-2 border-[#4A7C8A] text-[#3A6270] py-3 rounded-lg font-semibold hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
             >
               Back
             </button>
@@ -1149,7 +1217,7 @@ export default function CheckoutPage() {
                 (fulfillmentType === "pickup" && !pickupReady) ||
                 (Boolean(square?.appId) && !payment)
               }
-              className="sm:flex-[2] bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
+              className="sm:flex-[2] bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white py-3 rounded-lg font-semibold transition disabled:opacity-50"
             >
               {submitting
                 ? "Processing…"

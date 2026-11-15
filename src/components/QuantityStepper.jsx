@@ -27,9 +27,10 @@ export default function QuantityStepper({
   const step = (delta) => onChange(Math.min(max, Math.max(min, value + delta)));
 
   const buttonClass =
-    "w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-full border border-gray-300 " +
+    "w-11 h-11 sm:w-8 sm:h-8 shrink-0 rounded-full border border-brand-teal " +
     "flex items-center justify-center text-lg sm:text-base leading-none " +
-    "text-[#2A4A52] hover:bg-gray-100 active:bg-gray-200 " +
+    "text-brand-ink hover:bg-brand-paper-2 active:bg-brand-paper-3 " +
+    "transition-colors duration-(--dur-micro) ease-(--ease-out) " +
     "disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
@@ -52,7 +53,7 @@ export default function QuantityStepper({
       <span
         aria-live="polite"
         aria-atomic="true"
-        className="min-w-8 text-center font-medium tabular-nums text-[#2A4A52]"
+        className="min-w-8 text-center font-medium tabular-nums text-brand-ink"
       >
         {value}
       </span>

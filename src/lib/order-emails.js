@@ -5,9 +5,13 @@ import {
   orderItemName,
   orderItemsHtml,
 } from "@/lib/email-format";
-import { formatTimeRange, WEEKDAY_PICKUP_FALLBACK } from "@/lib/pickup-window";
+import {
+  formatTimeRange,
+  formatSlot,
+  PICKUP_FALLBACK,
+} from "@/lib/pickup-window";
 import { formatPickupDay } from "@/lib/format-date";
-import { getWeekdayPickupSettings } from "@/lib/site-settings";
+import { getPickupSettings } from "@/lib/site-settings";
 import { logEvent } from "@/lib/log";
 
 // Order mail used to fail only into the server console, which on a hosted
@@ -55,10 +59,10 @@ function deliveryLine(order) {
   return `Shipping to ${order.address}, ${order.city}, ${order.state} ${order.zip}`;
 }
 
-// The delivery line for any order, weekday pickups included. Never throws:
-// the orders route awaits these emails inside its own try, so a settings
-// hiccup here would otherwise turn an already-charged order into a
-// "Server error" — and the customer would lose their confirmation too.
+// The delivery line for any order, scheduled pickups included. Never
+// throws: the orders route awaits these emails inside its own try, so a
+// settings hiccup here would otherwise turn an already-charged order into
+// a "Server error" — and the customer would lose their confirmation too.
 // On failure the generic copy stands in for the owner's details.
 async function deliveryLineFor(order) {
   if (order.fulfillmentType !== "pickup" || !order.pickupDate) {
@@ -66,11 +70,12 @@ async function deliveryLineFor(order) {
   }
   let details = "";
   try {
-    ({ details } = await getWeekdayPickupSettings());
+    ({ details } = await getPickupSettings());
   } catch {
     // Fall back to the generic copy below.
   }
-  return `Weekday pickup on ${formatPickupDay(order.pickupDate)} — ${details || WEEKDAY_PICKUP_FALLBACK}`;
+  const when = order.pickupTime ? `, ${formatSlot(order.pickupTime)}` : "";
+  return `Pickup on ${formatPickupDay(order.pickupDate)}${when} — ${details || PICKUP_FALLBACK}`;
 }
 
 function itemLines(order) {

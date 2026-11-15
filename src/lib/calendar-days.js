@@ -1,6 +1,6 @@
 // Calendar-day arithmetic on "YYYY-MM-DD" keys, and the rules built on it:
-// which weekdays can be booked for pickup, and how upcoming events group
-// into months.
+// which days and half-hour slots can be booked for pickup, and how
+// upcoming events group into months.
 //
 // Zero imports on purpose: `node --test` loads this file directly and
 // can't resolve the "@/" alias (same reason as src/lib/options.js). It
@@ -11,9 +11,18 @@
 // can never shift a day. The only time zone involved is the one handed
 // to storeDayKey to decide which calendar day it is right now.
 
-// Weekday pickup offers this many open weekdays, starting the day after
-// the customer orders.
-export const WEEKDAY_PICKUP_DAY_COUNT = 10;
+// Pickup offers this many open days, starting the day after the customer
+// orders.
+export const PICKUP_DAY_COUNT = 10;
+
+// Each pickup is booked into a slot this long, shared by at most this
+// many orders.
+export const SLOT_MINUTES = 30;
+export const SLOT_CAPACITY = 5;
+
+// Pickup hours until the owner sets their own (Admin → Pickup). The same
+// hours apply Monday through Saturday.
+export const DEFAULT_PICKUP_HOURS = { start: "15:00", end: "18:00" };
 
 // Building an Intl formatter is the expensive part, so one per zone.
 const dayFormatters = new Map();
@@ -53,9 +62,9 @@ export function addDays(dayKey, n) {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
-export function isWeekday(dayKey) {
-  const day = dayKeyToUtcDate(dayKey).getUTCDay();
-  return day >= 1 && day <= 5;
+// Pickup runs Monday through Saturday; Sunday is the one day off.
+export function isPickupWeekday(dayKey) {
+  return dayKeyToUtcDate(dayKey).getUTCDay() !== 0;
 }
 
 export function monthKeyOf(dayKey) {
@@ -79,21 +88,22 @@ export function pruneClosedDays(days, todayKey) {
   return days.filter((day) => day > todayKey);
 }
 
-// The bookable pickup days: the next `count` weekdays strictly after
-// today that aren't closed. Never same-day — every pickup has at least
-// until store midnight to be prepared. Closed days push the window out
+// The bookable pickup days: the next `count` days strictly after today
+// that aren't a Sunday and aren't blocked. Never same-day — every pickup
+// has at least until store midnight to be prepared. Blocked days (ones
+// the owner closed, and any day with an event on it) push the window out
 // rather than shrink it, so the customer always has `count` to choose.
-export function weekdayPickupDays(
+export function pickupDays(
   todayKey,
-  closedDays = [],
-  count = WEEKDAY_PICKUP_DAY_COUNT
+  blockedDays = [],
+  count = PICKUP_DAY_COUNT
 ) {
-  const closed = new Set(closedDays);
+  const blocked = new Set(blockedDays);
   const days = [];
-  // Bounded so a malformed closed list can never spin forever.
+  // Bounded so a malformed blocked list can never spin forever.
   for (let i = 1; days.length < count && i <= 400; i++) {
     const key = addDays(todayKey, i);
-    if (isWeekday(key) && !closed.has(key)) days.push(key);
+    if (isPickupWeekday(key) && !blocked.has(key)) days.push(key);
   }
   return days;
 }
@@ -101,13 +111,50 @@ export function weekdayPickupDays(
 // Membership in the window is the whole rule, so the server can't accept
 // a day the checkout wouldn't have offered — and anything that isn't a
 // real calendar day simply isn't in the list.
-export function isWeekdayPickupDay(
+export function isPickupDay(
   dayKey,
   todayKey,
-  closedDays = [],
-  count = WEEKDAY_PICKUP_DAY_COUNT
+  blockedDays = [],
+  count = PICKUP_DAY_COUNT
 ) {
-  return weekdayPickupDays(todayKey, closedDays, count).includes(dayKey);
+  return pickupDays(todayKey, blockedDays, count).includes(dayKey);
+}
+
+const SLOT_TIME = /^([01]\d|2[0-3]):(00|30)$/;
+
+// A wall-clock "HH:MM" on a half-hour boundary — the only times a slot
+// can start or the pickup hours can be set to.
+export function isSlotTime(value) {
+  return typeof value === "string" && SLOT_TIME.test(value);
+}
+
+const toMinutes = (hhmm) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+};
+const fromMinutes = (total) =>
+  `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+
+// The owner's pickup hours, or the default when they're unset or don't
+// make sense (off the half hour, or closing at or before opening). Bad
+// stored values must never leave checkout with no slots to offer.
+export function pickupHours(start, end) {
+  return isSlotTime(start) && isSlotTime(end) && start < end
+    ? { start, end }
+    : DEFAULT_PICKUP_HOURS;
+}
+
+// Slot start times from opening up to (not including) closing.
+export function pickupSlots(start, end) {
+  const slots = [];
+  for (let t = toMinutes(start); t < toMinutes(end); t += SLOT_MINUTES) {
+    slots.push(fromMinutes(t));
+  }
+  return slots;
+}
+
+export function slotEnd(time) {
+  return fromMinutes(toMinutes(time) + SLOT_MINUTES);
 }
 
 // Events grouped by calendar month, months in order, events kept in the

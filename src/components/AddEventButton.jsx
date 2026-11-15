@@ -11,7 +11,7 @@ export default function AddEventButton() {
   return (
     <Link
       href="/admin/events/new"
-      className="bg-[#C8722A] hover:bg-[#A85D1F] active:bg-[#8A4D1A] text-white px-4 py-2.5 rounded-lg font-semibold transition"
+      className="bg-[#A85D1F] hover:bg-[#8A4D1A] active:bg-[#8A4D1A] text-white px-4 py-2.5 rounded-lg font-semibold transition"
     >
       + Add Event
     </Link>

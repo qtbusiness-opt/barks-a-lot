@@ -3,6 +3,7 @@ import { badgeClass } from "@/lib/event-colors";
 import { formatCalendarDay, formatMonth } from "@/lib/format-date";
 import { formatTimeRange } from "@/lib/pickup-window";
 import { toDayKey } from "@/lib/calendar-days";
+import { CalendarIcon } from "@/components/Icons";
 
 // Upcoming events as one collapsible section per month. Rendered on the
 // server: native <details>/<summary> gives keyboard toggling (Enter or
@@ -15,13 +16,14 @@ import { toDayKey } from "@/lib/calendar-days";
 export default function EventsMonthList({ groups, openMonth }) {
   if (groups.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-        <p className="text-gray-500 mb-4">
+      <div className="bg-brand-paper-2 rounded-xl p-6 sm:p-8 text-center flex flex-col items-center">
+        <CalendarIcon className="h-8 w-8 mb-3 text-brand-ink-2" />
+        <p className="text-brand-ink-2 mb-4">
           No upcoming events yet — check back soon!
         </p>
         <Link
           href="/events?view=calendar"
-          className="inline-flex items-center min-h-11 text-[#4A7C8A] font-medium underline hover:text-[#2A4A52]"
+          className="inline-flex items-center min-h-11 text-brand-ink-2 font-medium underline underline-offset-4 decoration-2 hover:text-brand-ink"
         >
           Browse the calendar
         </Link>
@@ -38,11 +40,11 @@ export default function EventsMonthList({ groups, openMonth }) {
           open={group.monthKey === openMonth}
           className="group bg-white rounded-xl shadow-sm"
         >
-          <summary className="flex items-center justify-between gap-3 px-4 sm:px-6 min-h-14 cursor-pointer list-none rounded-xl [&::-webkit-details-marker]:hidden hover:bg-[#F5F0E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4A7C8A]">
+          <summary className="flex items-center justify-between gap-3 px-4 sm:px-6 min-h-14 cursor-pointer list-none rounded-xl [&::-webkit-details-marker]:hidden hover:bg-[#F5F0E8]">
             <span className="text-lg font-semibold text-[#2A4A52]">
               {formatMonth(group.year, group.monthIndex)}
             </span>
-            <span className="flex items-center gap-3 text-sm text-gray-500">
+            <span className="flex items-center gap-3 text-sm text-gray-600">
               {group.events.length}{" "}
               {group.events.length === 1 ? "event" : "events"}
               <span
@@ -63,10 +65,10 @@ export default function EventsMonthList({ groups, openMonth }) {
                 <li key={event.id}>
                   <Link
                     href={`/events/${day}`}
-                    className="flex items-center gap-4 px-4 sm:px-6 py-3 min-h-16 hover:bg-[#F5F0E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#4A7C8A] transition"
+                    className="flex items-center gap-4 px-4 sm:px-6 py-3 min-h-16 hover:bg-[#F5F0E8] transition"
                   >
                     <span className="w-12 shrink-0 text-center leading-tight">
-                      <span className="block text-xs font-semibold uppercase text-[#4A7C8A]">
+                      <span className="block text-xs font-semibold uppercase text-[#3A6270]">
                         {formatCalendarDay(day, { weekday: "short" })}
                       </span>
                       <span className="block text-xl font-bold text-[#2A4A52]">
@@ -85,7 +87,7 @@ export default function EventsMonthList({ groups, openMonth }) {
                         </span>
                       )}
                     </span>
-                    <span aria-hidden="true" className="text-[#4A7C8A]">
+                    <span aria-hidden="true" className="text-[#3A6270]">
                       →
                     </span>
                   </Link>

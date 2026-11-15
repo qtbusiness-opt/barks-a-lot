@@ -68,7 +68,7 @@ export default function EventsCalendar() {
         <button
           onClick={() => shiftMonth(-1)}
           aria-label="Previous month"
-          className="flex items-center justify-center h-11 w-11 rounded-lg border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+          className="flex items-center justify-center h-11 w-11 rounded-lg border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
         >
           &larr;
         </button>
@@ -78,13 +78,13 @@ export default function EventsCalendar() {
         <button
           onClick={() => shiftMonth(1)}
           aria-label="Next month"
-          className="flex items-center justify-center h-11 w-11 rounded-lg border border-[#4A7C8A] text-[#4A7C8A] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
+          className="flex items-center justify-center h-11 w-11 rounded-lg border border-[#4A7C8A] text-[#3A6270] hover:bg-[#4A7C8A] hover:text-white active:bg-[#3A6270] transition"
         >
           &rarr;
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-xs sm:text-sm font-semibold text-[#4A7C8A] mb-1">
+      <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-xs sm:text-sm font-semibold text-[#3A6270] mb-1">
         {WEEKDAYS.map((d) => (
           <div key={d} className="py-1">
             {d}
@@ -107,7 +107,7 @@ export default function EventsCalendar() {
               <span
                 className={`text-xs sm:text-sm font-semibold ${
                   isToday
-                    ? "inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#C8722A] text-white"
+                    ? "inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#A85D1F] text-white"
                     : "text-[#2A4A52]"
                 }`}
               >
@@ -117,7 +117,7 @@ export default function EventsCalendar() {
                 {dayEvents.map((event) => (
                   <span
                     key={event.id}
-                    className={`block truncate rounded px-1 py-0.5 text-[10px] sm:text-xs font-medium ${badgeClass(event.color)}`}
+                    className={`block truncate rounded px-1 py-0.5 text-xs font-medium ${badgeClass(event.color)}`}
                   >
                     {event.title}
                   </span>
@@ -149,7 +149,7 @@ export default function EventsCalendar() {
         })}
       </div>
 
-      <p className="text-sm text-gray-500 mt-4">
+      <p className="text-sm text-gray-600 mt-4">
         Tap a date with an event to see the details
         {isAdmin ? ", or any date to manage that day's events." : "."}
       </p>

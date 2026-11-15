@@ -2,12 +2,7 @@
 // drift apart.
 
 import { STORE_TIME_ZONE } from "@/lib/format-date";
-import {
-  storeDayKey,
-  storeDayStartUtc,
-  weekdayPickupDays,
-  isWeekdayPickupDay,
-} from "@/lib/calendar-days";
+import { storeDayKey, storeDayStartUtc, slotEnd } from "@/lib/calendar-days";
 
 // event.date is a Date object straight from Prisma on the server and an
 // ISO string after JSON on the client — handle both. Events are stored
@@ -32,20 +27,8 @@ export function dayKeyOf(now = new Date()) {
 export const storeTodayStartUtc = (now = new Date()) =>
   storeDayStartUtc(now, STORE_TIME_ZONE);
 
-// The weekdays a customer can book right now, given the owner's closed
-// days (Mon–Fri only, never same-day).
-export const weekdayPickupDaysAt = (closedDays = [], now = new Date()) =>
-  weekdayPickupDays(dayKeyOf(now), closedDays);
-
-export const isWeekdayPickupSelectable = (
-  dayKey,
-  closedDays = [],
-  now = new Date()
-) => isWeekdayPickupDay(dayKey, dayKeyOf(now), closedDays);
-
 // Shown wherever the owner hasn't written pickup details yet.
-export const WEEKDAY_PICKUP_FALLBACK =
-  "We'll email you with where and when to pick up.";
+export const PICKUP_FALLBACK = "We'll email you with where to pick up.";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -75,3 +58,7 @@ export function formatTimeRange(event) {
     ? `from ${formatTime(event.startTime)}`
     : `until ${formatTime(event.endTime)}`;
 }
+
+// "3:30 PM – 4:00 PM" for a pickup slot that starts at "15:30".
+export const formatSlot = (time) =>
+  formatTimeRange({ startTime: time, endTime: slotEnd(time) });

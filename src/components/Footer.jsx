@@ -1,41 +1,62 @@
 import Link from "next/link";
+import { PawIcon } from "@/components/Icons";
 
+const LINKS = [
+  { href: "/products", label: "Shop" },
+  { href: "/events", label: "Events" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/terms", label: "Terms" },
+];
+
+// Statement footer: one sentence in the display face closes the page, with
+// the wordmark, a short link row and the email address beneath it in small
+// type. Text is paper (6.48:1) and sand (5.01:1) on the deep-teal band.
 export default function Footer() {
   return (
-    <footer className="bg-[#3A6270] text-[#E8DFC8] mt-auto">
-      <div className="max-w-7xl mx-auto safe-x py-8 sm:py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div>
-          <h3 className="text-white font-bold text-lg mb-3">Barks-A-Lot Treats & More</h3>
-          <p className="text-sm">
-            Premium treats and accessories for your furry friend. Made with love, handed over with care.
-          </p>
+    <footer className="bg-brand-deep text-brand-paper mt-auto">
+      <div className="max-w-7xl mx-auto safe-x py-10 sm:py-14">
+        <p className="font-heading font-semibold text-3xl sm:text-4xl leading-[1.1] max-w-[28ch]">
+          Baked by our family for yours.
+        </p>
+
+        <div className="mt-8 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between border-t border-brand-paper/25 pt-6">
+          <Link
+            href="/"
+            className="wordmark inline-flex items-center gap-2 text-lg self-start whitespace-nowrap"
+          >
+            <PawIcon className="h-5 w-5 text-brand-paper-3" />
+            Barks-A-Lot Treats &amp; More
+          </Link>
+
+          <nav aria-label="Footer">
+            <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              {LINKS.map(({ href, label }) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="inline-block py-1 underline-offset-4 hover:underline"
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <a
+                  href="mailto:info@barks-a-lot.com"
+                  className="inline-block py-1 underline-offset-4 hover:underline"
+                >
+                  info@barks-a-lot.com
+                </a>
+              </li>
+            </ul>
+          </nav>
         </div>
-        <div>
-          <h4 className="text-white font-semibold mb-3">Quick Links</h4>
-          <ul className="space-y-2 text-sm">
-            <li><Link href="/" className="hover:text-white transition">Home</Link></li>
-            <li><Link href="/products" className="hover:text-white transition">Shop</Link></li>
-            <li><Link href="/cart" className="hover:text-white transition">Cart</Link></li>
-            <li><Link href="/about" className="hover:text-white transition">About Us</Link></li>
-            <li><Link href="/contact" className="hover:text-white transition">Contact Us</Link></li>
-            <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
-            <li><Link href="/terms" className="hover:text-white transition">Terms of Service</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="text-white font-semibold mb-3">Contact</h4>
-          <ul className="space-y-2 text-sm">
-            <li><Link href="mailto:info@barks-a-lot.com" className="hover:text-white transition">info@barks-a-lot.com</Link></li>
-            <li><Link href="/contact" className="hover:text-white transition">Send us a message</Link></li>
-          </ul>
-        </div>
-      </div>
-      <div className="border-t border-[#4A7C8A] text-center py-4 text-sm safe-bottom space-x-3">
-        <span>
-          &copy; {new Date().getFullYear()} Barks-A-Lot Treats & More. All rights reserved.
-        </span>
-        <Link href="/privacy" className="underline hover:text-white transition">Privacy</Link>
-        <Link href="/terms" className="underline hover:text-white transition">Terms</Link>
+
+        <p className="mt-6 text-sm text-brand-paper-3 safe-bottom">
+          {`© ${new Date().getFullYear()} Barks-A-Lot Treats & More`}
+        </p>
       </div>
     </footer>
   );

@@ -38,17 +38,43 @@ const MAIL_SAFE_IMAGE = /\.(png|jpe?g|webp|gif)$/i;
  * back to the request origin the way emailed links do would let a forged
  * Host header on a checkout POST choose which server draws pictures in
  * the owner's inbox — and unlike a link, an <img> is fetched the moment
- * the message is opened, with no click required. With APP_URL unset —
- * local dev, and any deployment that hasn't set it — order emails simply
- * stay text-only, exactly as they were.
+ * the message is opened, with no click required. With APP_URL unset, or
+ * set to an address an inbox can't reach (localhost, a LAN IP — local dev),
+ * order emails simply stay text-only, exactly as they were.
  */
 export function emailImageUrl(src, appUrl = process.env.APP_URL) {
   if (typeof src !== "string" || src === "") return null;
   if (!MAIL_SAFE_IMAGE.test(src.split("?")[0])) return null;
   if (/^https?:\/\//i.test(src)) return src;
   const base = (appUrl || "").replace(/\/+$/, "");
-  if (!base) return null;
+  if (!base || !reachableFromInbox(base)) return null;
   return `${base}${src.startsWith("/") ? "" : "/"}${src}`;
+}
+
+// Whether a mail client could fetch from this base. The picture is
+// loaded by the reader's inbox, not by us; Gmail fetches through Google's
+// image proxy, where localhost or a LAN address points at the wrong
+// machine. The local-dev APP_URL (http://localhost:3000) therefore always
+// drew a broken-image box, so those emails stay text-only instead.
+function reachableFromInbox(base) {
+  let host;
+  try {
+    host = new URL(base).hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  } catch {
+    return false;
+  }
+  if (host === "localhost" || host.endsWith(".localhost")) return false;
+  if (host.endsWith(".local") || host === "::1" || host === "0.0.0.0") return false;
+  const ip = host.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (!ip) return true;
+  const [a, b] = [Number(ip[1]), Number(ip[2])];
+  return !(
+    a === 127 ||
+    a === 10 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254)
+  );
 }
 
 // Plain-text lines rendered as HTML paragraphs, so an email's two bodies

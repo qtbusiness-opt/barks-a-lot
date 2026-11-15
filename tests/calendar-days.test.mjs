@@ -1,5 +1,5 @@
-// Calendar-day rules behind weekday pickup and the events list
-// (src/lib/calendar-days.js): which weekdays can be booked, how store time
+// Calendar-day rules behind scheduled pickup and the events list
+// (src/lib/calendar-days.js): which days and time slots can be booked, how store time
 // maps to a calendar day, and how events group into months.
 //
 // The process runs in the store's own zone on purpose. Every rule here is
@@ -11,18 +11,25 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 const {
-  WEEKDAY_PICKUP_DAY_COUNT,
+  PICKUP_DAY_COUNT,
+  SLOT_MINUTES,
+  SLOT_CAPACITY,
+  DEFAULT_PICKUP_HOURS,
+  pickupSlots,
+  slotEnd,
+  pickupHours,
+  isSlotTime,
   storeDayKey,
   storeDayStartUtc,
   toDayKey,
   dayKeyToUtcDate,
   addDays,
-  isWeekday,
+  isPickupWeekday,
   monthKeyOf,
   parseClosedDays,
   pruneClosedDays,
-  weekdayPickupDays,
-  isWeekdayPickupDay,
+  pickupDays,
+  isPickupDay,
   groupEventsByMonth,
   defaultOpenMonth,
 } = await import("../src/lib/calendar-days.js");
@@ -39,114 +46,148 @@ test("addDays crosses month, year and leap-day boundaries", () => {
   assert.equal(addDays("2026-03-01", -1), "2026-02-28");
 });
 
-test("isWeekday is Monday through Friday on the calendar day itself", () => {
-  for (const day of ["02", "03", "04", "05", "06"]) {
-    assert.equal(isWeekday(`2026-11-${day}`), true, day);
+test("pickup runs Monday through Saturday — Sunday is the only day off", () => {
+  for (const day of ["02", "03", "04", "05", "06", "07"]) {
+    assert.equal(isPickupWeekday(`2026-11-${day}`), true, day);
   }
-  assert.equal(isWeekday("2026-11-07"), false);
-  assert.equal(isWeekday("2026-11-08"), false);
+  assert.equal(isPickupWeekday("2026-11-08"), false, "Sunday");
   // Midnight UTC Monday is still Sunday evening in Boise — a local getter
-  // would call this a weekend.
-  assert.equal(isWeekday("2026-11-09"), true);
+  // would call this a Sunday.
+  assert.equal(isPickupWeekday("2026-11-09"), true);
 });
 
-test("the window is the next 10 weekdays, starting the day after today", () => {
-  assert.equal(WEEKDAY_PICKUP_DAY_COUNT, 10);
-  assert.deepEqual(weekdayPickupDays("2026-11-03"), [
+test("the window is the next 10 open days, starting the day after today", () => {
+  assert.equal(PICKUP_DAY_COUNT, 10);
+  assert.deepEqual(pickupDays("2026-11-03"), [
     "2026-11-04",
     "2026-11-05",
     "2026-11-06",
+    "2026-11-07",
     "2026-11-09",
     "2026-11-10",
     "2026-11-11",
     "2026-11-12",
     "2026-11-13",
-    "2026-11-16",
-    "2026-11-17",
+    "2026-11-14",
   ]);
 });
 
-test("ordering on a Friday or over the weekend opens on Monday", () => {
-  const fromSaturday = weekdayPickupDays("2026-11-07");
+test("Sunday is skipped wherever the window starts", () => {
+  const fromSaturday = pickupDays("2026-11-07");
   assert.equal(fromSaturday.length, 10);
   assert.equal(fromSaturday[0], "2026-11-09");
-  assert.equal(fromSaturday[9], "2026-11-20");
-  assert.equal(weekdayPickupDays("2026-11-06")[0], "2026-11-09");
-  // Sunday → Monday is tomorrow, which is allowed.
-  assert.equal(weekdayPickupDays("2026-11-08")[0], "2026-11-09");
+  assert.equal(fromSaturday[9], "2026-11-19");
+  // Friday → Saturday is tomorrow, and Saturday is a pickup day.
+  assert.equal(pickupDays("2026-11-06")[0], "2026-11-07");
+  assert.equal(pickupDays("2026-11-08")[0], "2026-11-09");
 });
 
 test("the window rolls across year ends and leap days", () => {
-  assert.equal(weekdayPickupDays("2026-12-31")[0], "2027-01-01");
-  assert.equal(weekdayPickupDays("2026-12-31")[1], "2027-01-04");
-  assert.equal(weekdayPickupDays("2028-02-28")[0], "2028-02-29");
+  assert.equal(pickupDays("2026-12-31")[0], "2027-01-01");
+  assert.equal(pickupDays("2026-12-31")[1], "2027-01-02");
+  assert.equal(pickupDays("2026-12-31")[2], "2027-01-04");
+  assert.equal(pickupDays("2028-02-28")[0], "2028-02-29");
 });
 
 test("the window length can be set", () => {
-  const five = weekdayPickupDays("2026-11-03", [], 5);
+  const five = pickupDays("2026-11-03", [], 5);
   assert.equal(five.length, 5);
-  assert.equal(five[4], "2026-11-10");
+  assert.equal(five[4], "2026-11-09");
 });
 
-test("closed days are skipped and the window still holds 10 open days", () => {
+test("blocked days (closed, or holding an event) are skipped; 10 days remain", () => {
+  assert.deepEqual(pickupDays("2026-11-20", ["2026-11-26", "2026-11-27"]), [
+    "2026-11-21",
+    "2026-11-23",
+    "2026-11-24",
+    "2026-11-25",
+    "2026-11-28",
+    "2026-11-30",
+    "2026-12-01",
+    "2026-12-02",
+    "2026-12-03",
+    "2026-12-04",
+  ]);
+  // Blocking a Sunday changes nothing — it was never bookable.
   assert.deepEqual(
-    weekdayPickupDays("2026-11-20", ["2026-11-26", "2026-11-27"]),
-    [
-      "2026-11-23",
-      "2026-11-24",
-      "2026-11-25",
-      "2026-11-30",
-      "2026-12-01",
-      "2026-12-02",
-      "2026-12-03",
-      "2026-12-04",
-      "2026-12-07",
-      "2026-12-08",
-    ]
-  );
-  // Closing a Saturday changes nothing — it was never bookable.
-  assert.deepEqual(
-    weekdayPickupDays("2026-11-03", ["2026-11-07"]),
-    weekdayPickupDays("2026-11-03")
+    pickupDays("2026-11-03", ["2026-11-08"]),
+    pickupDays("2026-11-03")
   );
 });
 
-test("every window is 10 ascending weekdays strictly after its start day", () => {
+test("every window is 10 ascending non-Sundays strictly after its start", () => {
   for (let i = 0; i < 14; i++) {
     const start = addDays("2026-11-01", i);
-    const days = weekdayPickupDays(start);
+    const days = pickupDays(start);
     assert.equal(days.length, 10, start);
     days.forEach((day, j) => {
       assert.ok(day > start, `${day} after ${start}`);
-      assert.ok(isWeekday(day), `${day} is a weekday`);
+      assert.ok(isPickupWeekday(day), `${day} is not a Sunday`);
       if (j > 0) assert.ok(day > days[j - 1], "ascending");
     });
   }
 });
 
-test("isWeekdayPickupDay accepts only days inside the window", () => {
+test("isPickupDay accepts only days inside the window", () => {
   const today = "2026-11-03";
-  assert.equal(isWeekdayPickupDay("2026-11-04", today), true);
-  assert.equal(isWeekdayPickupDay("2026-11-17", today), true, "10th day");
-  assert.equal(isWeekdayPickupDay("2026-11-03", today), false, "same day");
-  assert.equal(isWeekdayPickupDay("2026-11-02", today), false, "past");
-  assert.equal(isWeekdayPickupDay("2026-11-07", today), false, "Saturday");
-  assert.equal(isWeekdayPickupDay("2026-11-18", today), false, "11th day");
-  assert.equal(isWeekdayPickupDay("2026-02-30", today), false, "not a day");
-  assert.equal(isWeekdayPickupDay(20261104, today), false, "not a string");
+  assert.equal(isPickupDay("2026-11-04", today), true);
+  assert.equal(isPickupDay("2026-11-07", today), true, "Saturday");
+  assert.equal(isPickupDay("2026-11-14", today), true, "10th day");
+  assert.equal(isPickupDay("2026-11-03", today), false, "same day");
+  assert.equal(isPickupDay("2026-11-02", today), false, "past");
+  assert.equal(isPickupDay("2026-11-08", today), false, "Sunday");
+  assert.equal(isPickupDay("2026-11-16", today), false, "11th day");
+  assert.equal(isPickupDay("2026-02-30", today), false, "not a day");
+  assert.equal(isPickupDay(20261104, today), false, "not a string");
   assert.equal(
-    isWeekdayPickupDay("2026-11-26", "2026-11-20", ["2026-11-26"]),
+    isPickupDay("2026-11-26", "2026-11-20", ["2026-11-26"]),
     false,
-    "closed"
+    "blocked"
   );
   assert.equal(
-    isWeekdayPickupDay("2026-12-08", "2026-11-20", [
-      "2026-11-26",
-      "2026-11-27",
-    ]),
+    isPickupDay("2026-12-04", "2026-11-20", ["2026-11-26", "2026-11-27"]),
     true,
-    "window extends past closed days"
+    "window extends past blocked days"
   );
+});
+
+test("pickup slots are 30 minutes long, from opening up to closing", () => {
+  assert.equal(SLOT_MINUTES, 30);
+  assert.equal(SLOT_CAPACITY, 5);
+  assert.deepEqual(DEFAULT_PICKUP_HOURS, { start: "15:00", end: "18:00" });
+  assert.deepEqual(pickupSlots("15:00", "18:00"), [
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
+  ]);
+  assert.deepEqual(pickupSlots("09:30", "10:30"), ["09:30", "10:00"]);
+  assert.equal(slotEnd("15:30"), "16:00");
+  assert.equal(slotEnd("09:00"), "09:30");
+});
+
+test("pickup hours fall back to the default when unset or nonsensical", () => {
+  assert.deepEqual(pickupHours("10:00", "12:30"), {
+    start: "10:00",
+    end: "12:30",
+  });
+  for (const [start, end] of [
+    [undefined, undefined],
+    ["15:00", undefined],
+    ["18:00", "15:00"],
+    ["15:00", "15:00"],
+    ["15:10", "18:00"],
+    ["25:00", "26:00"],
+    ["junk", "18:00"],
+  ]) {
+    assert.deepEqual(pickupHours(start, end), DEFAULT_PICKUP_HOURS);
+  }
+  assert.equal(isSlotTime("15:30"), true);
+  assert.equal(isSlotTime("15:15"), false);
+  assert.equal(isSlotTime("24:00"), false);
+  assert.equal(isSlotTime(1530), false);
 });
 
 test("parseClosedDays reads the stored list tolerantly", () => {
@@ -185,12 +226,11 @@ test("storeDayStartUtc is midnight UTC of the store's today", () => {
 });
 
 test("the pickup window turns over at store midnight, not UTC midnight", () => {
-  const windowAt = (iso) =>
-    weekdayPickupDays(storeDayKey(new Date(iso), BOISE));
+  const windowAt = (iso) => pickupDays(storeDayKey(new Date(iso), BOISE));
   // 11:59:59 PM Thursday Boise: Friday is still bookable.
   assert.equal(windowAt("2026-11-06T06:59:59Z")[0], "2026-11-06");
-  // Midnight Friday Boise: Friday is now same-day; Monday is next.
-  assert.equal(windowAt("2026-11-06T07:00:00Z")[0], "2026-11-09");
+  // Midnight Friday Boise: Friday is now same-day; Saturday is next.
+  assert.equal(windowAt("2026-11-06T07:00:00Z")[0], "2026-11-07");
 });
 
 test("day keys round-trip through stored dates", () => {

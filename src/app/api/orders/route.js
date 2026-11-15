@@ -10,17 +10,14 @@ import {
   resolveLinePrice,
 } from "@/lib/catalog";
 import { validateSelections, combinationKey } from "@/lib/options";
-import {
-  isPickupSelectable,
-  isWeekdayPickupSelectable,
-} from "@/lib/pickup-window";
-import { dayKeyToUtcDate } from "@/lib/calendar-days";
-import { getWeekdayPickupSettings } from "@/lib/site-settings";
+import { isPickupSelectable } from "@/lib/pickup-window";
+import { dayKeyToUtcDate, isSlotTime } from "@/lib/calendar-days";
+import { getPickupSchedule, claimSlot } from "@/lib/pickup-schedule";
 import {
   sendOrderConfirmationEmail,
   sendAdminOrderAlert,
 } from "@/lib/order-emails";
-import { SHIPPING_ENABLED } from "@/lib/features";
+import { SHIPPING_ENABLED, EVENT_PICKUP_ENABLED } from "@/lib/features";
 import { restockOrderItems } from "@/lib/inventory";
 import {
   isPaymentConfigured,
@@ -67,9 +64,10 @@ const orderSchema = z
     guestName: z.string().trim().max(100).optional(),
     // Event id, or "next" for the nearest upcoming event that isn't today.
     pickupEventId: z.string().min(1).optional(),
-    // Weekday pickup day instead of an event, YYYY-MM-DD in store time.
-    // Mutually exclusive with pickupEventId; checked against the bookable
-    // days below, never trusted as-is.
+    // Pickup day (YYYY-MM-DD) and the start of its 30-minute slot (HH:MM),
+    // both store time. Mutually exclusive with pickupEventId; checked
+    // against the bookable days and slots below, never trusted as-is.
+    pickupTime: z.string().refine(isSlotTime).optional(),
     pickupDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -81,8 +79,7 @@ const orderSchema = z
     promoCode: z.string().trim().max(40).optional(),
   })
   .refine(
-    // Pickup orders (at a market/event, or a weekday pickup) need no
-    // address.
+    // Pickup orders need no address.
     (o) =>
       o.fulfillmentType === "pickup" ||
       (o.address && o.city && o.state && o.zip),
@@ -136,6 +133,7 @@ export async function POST(req) {
       guestName,
       pickupEventId,
       pickupDate,
+      pickupTime,
       paymentToken,
       promoCode,
     } = parsed.data;
@@ -166,32 +164,47 @@ export async function POST(req) {
       );
     }
 
-    // Pickup orders are collected either at a specific market/expo or on
-    // a weekday the customer picked — exactly one of the two. No same-day
-    // pickup either way: an event must be at least a day out, and a
-    // weekday must be one of the bookable days (shared rules in
-    // src/lib/pickup-window.js); "next" resolves to the nearest event
-    // that's still selectable.
+    // Pickup orders are collected on a day and half-hour slot the customer
+    // booked. Reserving for a market/expo instead is parked behind
+    // EVENT_PICKUP_ENABLED; a pickup order has exactly one of the two.
+    // Never same-day either way, and the day and slot must be ones the
+    // schedule is offering right now (src/lib/pickup-schedule.js) — the
+    // slot's last places are claimed inside the transaction below.
     let pickupEvent = null;
     if (fulfillmentType === "pickup") {
       if (pickupEventId && pickupDate) {
         return NextResponse.json(
-          { error: "Please choose an event or a weekday pickup day, not both" },
+          { error: "Please choose an event or a pickup day, not both" },
+          { status: 400 }
+        );
+      }
+      if (pickupEventId && !EVENT_PICKUP_ENABLED) {
+        return NextResponse.json(
+          {
+            error:
+              "Event pickup isn't available — please choose a pickup day and time",
+          },
           { status: 400 }
         );
       }
       if (pickupDate) {
-        const weekday = await getWeekdayPickupSettings();
-        if (!weekday.enabled) {
+        if (!pickupTime) {
+          return NextResponse.json(
+            { error: "Please choose a pickup time" },
+            { status: 400 }
+          );
+        }
+        const schedule = await getPickupSchedule();
+        if (!schedule.enabled) {
           return NextResponse.json(
             {
               error:
-                "Weekday pickup isn't available right now — please choose a market or event",
+                "Pickup isn't available right now — please check back soon",
             },
             { status: 409 }
           );
         }
-        if (!isWeekdayPickupSelectable(pickupDate, weekday.closedDays)) {
+        if (!schedule.days.includes(pickupDate)) {
           return NextResponse.json(
             {
               error:
@@ -200,9 +213,18 @@ export async function POST(req) {
             { status: 409 }
           );
         }
+        if (!schedule.slots.includes(pickupTime)) {
+          return NextResponse.json(
+            {
+              error:
+                "That pickup time isn't available — please choose another time",
+            },
+            { status: 409 }
+          );
+        }
       } else if (!pickupEventId) {
         return NextResponse.json(
-          { error: "Please choose a pickup event or a weekday pickup day" },
+          { error: "Please choose a pickup day and time" },
           { status: 400 }
         );
       } else if (pickupEventId === "next") {
@@ -239,6 +261,21 @@ export async function POST(req) {
     // transaction: the stock check, decrement, and order creation succeed
     // or fail together so concurrent checkouts can't oversell.
     const order = await prisma.$transaction(async (tx) => {
+      const fail = (code, message) =>
+        Object.assign(new Error(message), { code });
+
+      // First, so a full slot fails before any stock is touched. Checked
+      // here rather than above because the place has to be taken in the
+      // same transaction that writes the order.
+      if (fulfillmentType === "pickup" && pickupDate) {
+        if (!(await claimSlot(tx, pickupDate, pickupTime))) {
+          throw fail(
+            409,
+            "That pickup time just filled up — please choose another time"
+          );
+        }
+      }
+
       const productIds = items.map((i) => i.productId);
       const products = await tx.product.findMany({
         where: { id: { in: productIds } },
@@ -246,9 +283,6 @@ export async function POST(req) {
       });
       const productMap = {};
       for (const p of products) productMap[p.id] = p;
-
-      const fail = (code, message) =>
-        Object.assign(new Error(message), { code });
 
       const orderItems = [];
       // Track per-product/variant decrements before applying them, so a
@@ -415,6 +449,8 @@ export async function POST(req) {
             fulfillmentType === "pickup" && pickupDate
               ? dayKeyToUtcDate(pickupDate)
               : null,
+          pickupTime:
+            fulfillmentType === "pickup" && pickupDate ? pickupTime : null,
           total: finalTotal,
           discountTotal: discount.discountTotal,
           promoCode:

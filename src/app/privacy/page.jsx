@@ -19,8 +19,8 @@ export default function PrivacyPolicyPage() {
       <h1 className="text-2xl sm:text-3xl font-bold text-[#2A4A52]">
         Privacy Policy
       </h1>
-      <p className="text-gray-500 mt-2">
-        Barks-A-Lot Treats &amp; More &middot; Effective Date: Nov 3, 2026
+      <p className="text-gray-600 mt-2">
+        Barks-A-Lot Treats &amp; More &middot; Effective Date: Nov 12, 2026
       </p>
 
       <p className="mt-6 text-gray-700 leading-relaxed">
@@ -45,8 +45,7 @@ export default function PrivacyPolicyPage() {
           <li>
             <strong>Guest checkout:</strong> If you check out as a guest, we
             collect your name, email address, and order details — including the
-            market, event, or weekday pickup day you choose — for that
-            transaction.
+            pickup day and time you choose — for that transaction.
           </li>
           <li>
             <strong>Payment information:</strong> Payment is processed by a
@@ -139,7 +138,7 @@ export default function PrivacyPolicyPage() {
             cross-site request forgery.
           </li>
           <li>
-            <strong>Your shopping cart</strong> is saved in your browser&rsquo;s
+            <strong>Your shopping cart</strong>{" "}is saved in your browser&rsquo;s
             local storage so it survives page reloads. It stays on your device
             and is not sent to us until you place an order.
           </li>
@@ -184,7 +183,7 @@ export default function PrivacyPolicyPage() {
             your account and associated personal information by emailing us at{" "}
             <a
               href="mailto:info@barks-a-lot.com"
-              className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+              className="text-[#3A6270] underline hover:text-[#2A4A52]"
             >
               info@barks-a-lot.com
             </a>
@@ -203,7 +202,7 @@ export default function PrivacyPolicyPage() {
             request its deletion. Contact us at{" "}
             <a
               href="mailto:info@barks-a-lot.com"
-              className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+              className="text-[#3A6270] underline hover:text-[#2A4A52]"
             >
               info@barks-a-lot.com
             </a>{" "}
@@ -249,7 +248,7 @@ export default function PrivacyPolicyPage() {
           Email:{" "}
           <a
             href="mailto:info@barks-a-lot.com"
-            className="text-[#4A7C8A] underline hover:text-[#2A4A52]"
+            className="text-[#3A6270] underline hover:text-[#2A4A52]"
           >
             info@barks-a-lot.com
           </a>

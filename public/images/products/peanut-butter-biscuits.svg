@@ -16,5 +16,4 @@
     <circle cx="0" cy="0" r="3" fill="#B8621A" opacity="0.5"/>
   </g>
   <!-- Label -->
-  <text x="200" y="340" text-anchor="middle" font-family="Georgia, serif" font-size="16" fill="#4A7C8A" font-weight="bold">Peanut Butter Biscuits</text>
 </svg>
